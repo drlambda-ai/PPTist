@@ -1,4 +1,4 @@
-import { readBody } from '../_llm'
+import { readBody } from '../_llm.js'
 
 // Stock-image search proxy (Pexels). Maps Pexels results to the { data: [{id, src}], total }
 // shape the ImageLibPanel expects.

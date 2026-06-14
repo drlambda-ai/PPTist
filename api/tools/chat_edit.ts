@@ -1,4 +1,4 @@
-import { chat, readBody } from '../_llm'
+import { chat, readBody } from '../_llm.js'
 
 // Edit chatbot: given the current slide's elements + a natural-language instruction,
 // return the updated elements array. The client merges the result onto the live slide.

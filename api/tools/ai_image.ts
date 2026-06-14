@@ -1,4 +1,4 @@
-import { getKey, readBody } from '../_llm'
+import { getKey, readBody } from '../_llm.js'
 
 // AI image generation via OpenAI gpt-image-1. Returns a data URL the client can drop
 // straight into an image element's src.

@@ -1,4 +1,4 @@
-import { chatStream, readBody } from '../_llm'
+import { chatStream, readBody } from '../_llm.js'
 
 // Streams a markdown outline for a presentation topic (consumed raw by the frontend).
 

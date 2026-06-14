@@ -1,4 +1,4 @@
-import { chatStream, readBody } from '../_llm'
+import { chatStream, readBody } from '../_llm.js'
 
 // Streams slides as JSONL (one AIPPTSlide object per line). The frontend parses each
 // line and maps it onto a template. We buffer deltas and only flush complete lines so a

@@ -1,4 +1,4 @@
-import { chatStream, readBody } from '../_llm'
+import { chatStream, readBody } from '../_llm.js'
 
 // Streams an AI text rewrite (raw text) for the in-editor "AI writing" action.
 
