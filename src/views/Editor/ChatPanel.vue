@@ -93,6 +93,7 @@ const applyEdits = (aiElements: any[]) => {
 const send = async () => {
   const text = input.value.trim()
   if (!text || loading.value) return
+  const priorHistory = messages.value.slice(-6)
   messages.value.push({ role: 'user', content: text })
   input.value = ''
   loading.value = true
@@ -101,7 +102,7 @@ const send = async () => {
     const ret = await api.AI_Edit({
       elements: currentSlide.value?.elements || [],
       instruction: text,
-      history: messages.value.slice(-6),
+      history: priorHistory,
       slideSize: {
         width: viewportSize.value,
         height: Math.round(viewportSize.value * viewportRatio.value),

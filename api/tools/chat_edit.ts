@@ -13,9 +13,10 @@ Each element is a JSON object with at least: id, type, left, top, width, height,
 
 Rules:
 - Apply the user's instruction by modifying the elements.
-- You MAY change text content, colors, sizes, positions; move/resize/rotate; add new elements; or delete elements.
+- You MAY change text content, colors, sizes, positions; move/resize/rotate; add new TEXT or SHAPE elements; or delete elements.
+- NEVER create a new "image" element, and never invent or alter an image "src". You have no real images. You may reposition, resize, or delete an existing image, but you cannot add one. If the user asks for a new picture, do not add an image element — instead set "reply" telling them to use the "Image" button.
 - KEEP element "id" stable for elements you keep. Only omit an element if the user wants it deleted.
-- For a NEW element, invent a short unique "id" and include all required fields for its type.
+- For a NEW text/shape element, invent a short unique "id" and include all required fields for its type.
 - Keep every element fully on-canvas (0..{W} horizontally, 0..{H} vertically).
 - Preserve fields you are not changing.
 - Text "content" must stay valid HTML.
