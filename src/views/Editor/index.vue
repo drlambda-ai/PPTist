@@ -22,6 +22,7 @@
   <MarkupPanel v-if="showMarkupPanel" />
   <SymbolPanel v-if="showSymbolPanel" />
   <ImageLibPanel v-if="showImageLibPanel" />
+  <ChatPanel v-if="showChatPanel" />
   <ChartDataEditorDialog />
   <LatexEditorDialog />
 
@@ -68,6 +69,7 @@ import NotesPanel from './NotesPanel.vue'
 import SymbolPanel from './SymbolPanel.vue'
 import MarkupPanel from './MarkupPanel.vue'
 import ImageLibPanel from './ImageLibPanel.vue'
+import ChatPanel from './ChatPanel.vue'
 import AIPPTDialog from './AIPPTDialog.vue'
 import Modal from '@/components/Modal.vue'
 
@@ -81,6 +83,7 @@ const {
   showMarkupPanel,
   showImageLibPanel,
   showAIPPTDialog,
+  showChatPanel,
 } = storeToRefs(mainStore)
 
 const closeExportDialog = () => mainStore.setDialogForExport('')

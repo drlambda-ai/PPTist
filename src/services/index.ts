@@ -1,8 +1,8 @@
 import axios from './axios'
 import fetchRequest from './fetch'
 
-// export const SERVER_URL = 'http://localhost:5000'
-export const SERVER_URL = (import.meta.env.MODE === 'development') ? '/api' : 'https://server.pptist.cn'
+// Self-hosted backend: serverless functions live under /api on the same Vercel domain.
+export const SERVER_URL = '/api'
 
 interface ImageSearchPayload {
   query: string;
@@ -89,5 +89,20 @@ export default {
         stream: true,
       }),
     })
+  },
+
+  // Edit chatbot: send current slide elements + an instruction, get updated elements back.
+  AI_Edit(body: {
+    elements: any[]
+    instruction: string
+    history?: { role: string, content: string }[]
+    slideSize?: { width: number, height: number }
+  }): Promise<{ reply: string, elements: any[] | null }> {
+    return axios.post(`${SERVER_URL}/tools/chat_edit`, body)
+  },
+
+  // AI image generation: returns { src } as a data URL.
+  AI_Image(body: { prompt: string, size?: string }): Promise<{ src: string }> {
+    return axios.post(`${SERVER_URL}/tools/ai_image`, body)
   },
 }
