@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: Codex (py + ts patches of 2178ced4..30b43bfd)
+Fixed: profile() got no slot data without thumbnails; table-cell removal deleted the table; template removable after a deck existed; failed page op left half-applied changes (all in 30b43bfd).
+Declined: unauthenticated paid AI/upload endpoints and public Blob URLs - handled at deploy with Vercel deployment protection; Blob paths carry a random 128-bit id and decks >4.5MB cannot stream through a function.
+Declined: edit turn may omit slides - the model returns the full deck by design; Undo recovers.
+Declined: Undo racing the 300ms debounced snapshot - needs a click within 300ms.
+Declined-By: Claude (pragmatic tier: internal demo behind deployment protection)
