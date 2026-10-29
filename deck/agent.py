@@ -103,10 +103,11 @@ Slots you do not put in "fills" keep the template's text, except value slots, wh
 
 def profile(analysis, thumbs):
     parts = []
-    for s, img in zip(analysis, thumbs):
+    for i, s in enumerate(analysis):  # thumbnails are optional (none on Vercel); the slot list always goes
         parts.append(f"Template slide {s['n']} slots: " + json.dumps(
             [{k: x[k] for k in ("id", "text", "x", "y", "w", "h")} for x in s["slots"]], ensure_ascii=False))
-        parts.append(img)
+        if i < len(thumbs):
+            parts.append(thumbs[i])
     return _llm(PROFILE_SYSTEM, parts, effort="low")
 
 

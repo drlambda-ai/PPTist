@@ -22,7 +22,7 @@
       <div class="composer">
         <div class="chips" v-if="s.template || s.docs.length">
           <span class="chip" v-if="s.template">Template: {{ s.template.name }}
-            <i @click="removeTemplate()" v-if="!busy">×</i></span>
+            <i @click="removeTemplate()" v-if="!busy && !s.mode">×</i></span>
           <span class="chip" v-for="(d, i) in s.docs" :key="d.name + i">{{ d.name }}
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
@@ -318,7 +318,16 @@ const send = () => {
   say('user', text)
   if (s.template && s.mode !== 'native') return run('Building the deck (about a minute)…', () => templateTurn(text))
   if (!s.mode) return run('Writing the deck…', () => generateNative(text))
-  return run('Working…', () => nativeTurn(text))
+  const before = JSON.parse(JSON.stringify(slides.value))
+  return run('Working…', async () => {
+    try {
+      await nativeTurn(text)
+    }
+    catch (e) { // never leave a half-applied operation (e.g. an inserted page that was never rewritten)
+      slidesStore.setSlides(before)
+      throw e
+    }
+  })
 }
 
 const undo = () => run('Reverting…', async () => {

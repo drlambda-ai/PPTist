@@ -353,13 +353,18 @@ def fill_slide(slide, fills, emphasis=None, remove=(), lines=None, sw=None):
     emphasis, lines = emphasis or {}, lines or {}
     by_id = {str(sh.shape_id): sh for sh in _walk(slide.shapes)}
     for sid in remove:
-        sh = by_id.get(str(sid).split(":")[0])
-        if sh is not None:
+        base, _, cell = str(sid).partition(":")
+        sh = by_id.get(base)
+        if sh is None:
+            continue
+        if cell:  # a table cell: blank it; removing the shape would delete the whole table
+            fills = {**fills, sid: ""}
+        else:
             sh._element.getparent().remove(sh._element)
     for sid, text in fills.items():
         base, _, cell = str(sid).partition(":")
         sh = by_id.get(base)
-        if sh is None or sid in remove:
+        if sh is None or (sid in remove and not cell):
             continue
         text = str(text)
         if cell:
