@@ -41,6 +41,7 @@ export interface MainState {
   showImageLibPanel: boolean
   showAIPPTDialog: boolean | 'running'
   showChatPanel: boolean
+  showTemplateDeckPanel: boolean
 }
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')
@@ -81,6 +82,7 @@ export const useMainStore = defineStore('main', {
     showImageLibPanel: false, // 打开图片库面板
     showAIPPTDialog: false, // 打开AIPPT创建窗口
     showChatPanel: false, // 打开AI对话编辑面板
+    showTemplateDeckPanel: false, // 打开模板填充面板
   }),
 
   getters: {
@@ -205,6 +207,10 @@ export const useMainStore = defineStore('main', {
 
     setChatPanelState(show: boolean) {
       this.showChatPanel = show
+    },
+
+    setTemplateDeckPanelState(show: boolean) {
+      this.showTemplateDeckPanel = show
     },
 
     setSearchPanelState(show: boolean) {

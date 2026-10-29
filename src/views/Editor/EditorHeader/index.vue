@@ -92,6 +92,9 @@
       <div class="menu-item" v-tooltip="'AI 助手（对话编辑当前页）'" @click="toggleChatPanel()">
         <span class="text ai">AI✎</span>
       </div>
+      <div class="menu-item" v-tooltip="'模板填充（上传公司模板，对话生成与修改）'" @click="toggleTemplateDeckPanel()">
+        <span class="text ai" style="white-space: nowrap;">模板</span>
+      </div>
       <div class="menu-item" v-tooltip="'导出'" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
       </div>
@@ -173,6 +176,9 @@ const openAIPPTDialog = () => {
   mainStore.setAIPPTDialogState(true)
 }
 
+const toggleTemplateDeckPanel = () => {
+  mainStore.setTemplateDeckPanelState(!mainStore.showTemplateDeckPanel)
+}
 const toggleChatPanel = () => {
   mainStore.setChatPanelState(!mainStore.showChatPanel)
 }
