@@ -612,7 +612,13 @@ export default () => {
       slidesStore.setTheme({ themeColors: json.themeColors })
 
       const slides: Slide[] = []
+      const toGradient = (fill: Shape['fill'] | undefined): Gradient | undefined => fill?.type === 'gradient' ? {
+        type: fill.value.path === 'line' ? 'linear' : 'radial',
+        colors: fill.value.colors.map(item => ({ ...item, pos: parseInt(item.pos) })),
+        rotate: fill.value.rot,
+      } : undefined
       for (const item of json.slides) {
+        const slideNo = slides.length + 1
         const { type, value } = item.fill
         let background: SlideBackground
         if (type === 'image') {
@@ -672,6 +678,7 @@ export default () => {
             el.top = el.top * ratio
   
             if (el.type === 'text') {
+              el.content = el.content.replace(/‹#›/g, String(slideNo)) // slide-number field
               if (el.autoFit && el.autoFit.type === 'text') {
                 const fontScale = ratio * (el.autoFit.fontScale || 100) / 100
                 const metrics = getParagraphMetrics(el.content, fontScale)
@@ -686,6 +693,7 @@ export default () => {
                   viewBox: [200, 200],
                   path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
                   fill: el.fill?.type === 'color' ? el.fill.value : '',
+                  gradient: toGradient(el.fill),
                   fixedRatio: false,
                   outline: {
                     color: el.borderColor,
@@ -707,6 +715,14 @@ export default () => {
                 slide.elements.push(shapeEl)
               }
               else {
+                const gradient = toGradient(el.fill)
+                if (gradient) { // text boxes only take a solid fill: put the gradient box behind the text
+                  slide.elements.push({
+                    type: 'shape', id: nanoid(10), width: el.width, height: el.height, left: el.left, top: el.top,
+                    rotate: el.rotate, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
+                    fill: '', gradient, fixedRatio: false,
+                  })
+                }
                 const metrics = getParagraphMetrics(el.content, ratio)
                 const textEl: PPTTextElement = {
                   type: 'text',
