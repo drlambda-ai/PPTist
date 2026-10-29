@@ -15,6 +15,7 @@
   "author": "pipipi_pikachu@163.com",
   "homepage": "https://github.com/pipipi-pikachu/PPTist",
   "dependencies": {
+    "@vercel/blob": "^2.8.2",
     "animate.css": "^4.1.1",
     "axios": "^1.7.9",
     "clipboard": "^2.0.11",
