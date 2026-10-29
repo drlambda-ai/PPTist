@@ -31,3 +31,4 @@ coverage
 .vercel
 .env*.local
 .deck-data
+__pycache__/
