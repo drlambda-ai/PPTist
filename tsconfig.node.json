@@ -2,6 +2,7 @@
   "extends": "@tsconfig/node18/tsconfig.json",
   "include": [
     "vite.config.*",
+    "dev-api.ts",
     "vitest.config.*",
     "cypress.config.*",
     "nightwatch.conf.*",
