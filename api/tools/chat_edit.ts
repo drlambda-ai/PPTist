@@ -21,7 +21,7 @@ Rules:
 - Preserve fields you are not changing.
 - Text "content" must stay valid HTML.
 
-Respond ONLY with JSON: {"reply": "<one short sentence to the user>", "elements": [ ...full updated array... ]}.`
+Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the language of the instruction>", "elements": [ ...full updated array... ]}.`
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
