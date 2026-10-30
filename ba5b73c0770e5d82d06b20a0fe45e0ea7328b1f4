@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: Codex (patch of f947c87a)
+Fixed: comparison-line match is now case-insensitive (VS/vs).
+Declined: line overflow vs box capacity always goes to repair - intended: a shorter list is the design outcome, shrinking to the 60% floor is what overflowed; cost is one repair call.
+Declined: widest paragraph spacing applied to all lines - errs toward fitting.
+Declined: point-based a:spcPts spacing read as 1.0 - unchanged from before this commit, not used by the template.
+Declined-By: Claude (pragmatic tier: internal demo behind deployment protection)
