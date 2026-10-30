@@ -224,7 +224,7 @@ const generateNative = async (text: string) => {
     }
     catch { /* a partial line; the stream completes it */ }
   }
-  await readStream(await api.AIPPT({ content: outline, language: languageOf(text), style: '通用', model: '' }), (chunk) => {
+  await readStream(await api.AIPPT({ content: `User request: ${text}\n\n${outline}`, language: languageOf(text), style: '通用', model: '' }), (chunk) => {
     const lines = (pending + chunk).split(/\n+/)
     pending = lines.pop() || ''
     lines.forEach(flush)
@@ -232,7 +232,7 @@ const generateNative = async (text: string) => {
   flush(pending)
   slidesStore.setTheme(template.theme)
   s.mode = 'native'
-  say('assistant', `Generated ${slides.value.length} pages. Ask for any change: add, delete, move or rewrite pages.`)
+  say('assistant', languageOf(text) === '中文' ? `已生成 ${slides.value.length} 页。可以继续要求增加、删除、移动或改写页面。` : `Generated ${slides.value.length} pages. Ask for any change: add, delete, move or rewrite pages.`)
 }
 
 const pageText = (sl: Slide) => sl.elements.map((e: any) => (e.content || e.text?.content || '').replace(/<[^>]+>/g, ' '))

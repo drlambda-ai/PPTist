@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
   const messages = [
     {
       role: 'system',
-      content: `You are a presentation outline writer. Output a clean Markdown outline only (no preface, no code fences). Use "#" for the deck title, "##" for each slide/section title, and "-" bullets for key points. Write in ${language}. Aim for 5-8 sections.`,
+      content: `You are a presentation outline writer. Output a clean Markdown outline only (no preface, no code fences). Use "#" for the deck title, "##" for each slide/section title, and "-" bullets for key points. Write in ${language}. If the user states a number of slides, plan exactly that many in total, counting a cover and a closing slide; otherwise aim for 5-8 sections.`,
     },
     { role: 'user', content: `Topic: ${content}` },
   ]

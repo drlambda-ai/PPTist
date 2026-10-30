@@ -12,7 +12,8 @@ Allowed line shapes:
 {"type":"content","data":{"title":"...","items":[{"title":"...","text":"..."}]}}
 {"type":"end"}
 Order: exactly one "cover" first, then one "contents", then several "content" slides (use "transition" between major sections), then exactly one "end".
-Each "content" slide should have 2-4 items. Write in {LANG}. Output ONLY JSONL.`
+Each "content" slide should have 2-4 items.
+If the input starts with a user request that states a number of slides, emit exactly that many lines in total (cover and end included): drop "contents" and "transition" slides first, then merge content. Write in {LANG}. Output ONLY JSONL.`
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
