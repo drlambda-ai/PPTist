@@ -86,14 +86,8 @@
           <div class="arrow-btn"><i-icon-park-outline:down class="arrow" /></div>
         </Popover>
       </div>
-      <div class="menu-item" v-tooltip="'AI生成PPT'" @click="openAIPPTDialog(); mainMenuVisible = false">
-        <span class="text ai">AI</span>
-      </div>
-      <div class="menu-item" v-tooltip="'AI 助手（对话编辑当前页）'" @click="toggleChatPanel()">
-        <span class="text ai">AI✎</span>
-      </div>
       <div class="menu-item" v-tooltip="'AI 生成与修改（可上传公司模板和资料）'" @click="toggleTemplateDeckPanel()">
-        <span class="text ai" style="white-space: nowrap;">AI 生成</span>
+        <span class="text ai">AI</span>
       </div>
       <div class="menu-item" v-tooltip="'导出'" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
@@ -178,9 +172,6 @@ const openAIPPTDialog = () => {
 
 const toggleTemplateDeckPanel = () => {
   mainStore.setTemplateDeckPanelState(!mainStore.showTemplateDeckPanel)
-}
-const toggleChatPanel = () => {
-  mainStore.setChatPanelState(!mainStore.showChatPanel)
 }
 </script>
 
