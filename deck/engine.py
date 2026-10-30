@@ -189,20 +189,26 @@ def _units(line):
     return sum(1.0 if _is_wide(ch) else (m.getlength(ch) / 100 if m else 0.62) for ch in line)
 
 
-def _fit_pt(text, w_emu, h_emu, pt, max_lines=None):
+def _fit_pt(text, w_emu, h_emu, pt, max_lines=None, ls=1.0):
     """Shrink font (down to 60%) until wrapped text fits the box height (or max_lines). 15% slack."""
     # 12% width margin: the renderer draws glyphs a few % wider than measured, and auto-growing boxes push a
     # wrapped line into the shape below, so a near-fit must count as a miss
     w_pt, h_pt = max(w_emu / EMU_PER_PT - 14, 10) * 0.88, h_emu / EMU_PER_PT
     if max_lines:
-        h_pt = min(h_pt, max_lines * pt * 1.2)
+        h_pt = min(h_pt, max_lines * pt * 1.2 * ls)
     size = pt
     while size > pt * 0.6:
         lines = sum(max(1, math.ceil(_units(l) * size / w_pt)) for l in text.split("\n"))
-        if lines * size * 1.2 <= h_pt * 1.15 or lines == 1 and _units(text) * size <= w_pt * 1.15:
+        if lines * size * 1.2 * ls <= h_pt * 1.15 or lines == 1 and _units(text) * size <= w_pt * 1.15:
             return size
         size -= 0.5
     return size
+
+
+def _line_spacing(pPr):
+    """Paragraph line spacing as a multiple (a:lnSpc/a:spcPct 150000 -> 1.5); 1.0 when unset."""
+    pct = pPr.find(qn("a:lnSpc") + "/" + qn("a:spcPct")) if pPr is not None else None
+    return int(pct.get("val")) / 100000 if pct is not None else 1.0
 
 
 def _set_fill(rPr, hex_):
@@ -299,7 +305,8 @@ def set_text(tf, text, emphasis=None, shape_filled=False, box=None):
     lines = text.split("\n")
     if emphasis in ("up", "down", "key"):
         # the number's line carries the emphasis (a label line above it stays as the template has it)
-        j = next((i for i, l in enumerate(lines) if any(c.isdigit() for c in l)), 0)
+        num = [i for i, l in enumerate(lines) if any(c.isdigit() for c in l)]  # the comparison line carries the arrow
+        j = next((i for i in num if "vs" in lines[i].lower()), num[0] if num else 0)
         st = copy.deepcopy(styles[min(j, len(styles) - 1)][1])
         if emphasis != "key" and not lines[j].startswith(("▲", "▼", "↑", "↓", "+", "-", "−")):
             lines[j] = ("▲ " if emphasis == "up" else "▼ ") + lines[j]
@@ -310,7 +317,8 @@ def set_text(tf, text, emphasis=None, shape_filled=False, box=None):
 
     if box and text:
         pt = max(_size(s) for _, s in styles) / 100 or box["pt"]
-        new_pt = _fit_pt("\n".join(lines).replace("**", ""), box["w"], box["h"], pt, box.get("lines"))
+        ls = max(_line_spacing(pp) for pp, _ in styles)
+        new_pt = _fit_pt("\n".join(lines).replace("**", ""), box["w"], box["h"], pt, box.get("lines"), ls)
         if new_pt < pt:
             for st in [s for _, s in styles] + [accent]:
                 if st.get("sz"):

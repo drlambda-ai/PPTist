@@ -83,10 +83,13 @@ def turn(p):
                 f"material, or remove it if the slide reads well without it" for i, sid in unfilled]
         asks += [f"slide {i} slot {sid} has one line where the template has {k}: give it the template's line structure "
                  f"using facts from the material that belong to that item" for i, sid, k in sparse if k > 0]
-        asks += [f"slide {i} slot {sid} is far over its size (max {-k}): shorten it, moving a comparison to its "
-                 f"neighbouring cell or label if needed" for i, sid, k in sparse if k < 0]
+        box = {(sl["n"], x["id"]): x.get("lines") for sl in analysis for x in sl["slots"]}
+        tpl_of = lambda i: spec["slides"][i - 1]["template"]
+        asks += [f"slide {i} slot {sid} is over its box (max {-k} characters, {box.get((tpl_of(i), sid)) or 'few'} "
+                 f"lines): shorten it, keeping the most important items, moving a comparison to its neighbouring "
+                 f"cell or label if needed" for i, sid, k in sparse if k < 0]
         asks += [f"deck chrome {cid} still shows the template's sample text: replace it with facts from the material "
-                 f"(e.g. program • report • year) or \"\"" for cid in stale()]
+                 f"(this deck's subject • period, e.g. program • report • year)" for cid in stale()]
         ask = "Fix only these slots and change nothing else: " + "; ".join(asks)
         _, raw = agent.turn(analysis, prof, docs, [], spec, ask, (), chrome)
         spec, unsourced, unfilled, sparse = agent.finalize(raw, analysis, prof, source)

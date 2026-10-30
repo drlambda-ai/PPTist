@@ -90,8 +90,9 @@ When a current deck exists, apply the user's message as an edit: change only wha
 identical, and return the COMPLETE updated deck. Slide numbers the user mentions refer to the current deck (1-based).
 
 Deck chrome is text the template prints on every slide (footer, presentation name, year). Replace its template sample
-text (team names, "Name of presentation", an old year) with facts from the material, or "" when the material has none;
-keep brand names. In edits keep the current chrome unless asked.
+text (team names, "Name of presentation", an old year) with this deck's own subject and period from the material
+(e.g. "D乐卡年度复盘 • 2025"); a blank footer reads as unfinished, so use "" only when the material names no subject.
+Keep brand names. In edits keep the current chrome unless asked.
 
 Return JSON:
 {"reply":"1-3 short sentences to the user: what you did, and which data was missing (if any)",
@@ -182,6 +183,7 @@ def finalize(spec, analysis, prof, source=""):
     ids = {s["n"]: {x["id"] for x in s["slots"]} for s in analysis}
     tpl_text = {(s["n"], x["id"]): x["text"] for s in analysis for x in s["slots"]}
     cap = {(s["n"], x["id"]): x.get("max_chars", 999) for s in analysis for x in s["slots"]}
+    box_lines = {(s["n"], x["id"]): x["lines"] for s in analysis for x in s["slots"] if x.get("lines")}
     roles = {p["n"]: p.get("slots", {}) for p in prof.get("slides", [])}
     max_lines = {(s["n"], x["id"]): m for s in analysis for x in s["slots"]
                  if (m := _max_lines(x, roles.get(s["n"], {}).get(x["id"], {}).get("role")))}
@@ -213,7 +215,8 @@ def finalize(spec, analysis, prof, source=""):
                     and sid in fills and sid not in remove:
                 sparse.append((len(out), sid, t.count("\n") + 1))
         for sid, v in fills.items():  # far over capacity: the engine would shrink it to unreadable
-            if len(str(v).replace("**", "")) > 1.5 * cap.get((n, sid), 999) + 2:
+            if len(str(v).replace("**", "")) > 1.5 * cap.get((n, sid), 999) + 2 \
+                    or str(v).count("\n") + 1 > box_lines.get((n, sid), 99):  # more lines than the box holds
                 sparse.append((len(out), sid, -cap[(n, sid)]))
     return {"slides": out, "chrome": {k: str(v) for k, v in spec.get("chrome", {}).items()}}, unsourced, unfilled, sparse
 
