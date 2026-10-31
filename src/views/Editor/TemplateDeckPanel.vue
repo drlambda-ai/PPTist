@@ -494,7 +494,7 @@ Material: ${material().slice(0, 12000)}` }),
 }
 
 // The free rectangle nearest to the requested box (same aspect, shrinking down to 40%) on a 24x14 occupancy grid;
-// full-slide backgrounds don't count as occupied. Falls back to the requested box when nothing is free.
+// full-slide backgrounds don't count as occupied. Null when nothing is free.
 const freeBox = (sl: Slide, want: { left: number, top: number, width: number, height: number }) => {
   const { width: W, height: H } = slideSize()
   const C = 24, R = 14, cw = W / C, rh = H / R
@@ -520,7 +520,7 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
     }
     if (best) return best
   }
-  return want
+  return null // nowhere free: never cover the page's content
 }
 
 // Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
@@ -618,13 +618,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const id = idOf(args.index)
     const { width: W, height: H } = slideSize()
     const b = args.box || { x: 55, y: 20, w: 40, h: 60 }
-    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
-    const src = await findPicture(args.query, args.source, b.w * W >= b.h * H)
-    if (!src) fail(Z ? '没有找到合适的图片。' : 'Could not get a picture.')
     const clamp = (v: number) => Math.min(Math.max(v || 0, 0), 100) / 100
     const sl = slides.value[pos(id)]
     const box = freeBox(sl, { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H })
-    slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...box } as any] }, id)
+    if (!box) fail(Z ? `第 ${pos(id) + 1} 页已经排满，没有放图片的空位；可以先删掉或缩小一些内容，或者把图片放到新的一页。` : `Page ${pos(id) + 1} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.`)
+    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
+    const src = await findPicture(args.query, args.source, box.width >= box.height)
+    if (!src) fail(Z ? '没有找到合适的图片。' : 'Could not get a picture.')
+    const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
+    if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
+    slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     slidesStore.updateSlideIndex(pos(id))
     return Z ? '已插入图片。' : 'Picture added.'
   }
