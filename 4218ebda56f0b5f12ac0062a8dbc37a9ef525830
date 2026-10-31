@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T09:03:00Z
+Fixed: chat undo restores the previous template build when the template deck has no editor edits, as the removed Undo button did.
