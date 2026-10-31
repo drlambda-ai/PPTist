@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T08:52:46Z
+Fixed: image requests act on the current page; every content page only when the user says all slides / the deck.
