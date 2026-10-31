@@ -59,6 +59,10 @@ const TOOLS = [
     query: { type: 'string', description: 'Stock search words (English) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'ai'], description: 'photo unless the user asks for an illustration, AI image or something no photo shows' },
   }, ['index', 'image', 'query', 'source']),
+  fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
+    pages: { ...pages, description: 'Pages; empty = every page' },
+    images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
+  }, ['pages', 'images']),
   fn('move_element_to_page', 'Move or copy an image or text box from one page to another page (same position).', {
     from: page, to: page,
     element: { type: 'string', description: 'Which element, as the user described it (e.g. "the photo", "image 2", "the title")' },
@@ -121,6 +125,7 @@ Rules:
    Only a font FAMILY change (字体/font/Schrift/шрифт) -> set_font, never edit_page/edit_all_pages.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
+   Removing pictures -> remove_images (not edit_page).
 5. A new or different picture -> change_image, ONE call for the one image meant: "the picture/photo" is the image marked "the largest
    image here" on that page; never an icon or a [logo] unless the user names it. If that page has no image except
    icons/logos, use add_image instead. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.

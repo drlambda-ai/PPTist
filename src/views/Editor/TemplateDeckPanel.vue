@@ -631,6 +631,21 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(pos(id))
     return Z ? '已插入图片。' : 'Picture added.'
   }
+  if (action === 'remove_images') {
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const logos = logoSpots()
+    let n = 0
+    for (const id of targets) {
+      const imgs = readingOrder(slides.value[pos(id)]).filter(e => e.type === 'image') // the numbering the router saw
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => imgs[k - 1]) : imgs.filter(e => !logos.has(imgSpot(e))))
+        .filter(Boolean).map((e: any) => e.id))
+      if (!drop.size) continue
+      n += drop.size
+      slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter(e => !drop.has(e.id)) }, id)
+    }
+    if (!n) fail(Z ? '没有可删除的图片。' : 'There is no picture to remove.')
+    return Z ? `已删除 ${n} 张图片。` : `Removed ${n} picture(s).`
+  }
   if (action === 'set_transition') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     for (const id of targets) slidesStore.updateSlide({ turningMode: args.effect }, id)
