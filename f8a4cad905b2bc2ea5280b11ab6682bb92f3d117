@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T08:40:40Z
+Fixed: the chat 'undo' command restores the deck replaced by a new one, same as the Undo button; the new deck is its own history step.
+Fixed: the restored deck is marked edited and saved, so a reload never brings back the replacing template version.
