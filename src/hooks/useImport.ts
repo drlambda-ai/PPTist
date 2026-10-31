@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { parse, type Shape, type Element, type ChartItem, type BaseElement } from 'pptxtojson'
@@ -353,7 +354,7 @@ export default () => {
         else addSlidesFromData(slides)
       }
       catch {
-        message.error('无法正确读取 / 解析该文件')
+        message.error(t('无法正确读取 / 解析该文件'))
       }
     })
     reader.readAsText(file)
@@ -386,7 +387,7 @@ export default () => {
         else addSlidesFromData(slides)
       }
       catch {
-        message.error('无法正确读取 / 解析该文件')
+        message.error(t('无法正确读取 / 解析该文件'))
       }
     })
     reader.readAsText(file)
@@ -596,7 +597,7 @@ export default () => {
       }
       catch {
         exporting.value = false
-        message.error('无法正确读取 / 解析该文件')
+        message.error(t('无法正确读取 / 解析该文件'))
         return
       }
 

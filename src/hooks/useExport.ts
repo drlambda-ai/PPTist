@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { createVNode, render, computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { saveAs } from 'file-saver'
@@ -58,7 +59,7 @@ export default () => {
         saveAs(dataUrl, `${title.value}.${format}`)
       }).catch(() => {
         exporting.value = false
-        message.error('导出图片失败')
+        message.error(t('导出图片失败'))
       })
     }, 200)
   }
@@ -98,7 +99,7 @@ export default () => {
         pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false)
       }).catch(() => {
         exporting.value = false
-        message.error('导出失败')
+        message.error(t('导出失败'))
       })
     }, 200)
   }
@@ -989,7 +990,7 @@ export default () => {
     setTimeout(() => {
       pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false).catch(() => {
         exporting.value = false
-        message.error('导出失败')
+        message.error(t('导出失败'))
       })
     }, 200)
   }

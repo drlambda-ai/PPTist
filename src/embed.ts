@@ -1,9 +1,8 @@
-import axios from '@/services/axios'
-
 // Inside ChatSlide's editor page: PPTist is served same-origin at /api/pptist/ and the page hands it this object.
 // API calls go through ChatSlide's proxy with the user's token; the deck is loaded and saved per project.
 export interface ChatSlideHost {
   projectId: string
+  locale?: string
   title: string
   token: () => Promise<string>
   canExport: () => boolean // false: ChatSlide shows its upgrade prompt
@@ -27,7 +26,7 @@ export const host: ChatSlideHost | null = (() => {
 
 // PPTist's own endpoints (fixed paths in this app), moved under the proxy
 const OWN = /^\/api\/(deck|deck_config|deck_upload|deck_put|tools\/)/
-const route = (url: string) => {
+export const route = (url: string) => {
   const u = new URL(url, location.origin)
   return u.origin === location.origin && OWN.test(u.pathname) ? `/api/pptist${u.pathname}${u.search}` : null
 }
@@ -43,12 +42,6 @@ if (host) {
     headers.set('Authorization', `Bearer ${await host.token()}`)
     return fetch0(new Request(req, { ...init, headers }))
   }
-  axios.interceptors.request.use(async config => {
-    const to = config.url && route(config.url)
-    if (to) {
-      config.url = to
-      config.headers.set('Authorization', `Bearer ${await host.token()}`)
-    }
-    return config
-  })
 }
+
+export default host

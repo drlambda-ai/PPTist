@@ -12,11 +12,13 @@
         <div class="animation-text">{{item.label}}</div>
       </div>
     </div>
-    <Button style="width: 100%;" @click="applyAllSlide()"><i-icon-park-outline:check /> 应用到全部</Button>
+    <Button style="width: 100%;" @click="applyAllSlide()"><i-icon-park-outline:check /> {{ t('应用到全部') }}</Button>
   </div>
 </template>
 
 <script lang="ts" setup>
+import { t } from '@/i18n'
+
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
@@ -51,7 +53,7 @@ const applyAllSlide = () => {
     }
   })
   slidesStore.setSlides(newSlides)
-  message.success('已应用到全部')
+  message.success(t('已应用到全部'))
   addHistorySnapshot()
 }
 </script>

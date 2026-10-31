@@ -49,6 +49,8 @@
 </template>
 
 <script lang="ts" setup>
+import { t } from '@/i18n'
+
 import { computed, onMounted, onUnmounted, ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue'
 import Popover from './Popover.vue'
 import Input from './Input.vue'
@@ -73,7 +75,7 @@ const props = withDefaults(defineProps<{
   autofocus: false,
   defaultLabel: '',
   search: false,
-  searchLabel: '搜索',
+  searchLabel: t('搜索'),
 })
 
 const emit = defineEmits<{
