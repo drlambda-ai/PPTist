@@ -108,10 +108,10 @@ const TOOLS = [
 ]
 
 const SYSTEM = `You turn a user's request about their slide deck into tool calls.
-The deck is listed below, one line per page: number, then its elements. The user is looking at page {CURRENT}.
-{TEMPLATE}
+The deck is listed in the next message, one line per page: number, then its elements, with the page the user is looking
+at and whether a company template is in use.
 Rules:
-1. "this page/slide", "here" = page {CURRENT}. "next/previous page" are relative to it. Page numbers are 1-based and
+1. "this page/slide", "here" = the page the user is looking at. "next/previous page" are relative to it. Page numbers are 1-based and
    ALWAYS refer to the deck exactly as listed below, even when you make several calls.
 2. A request with several parts is done one step at a time: call the tool for the NEXT part only; you will be asked
    again with the updated deck. Do every part; never drop one.
@@ -167,9 +167,11 @@ export default async function handler(req: any, res: any) {
   try {
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = await readBody(req)
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
-    const system = SYSTEM.replaceAll('{CURRENT}', String(current)).replace('{TEMPLATE}', template
+    // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
+    // everything that changes (deck, current page, template) comes after it
+    const context = `The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
-      : 'No company template is in use: never call rebuild_from_template.')
+      : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}`
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
@@ -179,7 +181,8 @@ export default async function handler(req: any, res: any) {
         tool_choice: 'required',
         parallel_tool_calls: false,
         messages: [
-          { role: 'system', content: system + `\n\nDeck:\n${deck}` },
+          { role: 'system', content: SYSTEM },
+          { role: 'system', content: context },
           ...history.slice(-6),
           { role: 'user', content: instruction + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '') },
         ],
