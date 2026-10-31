@@ -13,7 +13,13 @@ interface ChatOpts {
   temperature?: number
   jsonMode?: boolean
   maxTokens?: number
+  effort?: 'low' | 'medium' | 'high'
 }
+
+// gpt-5 models take max_completion_tokens + reasoning_effort and reject a custom temperature.
+const params = (opts: ChatOpts, model: string, fallbackTemp: number) => model.startsWith('gpt-5')
+  ? { max_completion_tokens: opts.maxTokens ?? 16000, reasoning_effort: opts.effort ?? 'low' }
+  : { temperature: opts.temperature ?? fallbackTemp, max_tokens: opts.maxTokens ?? 4096 }
 
 // Non-streaming chat completion → returns the assistant text.
 export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string> {
@@ -25,8 +31,7 @@ export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string
     },
     body: JSON.stringify({
       model: opts.model || 'gpt-4o',
-      temperature: opts.temperature ?? 0.4,
-      max_tokens: opts.maxTokens ?? 4096,
+      ...params(opts, opts.model || 'gpt-4o', 0.4),
       messages,
       ...(opts.jsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
@@ -50,8 +55,7 @@ export async function chatStream(
     },
     body: JSON.stringify({
       model: opts.model || 'gpt-4o',
-      temperature: opts.temperature ?? 0.6,
-      max_tokens: opts.maxTokens ?? 4096,
+      ...params(opts, opts.model || 'gpt-4o', 0.6),
       stream: true,
       messages,
     }),

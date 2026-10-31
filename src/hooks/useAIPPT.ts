@@ -319,7 +319,8 @@ export default () => {
     for (const item of AISlides) {
       if (item.type === 'cover') {
         const coverTemplate = coverTemplates[Math.floor(Math.random() * coverTemplates.length)]
-        const elements = coverTemplate.elements.map(el => {
+        // an untyped text box on a cover is the template's presenter placeholder ("演讲人：XXX"): drop it
+        const elements = coverTemplate.elements.filter(el => !(el.type === 'text' && !el.textType)).map(el => {
           if (el.type === 'image' && el.imageType && imgPool.value.length) return getNewImgElement(el)
           if (el.type !== 'text' && el.type !== 'shape') return el
           if (checkTextType(el, 'title') && item.data.title) {
