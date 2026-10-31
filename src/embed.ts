@@ -4,6 +4,7 @@ import axios from '@/services/axios'
 // API calls go through ChatSlide's proxy with the user's token; the deck is loaded and saved per project.
 export interface ChatSlideHost {
   projectId: string
+  title: string
   token: () => Promise<string>
   canExport: () => boolean // false: ChatSlide shows its upgrade prompt
   load: () => Promise<{ session: any, slides: any[], theme: any } | null>

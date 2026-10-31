@@ -1026,6 +1026,7 @@ const restart = () => {
 // Bring the deck back after a page reload.
 onMounted(() => {
   if (chatslide) { // ChatSlide project: its saved editor state, or on first open its deck converted from ChatSlide
+    if (chatslide.title) slidesStore.setTitle(chatslide.title)
     run('Opening your deck…', async () => {
       const saved = await chatslide!.load()
       if (saved?.slides?.length) {
