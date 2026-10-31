@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T03:45:29Z
+Declined: cover drops every untyped text element, not only the presenter placeholder - verified all 7 covers in public/mocks/template_1.json (the only template the native path loads): the only untyped text is 演讲人：XXX. Cost if a new mock adds an untyped tagline: it disappears from the cover.
+Declined-By: Claude Code
