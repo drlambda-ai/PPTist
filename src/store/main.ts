@@ -6,6 +6,7 @@ import type { DialogForExportTypes } from '@/types/export'
 import { type TextAttrs, defaultRichTextAttrs } from '@/utils/prosemirror/utils'
 
 import { useSlidesStore } from './slides'
+import { host } from '@/embed'
 
 export interface MainState {
   activeElementIdList: string[]
@@ -190,6 +191,7 @@ export const useMainStore = defineStore('main', {
     },
 
     setDialogForExport(type: DialogForExportTypes) {
+      if (type && host && !host.canExport()) return // inside ChatSlide exporting follows its plans
       this.dialogForExport = type
     },
 

@@ -1,3 +1,4 @@
+import '@/embed' // first: inside ChatSlide, routes API calls before anything else loads
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'

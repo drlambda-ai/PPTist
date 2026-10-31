@@ -42,7 +42,8 @@
 </template>
 
 <script lang="ts" setup>
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { host as chatslide } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
@@ -78,6 +79,7 @@ interface Session {
 const KEY = 'ai-deck-session'
 const blank = (): Session => ({ mode: '', template: null, docs: [], history: [], versions: [] })
 const loadSession = (): Session => {
+  if (chatslide) return blank() // inside ChatSlide the session comes with the project (onMounted)
   try {
     return { ...blank(), ...JSON.parse(localStorage.getItem(KEY) || '{}') } 
   }
@@ -102,7 +104,21 @@ const messagesRef = ref<HTMLElement>()
 let blobMode = ''
 
 const SLIDES_KEY = 'ai-deck-slides'
+let saveTimer = 0
+let saveFailed = false
 const save = () => {
+  if (chatslide) { // per project, debounced; also after manual edits (watch below)
+    clearTimeout(saveTimer)
+    saveTimer = window.setTimeout(() => {
+      chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value })
+        .then(() => saveFailed = false)
+        .catch(() => { // said once (saying saves again): the next edit retries
+          if (!saveFailed) say('assistant', 'Saving failed; your last edits may not be kept. Check your connection.')
+          saveFailed = true
+        })
+    }, 2000)
+    return
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(s))
     // PPTist keeps no slides across reloads; a generated deck is kept here (a template deck reloads from its .pptx)
@@ -1009,6 +1025,25 @@ const restart = () => {
 
 // Bring the deck back after a page reload.
 onMounted(() => {
+  if (chatslide) { // ChatSlide project: its saved editor state, or on first open its deck converted from ChatSlide
+    run('Opening your deck…', async () => {
+      const saved = await chatslide!.load()
+      if (saved?.slides?.length) {
+        Object.assign(s, blank(), saved.session || {})
+        if (saved.theme) slidesStore.setTheme(saved.theme)
+        slidesStore.setSlides(saved.slides)
+        slidesStore.updateSlideIndex(0)
+      }
+      else {
+        const link = await chatslide!.pptx()
+        await showPptx(link)
+        s.edited = true // the editor copy is the deck from now on
+        URL.revokeObjectURL(link)
+      }
+      watch([slides, theme], save, { deep: true }) // manual edits are saved too
+    })
+    return
+  }
   // opened from ChatSlide ("Edit in advanced editor"): ?pptx=<blob url> loads that deck as a fresh session
   const link = new URLSearchParams(location.search).get('pptx')
   let host = ''

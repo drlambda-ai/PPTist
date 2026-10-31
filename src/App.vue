@@ -16,6 +16,7 @@ import { LOCALSTORAGE_KEY_DISCARDED_DB } from '@/configs/storage'
 import { deleteDiscardedDB } from '@/utils/database'
 import { isPC } from '@/utils/common'
 import api from '@/services'
+import { host } from '@/embed'
 
 import Editor from './views/Editor/index.vue'
 import Screen from './views/Screen/index.vue'
@@ -34,7 +35,7 @@ const { screening } = storeToRefs(screenStore)
 
 const isAudienceMode = new URLSearchParams(window.location.search).get('mode') === 'audience'
 
-if (import.meta.env.MODE !== 'development') {
+if (import.meta.env.MODE !== 'development' && !host) { // inside ChatSlide edits are saved continuously
   window.onbeforeunload = () => false
 }
 
