@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T03:45:29Z
+Fixed: a 5+ item page that AIPPT splits into 2 slides now moves all of them into place, not only the last.
