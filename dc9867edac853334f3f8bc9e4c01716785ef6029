@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T09:36:45Z
+Fixed: the session and saved deck are cleared only after the opened deck imported successfully.
+Fixed: the one-time public copy is deleted (new 'drop' action, own store, deck/ only) once loaded.
