@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${getKey()}`,
       },
-      body: JSON.stringify({ model: 'gpt-image-1', prompt, size, n: 1 }),
+      body: JSON.stringify({ model: process.env.IMAGE_MODEL || 'gpt-image-2', prompt, size, n: 1 }),
     })
     if (!r.ok) { res.status(502).json({ error: `image api ${r.status}: ${await r.text()}` }); return }
     const data = await r.json()
