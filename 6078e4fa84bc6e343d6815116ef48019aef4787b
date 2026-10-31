@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T05:22:56Z
+Fixed: a last page holding only a chart/table is no longer taken for the closing page.
