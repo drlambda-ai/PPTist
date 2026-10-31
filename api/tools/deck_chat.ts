@@ -121,7 +121,9 @@ Rules:
 0. The deck listed is the user's deck in the editor: every request edits it, unless they explicitly ask for a new
    presentation (create_deck). "Change the background to red" is set_background on this deck, never a new deck.
    Deck-wide looks (background, font, transitions) with no page named apply to EVERY page (pages: []); "this page"
-   or a page number limits them.
+   or a page number limits them. An outline/deck/slides "erstellen/create/make/做" on a topic the deck is not about is
+   create_deck. "I want (beautiful) images/pictures" is add_image (or change_image) on the page the user is looking at
+   (on every content page only when they say all slides / the deck), not a question.
 1. "this page/slide", "here" = the page the user is looking at. "next/previous page" are relative to it. Page numbers are 1-based and
    ALWAYS refer to the deck exactly as listed below, even when you make several calls.
 2. A request with several parts is done one step at a time: call the tool for the NEXT part only; you will be asked
