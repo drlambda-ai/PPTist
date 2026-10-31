@@ -49,7 +49,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
-import { useMainStore, useSlidesStore } from '@/store'
+import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
 import useImport from '@/hooks/useImport'
 import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
@@ -92,11 +92,12 @@ const loadSession = (): Session => {
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
+const snapshotStore = useSnapshotStore() // undo/redo are async (IndexedDB): await them before saving
 const { slides, slideIndex, viewportSize, viewportRatio, theme } = storeToRefs(slidesStore)
 const { importPPTXFile } = useImport()
 const { AIPPT, getMdContent } = useAIPPT()
 const { resetSlides } = useSlideHandler()
-const { addHistorySnapshot, undo: undoEditor, redo: redoEditor } = useHistorySnapshot()
+const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 const input = ref('')
@@ -836,8 +837,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
   }
   if (action === 'undo' || action === 'redo') {
-    if (action === 'undo') undoEditor()
-    else redoEditor()
+    if (action === 'undo') {
+      if (!restoreDeckBeforeCreate()) await snapshotStore.unDo()
+    }
+    else await snapshotStore.reDo()
     return Z ? (action === 'undo' ? '已撤销。' : '已重做。') : (action === 'undo' ? 'Undone.' : 'Redone.')
   }
   return args.answer || (Z ? '能再具体一点吗？' : 'Could you say that more specifically?')
@@ -861,6 +864,20 @@ const renumber = () => {
   })
 }
 
+let deckBeforeCreate: Slide[] | null = null
+// A new deck replaced the one in the editor: Undo (button or chat) puts that one back in a single step and keeps it
+// across reloads (marked edited, so the saved slides win over a built template version).
+const restoreDeckBeforeCreate = () => {
+  if (!deckBeforeCreate) return false
+  slidesStore.setSlides(deckBeforeCreate)
+  slidesStore.updateSlideIndex(0)
+  deckBeforeCreate = null
+  s.edited = true
+  addHistorySnapshot()
+  save()
+  return true
+}
+
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
@@ -877,10 +894,17 @@ const deckTurn = async (text: string) => {
       headers: { 'Content-Type': 'application/json' },
     })).json()
     if (error) throw new Error(error)
+    if (calls.some((c: any) => c.action === 'create_deck') && !done.length) {
+      deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
+      busy.value = s.template ? 'Building the deck (about a minute)…' : 'Writing the deck…'
+      await (s.template ? templateTurn(text) : generateNative(text))
+      addHistorySnapshot() // the new deck is a history step of its own
+      return
+    }
     if (calls.some((c: any) => c.action === 'rebuild_from_template') && s.template) return templateTurn(text)
     // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
     // is re-planned against the updated deck in the next round
-    const work = calls.filter((c: any) => !['finish', 'rebuild_from_template'].includes(c.action)).slice(0, 1)
+    const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
@@ -903,9 +927,10 @@ const deckTurn = async (text: string) => {
     if (work.every((c: any) => c.action === 'answer_question')) break // a question is answered once
   }
   if (changed) {
+    deckBeforeCreate = null // after another edit, Undo steps back normally
     renumber()
     addHistorySnapshot()
-    if (s.mode === 'template') s.edited = true
+    if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
   say('assistant', replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.'))
 }
@@ -914,8 +939,8 @@ const send = () => {
   const text = input.value.trim()
   input.value = ''
   say('user', text)
-  if (s.template && !s.mode) return run('Building the deck (about a minute)…', () => templateTurn(text))
-  if (!s.mode) return run('Writing the deck…', () => generateNative(text))
+  // every message goes through the router and edits the deck in the editor; only an explicit request for a new
+  // presentation builds one (create_deck), and that stays undoable
   const before = JSON.parse(JSON.stringify(slides.value))
   return run('Working…', async () => {
     try {
@@ -930,9 +955,10 @@ const send = () => {
 }
 
 const undo = () => run('Reverting…', async () => {
+  if (restoreDeckBeforeCreate()) return
   if (s.mode === 'native' || s.edited) { // editor changes are undone in the editor, one step at a time
-    undoEditor()
-    return nextTick(save)
+    await snapshotStore.unDo()
+    return save()
   }
   const undone = s.versions.pop()!
   s.history = s.history.slice(0, undone.h)

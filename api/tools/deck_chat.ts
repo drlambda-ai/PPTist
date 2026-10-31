@@ -18,6 +18,9 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
 })
 
 const TOOLS = [
+  fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "make a presentation about X"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
+    instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
+  }, ['instruction']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
     instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete' },
     count: { type: 'integer', description: 'How many new pages, usually 1' },
@@ -115,6 +118,10 @@ const SYSTEM = `You turn a user's request about their slide deck into tool calls
 The deck is listed in the next message, one line per page: number, then its elements, with the page the user is looking
 at and whether a company template is in use.
 Rules:
+0. The deck listed is the user's deck in the editor: every request edits it, unless they explicitly ask for a new
+   presentation (create_deck). "Change the background to red" is set_background on this deck, never a new deck.
+   Deck-wide looks (background, font, transitions) with no page named apply to EVERY page (pages: []); "this page"
+   or a page number limits them.
 1. "this page/slide", "here" = the page the user is looking at. "next/previous page" are relative to it. Page numbers are 1-based and
    ALWAYS refer to the deck exactly as listed below, even when you make several calls.
 2. A request with several parts is done one step at a time: call the tool for the NEXT part only; you will be asked
