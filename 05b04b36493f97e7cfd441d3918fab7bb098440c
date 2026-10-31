@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T06:13:49Z
+Fixed: text with no inline size is scaled from its rendered size, set on each paragraph.
+Fixed: edit-all-pages returns to the page the user was on after fitting.
