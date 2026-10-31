@@ -159,7 +159,7 @@ export const EN: Record<string, string> = {
   '减小段落缩进': 'Decrease paragraph indent',
   '减小首行缩进': 'Decrease first-line indent',
   '函数': 'Function',
-  '切换': 'Toggle',
+  '切换': 'Transition',
   '切换上一页': 'Previous slide',
   '切换下一页': 'Next slide',
   '切换焦点元素': 'Move focus to next element',
