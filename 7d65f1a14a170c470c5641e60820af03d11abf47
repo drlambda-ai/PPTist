@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T08:44:17Z
+Fixed: only full-width (>=90%) text-free shapes trigger the recolour, so cards and diagrams never do.
+Fixed: pages whose shapes could not be recoloured are named in the reply instead of reporting plain success.
