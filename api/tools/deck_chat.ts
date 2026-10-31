@@ -20,6 +20,10 @@ const TOOLS = [
     after: page,
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
   }, ['instruction', 'count', 'after', 'layout_from']),
+  fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
+    index: page,
+    instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
+  }, ['index', 'instruction']),
   fn('add_chart_page', 'Add a new page whose main content is a chart (bar, column, line, pie, ring, area, radar, scatter).', {
     instruction: { type: 'string', description: 'What the chart shows, with the numbers if the user or deck gives them' },
     after: page,
@@ -65,10 +69,11 @@ const TOOLS = [
       properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } },
     },
   }, ['index', 'query', 'source', 'box']),
-  fn('set_background', 'Set the background colour of pages.', {
+  fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo").', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
-    color: { type: 'string', description: '#RRGGBB' },
-  }, ['pages', 'color']),
+    color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
+    photo_query: { type: 'string', description: 'Stock photo search words (English) for a background photo, or ""' },
+  }, ['pages', 'color', 'photo_query']),
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
@@ -103,6 +108,8 @@ Rules:
    again with the updated deck. Do every part; never drop one.
    Steps already applied for this request are listed under "Done so far"; the deck below already reflects them.
    Call the tool(s) for what remains, or finish when nothing remains.
+   "Extend/expand/展开/扩展/扩充 page N" -> expand_page (never add_page, never edit_page) unless the user asks to rewrite
+   page N itself or to add a page about a NEW topic.
 3. Reordering ("move page 5 forward", "put 2 and 3 at the end", "swap 2 and 4") -> move_pages. Forward = earlier.
    Exchanging two pages -> swap_pages. A full new order or a sort -> reorder_pages.
 4. Anything about what is ON a page (text, fonts, colours, sizes, positions of text/images/shapes) -> edit_page for that page.
@@ -113,6 +120,11 @@ Rules:
    Merging pages A and B: edit_page on A (instruction: combine B's content into A, giving its full text), then delete_pages B.
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
+   "Add/include another slide" with no topic -> add_page on the next logical topic of the deck, after the current page; don't ask.
+   A message that is just pasted content (a paragraph of facts, no instruction) -> edit_page on the current page: put that
+   content on it (or add_page if the current page is a cover/agenda/closing page).
+   Video, voice-over, narration audio, avatars, export to video: this editor cannot make them -> answer_question saying so
+   (speaker notes can be written for a script).
 6. Questions ("how do I...", "what does page 3 say") -> answer_question only. Facts about this editor: Download (AI panel)
    saves the deck as .pptx; the ☰ menu -> 导出 also exports PDF, images or JSON; ▶ at the top right presents;
    "+ Template" uploads a company .pptx template, "+ Content" uploads material (xlsx, docx, pdf, md...); every change

@@ -516,7 +516,8 @@ export default () => {
       }
       else if (item.type === 'end') {
         const endTemplate = endTemplates[Math.floor(Math.random() * endTemplates.length)]
-        const elements = endTemplate.elements.map(el => {
+        // same as the cover: an untyped text box here is the presenter placeholder ("演讲人：XXX")
+        const elements = endTemplate.elements.filter(el => !(el.type === 'text' && !el.textType && /XXX/.test(el.content))).map(el => {
           if (el.type === 'image' && el.imageType && imgPool.value.length) return getNewImgElement(el)
           return el
         })

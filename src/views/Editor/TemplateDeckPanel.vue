@@ -212,12 +212,16 @@ const readStream = async (res: any, onText: (t: string) => void) => {
 }
 
 const material = () => s.docs.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n')
-const languageOf = (text: string) => (/[\u4e00-\u9fff]/.test(text) ? '中文' : 'English')
+const languageOf = (text: string) => (/[\u4e00-\u9fff]/.test(text) ? '中文' : 'English') // for the panel's own short replies
+// What the generators write in: a new deck follows the request's language; pages added later follow the DECK's language
+// (a Chinese deck stays Chinese when someone types an English or Russian request), unless the request names a language.
+const requestLanguage = (text: string) => `the language of this request: "${text.slice(0, 120)}"`
+const deckLanguage = (text: string) => `the language of the existing deck (sample: "${deckLines().join(' ').slice(0, 160)}"), unless this request names another language: "${text.slice(0, 120)}"`
 
 const generateNative = async (text: string) => {
   const brief = s.docs.length ? `${text}\n\nUse only this material (never invent numbers):\n${material()}` : text
   let outline = ''
-  await readStream(await api.AIPPT_Outline({ content: brief, language: languageOf(text), model: '' }), t => {
+  await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '' }), t => {
     outline += t 
   })
   outline = getMdContent(outline).replace(/<!--[\s\S]*?-->/g, '')
@@ -232,7 +236,7 @@ const generateNative = async (text: string) => {
     }
     catch { /* a partial line; the stream completes it */ }
   }
-  await readStream(await api.AIPPT({ content: `User request: ${text}\n\n${outline}`, language: languageOf(text), style: '通用', model: '' }), (chunk) => {
+  await readStream(await api.AIPPT({ content: `User request: ${text}\n\n${outline}`, language: requestLanguage(text), style: '通用', model: '' }), (chunk) => {
     const lines = (pending + chunk).split(/\n+/)
     pending = lines.pop() || ''
     lines.forEach(flush)
@@ -312,11 +316,11 @@ const generatePage = async (text: string, instruction: string, at: number, count
   const ask = `Exactly ${count} content slide(s) for an existing deck (no cover, no closing slide, no contents slide). Deck so far: ${deckLines().join(' | ').slice(0, 1500)}. The new slide(s): ${instruction}`
   const brief = s.docs.length ? `${ask}\n\nUse only this material (never invent numbers):\n${material()}` : ask
   let outline = ''
-  await readStream(await api.AIPPT_Outline({ content: brief, language: languageOf(text), model: '' }), t => {
+  await readStream(await api.AIPPT_Outline({ content: brief, language: deckLanguage(text), model: '' }), t => {
     outline += t
   })
   let jsonl = ''
-  await readStream(await api.AIPPT({ content: `User request: ${ask}\n\n${getMdContent(outline)}`, language: languageOf(text), style: '通用', model: '' }), t => {
+  await readStream(await api.AIPPT({ content: `User request: ${ask}\n\n${getMdContent(outline)}`, language: deckLanguage(text), style: '通用', model: '' }), t => {
     jsonl += t
   })
   const items = jsonl.split('\n').map(l => {
@@ -336,7 +340,7 @@ const generatePage = async (text: string, instruction: string, at: number, count
   return true
 }
 
-const CHART = `Return JSON {"title": "...", "labels": ["..."], "legends": ["series name"], "series": [[numbers per label] per legend], "note": "one line on the source, or empty"}.
+const CHART = `Title and labels in the deck's language. Return JSON {"title": "...", "labels": ["..."], "legends": ["series name"], "series": [[numbers per label] per legend], "note": "one line on the source, or empty"}.
 Copy every number exactly, each under its own year/label. Use only numbers the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for the numbers>"}.`
 
 const addChartPage = async (text: string, instruction: string, chartType: string, at: number) => {
@@ -362,7 +366,12 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   const base = slides.value[Math.min(Math.max(1, at - 1), slides.value.length - 1)] // a content page, not the cover
   const count: Record<string, number> = {}
   for (const sl of slides.value) for (const t of new Set(sl.elements.map(elText))) if (t) count[t] = (count[t] || 0) + 1
-  const isFooter = (e: any) => e.top > H * 0.88 || (elText(e) && count[elText(e)] > slides.value.length / 2)
+  // footer = what repeats across pages (same text, or the same spot on most pages: logo, page number), never a page's own data
+  const spot = (e: any) => `${e.type},${Math.round(e.left / 10)},${Math.round(e.top / 10)},${Math.round((e.width || 0) / 10)}`
+  const spots: Record<string, number> = {}
+  for (const sl of slides.value) for (const k of new Set(sl.elements.map(spot))) spots[k] = (spots[k] || 0) + 1
+  const isFooter = (e: any) => (elText(e) && count[elText(e)] > slides.value.length / 2)
+    || (e.top > H * 0.85 && (spots[spot(e)] > slides.value.length / 2 || /^\d{1,3}$/.test(elText(e))))
   const texts = base.elements.filter((e: any) => (e.type === 'text' || e.type === 'shape') && elText(e) && !isFooter(e))
   const title: any = texts.find((e: any) => e.textType === 'title') || [...texts].sort((x, y) => x.top - y.top)[0]
   // header band: anything that starts above the title's bottom edge (+4%), e.g. an icon box or the rule under the title,
@@ -412,12 +421,13 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   const list = [...slides.value]
   list.splice(at, 0, slide)
   slidesStore.setSlides(list)
+  return lead
 }
 
 const addTablePage = async (text: string, instruction: string, at: number) => {
   const res = await fetch('/api/tools/ask_json', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ strong: true, instruction: `Return JSON {"title": "...", "rows": [["header 1", "header 2"], ["cell", "cell"]], "note": "one line on the source, or empty"}. At most 8 rows and 6 columns, short cells. Copy every number exactly from the deck or material and keep each value under its own year/column (check direction: which year is higher). Use only facts the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for them>"}.\n\nTable: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
+    body: JSON.stringify({ strong: true, instruction: `Title and cells in the deck's language. Return JSON {"title": "...", "rows": [["header 1", "header 2"], ["cell", "cell"]], "note": "one line on the source, or empty"}. At most 8 rows and 6 columns, short cells. Copy every number exactly from the deck or material and keep each value under its own year/column (check direction: which year is higher). Use only facts the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for them>"}.\n\nTable: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
   })
   const d = await res.json()
   if (d.error || !d.rows?.length) fail(d.error || (zh(text) ? '缺少表格内容。' : 'Nothing to put in a table.'))
@@ -434,6 +444,42 @@ const addTablePage = async (text: string, instruction: string, at: number) => {
       style: i === 0 ? { ...style, color: '#ffffff', bold: true } : style, // header row sits on the accent colour
     }))),
   })
+}
+
+// "Extend page N": new points that go deeper than page N (strong model, grounded in page N, the deck and the material),
+// laid out as cards on a continuation page with the deck's header, footer and colours. Page N is left as it is.
+const expandPage = async (text: string, index: number, instruction: string) => {
+  const sl = slides.value[index]
+  const res = await fetch('/api/tools/ask_json', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strong: true, instruction: `The user wants page ${index + 1} extended: ${instruction || 'more depth'}.
+Page ${index + 1} says: ${pageText(sl)}
+Write a continuation page in the page's language: a title (page ${index + 1}'s title + a short qualifier) and 3-4 points, each a short bold heading and one or two sentences of NEW content: what the numbers mean, causes, comparisons, implications, next steps. Never repeat a statement or number layout already on the page; use a number only when it is on the page or in the material, exactly as given; never invent figures.
+Return JSON {"title": "...", "points": [{"heading": "...", "text": "..."}]}.
+Deck: ${deckLines().join(' | ').slice(0, 2500)}
+Material: ${material().slice(0, 12000)}` }),
+  })
+  const d = await res.json()
+  if (!d.points?.length) fail(zh(text) ? '没能写出扩展内容。' : 'Could not write the extension.')
+  const { width: W, height: H } = slideSize()
+  const k = Math.min(d.points.length, 4)
+  const cols = k === 4 ? 2 : k, rows = k === 4 ? 2 : 1
+  const esc = (x: string) => String(x).replace(/\*\*/g, '').replace(/</g, '&lt;') // markdown bold markers never show
+  const color = insertPage(index + 1, d.title, '', { type: '__cards' }) // the deck's accent colour
+  const page = slides.value[index + 1]
+  const body: any = page.elements.find((e: any) => e.type === '__cards')
+  const gap = W * 0.02, cw = (body.width - gap * (cols - 1)) / cols, ch = (body.height - gap * (rows - 1)) / rows
+  const cards = d.points.slice(0, 4).flatMap((p: any, i: number) => {
+    const left = body.left + (i % cols) * (cw + gap), top = body.top + Math.floor(i / cols) * (ch + gap)
+    return [
+      { type: 'shape', id: nanoid(10), left, top, width: cw, height: ch, rotate: 0, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z', fixedRatio: false, fill: '#f4f5f8', outline: { width: 0 } },
+      { type: 'shape', id: nanoid(10), left, top, width: W * 0.006, height: ch, rotate: 0, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z', fixedRatio: false, fill: color },
+      { type: 'text', id: nanoid(10), left: left + W * 0.02, top: top + H * 0.02, width: cw - W * 0.035, height: ch - H * 0.04, rotate: 0,
+        defaultFontName: theme.value.fontName, defaultColor: theme.value.fontColor,
+        content: `<p><span style="font-size: ${k > 2 ? 18 : 20}px; color: ${color};"><strong>${esc(p.heading)}</strong></span></p><p><span style="font-size: ${k > 2 ? 14 : 16}px;">${esc(p.text)}</span></p>` },
+    ]
+  })
+  slidesStore.updateSlide({ elements: [...page.elements.filter((e: any) => e.type !== '__cards'), ...cards] }, page.id)
 }
 
 // The free rectangle nearest to the requested box (same aspect, shrinking down to 40%) on a 24x14 occupancy grid;
@@ -503,6 +549,16 @@ const writeNotes = async (ids: string[], instruction: string) => {
   }
 }
 
+// New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
+const beforeClosing = (at: number) => {
+  const last = slides.value[slides.value.length - 1]
+  // a generated deck marks it (type 'end'); in an imported deck the closing page is a last page with almost no text
+  const words = last ? pageText(last).replace(/\[[^\]]*\]/g, '').trim() : ''
+  const closing = last && (last.type === 'end' || (slides.value.length > 2 && words.length > 0 && words.length < 30
+    && !last.elements.some(e => e.type === 'chart' || e.type === 'table')))
+  return closing && at >= slides.value.length ? slides.value.length - 1 : at
+}
+
 const runCall = async (text: string, action: string, args: any, ids: string[]) => {
   const idOf = (p: number) => {
     if (!(p >= 1 && p <= ids.length)) fail(zh(text) ? `没有第 ${p} 页（共 ${ids.length} 页）。` : `There is no page ${p} (the deck has ${ids.length}).`)
@@ -513,9 +569,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   const n = slides.value.length
   const Z = zh(text)
   if (action === 'add_page') {
-    const after = pos(idOf(args.after)) + 1
+    const after = beforeClosing(pos(idOf(args.after)) + 1)
     if (s.mode === 'native') {
-      return await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10)) ? (Z ? `已在第 ${after} 页后加了一页。` : `Added page ${after + 1}.`) : fail(Z ? '没能生成这一页。' : 'Could not write that page.')
+      const n0 = slides.value.length
+      if (!await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
+      const added = slides.value.length - n0
+      return Z ? `已在第 ${after} 页后加了 ${added} 页。` : `Added ${added} page(s) after page ${after}.`
     }
     const count = Math.min(Math.max(args.count || 1, 1), 10)
     for (let k = 0; k < count; k++) {
@@ -527,12 +586,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     }
     return Z ? `已在第 ${after} 页后加了 ${count} 页。` : `Added ${count} page(s) after page ${after}.`
   }
+  if (action === 'expand_page') {
+    const i = pos(idOf(args.index))
+    busy.value = Z ? '正在扩展…' : 'Extending…'
+    await expandPage(text, i, args.instruction || '')
+    slidesStore.updateSlideIndex(i + 1)
+    return Z ? `已在第 ${i + 1} 页后加了扩展页（第 ${i + 2} 页），原页保持不变。` : `Added an extension of page ${i + 1} as page ${i + 2}; page ${i + 1} is unchanged.`
+  }
   if (action === 'add_chart_page') {
-    const after = pos(idOf(args.after)) + 1
+    const after = beforeClosing(pos(idOf(args.after)) + 1)
     return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页（第 ${after + 1} 页）。` : `Added a chart on page ${after + 1}.`)
   }
   if (action === 'add_table_page') {
-    const after = pos(idOf(args.after)) + 1
+    const after = beforeClosing(pos(idOf(args.after)) + 1)
     await addTablePage(text, args.instruction, after)
     slidesStore.updateSlideIndex(after)
     return Z ? `已加入表格页（第 ${after + 1} 页）。` : `Added a table on page ${after + 1}.`
@@ -612,10 +678,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(i)
     return reply
   }
-  if (action === 'edit_all_pages') {
-    for (let i = 0; i < slides.value.length; i++) {
-      busy.value = `Updating page ${i + 1} of ${slides.value.length}…`
-      await editSlide(i, args.instruction)
+  if (action === 'edit_all_pages') { // 3 pages at a time; each edit is merged into its own slide by id
+    const all = slides.value.map(x => x.id)
+    let done = 0
+    for (let i = 0; i < all.length; i += 3) {
+      await Promise.all(all.slice(i, i + 3).map(async id => {
+        await editSlide(pos(id), args.instruction)
+        busy.value = `Updated ${++done} of ${all.length} pages…`
+      }))
     }
     return Z ? `已更新全部 ${slides.value.length} 页。` : `Updated all ${slides.value.length} pages.`
   }
@@ -643,7 +713,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'set_background') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
-    for (const id of targets) slidesStore.updateSlide({ background: { type: 'solid', color: args.color } }, id)
+    let background: any = { type: 'solid', color: args.color }
+    if (args.photo_query) {
+      busy.value = 'Finding a picture…'
+      const src = await findPicture(args.photo_query, 'photo', true)
+      if (!src) fail(Z ? '没有找到合适的背景图。' : 'Could not get a background picture.')
+      background = { type: 'image', image: { src, size: 'cover' } }
+    }
+    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(Z ? '请给出背景颜色。' : 'Which background colour?')
+    for (const id of targets) slidesStore.updateSlide({ background }, id)
     return Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`
   }
   if (action === 'write_notes') {
