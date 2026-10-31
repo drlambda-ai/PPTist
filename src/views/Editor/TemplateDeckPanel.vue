@@ -829,7 +829,22 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     }
     else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(Z ? '请给出背景颜色。' : 'Which background colour?')
     for (const id of targets) slidesStore.updateSlide({ background }, id)
-    return Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`
+    const missed: number[] = []
+    // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too
+    if (!args.photo_query) {
+      const { width: W, height: H } = slideSize()
+      const covered = targets.filter(id => slides.value[pos(id)].elements
+        .filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25) // full-width bands only, never cards or diagrams
+        .reduce((a: number, e: any) => a + Math.min(e.width, W) * Math.min(e.height, H), 0) >= W * H * 0.45)
+      for (let i = 0; i < covered.length; i += 3) {
+        await Promise.all(covered.slice(i, i + 3).map(id => editSlide(pos(id), `Change the page's BACKGROUND to ${args.color}: recolour only the large decorative background shapes (full-width bands, full-page panels) to ${args.color} or a lighter/darker tint of it; keep cards, text boxes, pictures and their colours unchanged and keep text readable.`)
+          .catch(() => {
+            missed.push(pos(id) + 1)
+          })))
+      }
+    }
+    const note = missed.length ? (Z ? `（第 ${missed.join('、')} 页的大色块没能改色，可能仍会挡住背景）` : ` (the large shapes on page(s) ${missed.join(', ')} could not be recoloured and may still cover it)`) : ''
+    return (Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`) + note
   }
   if (action === 'write_notes') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
