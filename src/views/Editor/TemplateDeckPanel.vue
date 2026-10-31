@@ -11,9 +11,8 @@
     <div class="body">
       <div class="messages" ref="messagesRef">
         <div class="hint" v-if="!s.history.length">
-          Describe the deck you want. Optional: upload your company's .pptx template (the deck keeps its exact look)
-          and the content to use (xlsx, docx, pdf, md...). Once it exists, ask for any change: add, delete, move or
-          rewrite pages.
+          Ask for any change to this deck, or describe a new one. 📎 attaches your company's .pptx template or your
+          material (xlsx, docx, pdf, md…).
         </div>
         <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}</div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
@@ -26,18 +25,15 @@
           <span class="chip" v-for="(d, i) in s.docs" :key="d.name + i">{{ d.name }}
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
-        <TextArea v-model:value="input" :rows="3" placeholder="e.g. 用附件里的数据做一份年度复盘 / delete page 3 / add a page on Q3 risks" />
-        <div class="actions">
-          <FileInput accept=".pptx" @change="files => uploadTemplate(files[0])" v-if="!s.mode">
-            <Button :disabled="!!busy">+ Template</Button>
-          </FileInput>
-          <FileInput accept=".xlsx,.csv,.txt,.md,.docx,.pdf,.pptx,.json" @change="files => uploadContent(files[0])">
-            <Button :disabled="!!busy">+ Content</Button>
-          </FileInput>
-          <span class="grow"></span>
-          <Button v-if="canUndo" :disabled="!!busy" @click="undo()">Undo</Button>
-          <Button v-if="s.mode" :disabled="!!busy" @click="download()">Download</Button>
-          <Button type="primary" :disabled="!!busy || !input.trim()" @click="send()">Send</Button>
+        <div class="input-box" @dragover.prevent @drop.prevent="e => attach(e.dataTransfer?.files)">
+          <TextArea v-model:value="input" :rows="3" placeholder="e.g. 用附件里的数据做一份年度复盘 / delete page 3 / add a page on Q3 risks" @enter="onEnter" />
+          <div class="input-row">
+            <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json" @change="files => attach(files)">
+              <span class="attach" :class="{ disabled: !!busy }" aria-label="Attach a company template (.pptx) or material"><i-icon-park-outline:link /></span>
+            </FileInput>
+            <span class="grow"></span>
+            <Button type="primary" size="small" :disabled="!!busy || !input.trim()" @click="send()">Send</Button>
+          </div>
         </div>
         <div class="new" v-if="s.mode && !busy"><span @click="restart()">Start a new deck</span></div>
       </div>
@@ -46,7 +42,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
@@ -127,7 +123,6 @@ const say = (role: 'user' | 'assistant', text: string) => {
   })
 }
 const close = () => mainStore.setTemplateDeckPanelState(false)
-const canUndo = computed(() => s.mode === 'native' || !!s.edited || s.versions.length > 1)
 
 const run = async (label: string, fn: () => Promise<void>) => {
   busy.value = label
@@ -851,9 +846,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     await writeNotes(targets, args.instruction || '')
     return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
   }
+  if (action === 'download_deck') {
+    download()
+    return Z ? '已开始下载。' : 'Download started.'
+  }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
-      if (!restoreDeckBeforeCreate()) await snapshotStore.unDo()
+      if (restoreDeckBeforeCreate()) { /* a replaced deck is back */ }
+      else if (s.mode === 'template' && !s.edited && s.versions.length > 1) { // undo a template rebuild: previous version
+        s.versions.pop()
+        save()
+        await showPptx(s.versions[s.versions.length - 1].deckUrl)
+      }
+      else await snapshotStore.unDo()
     }
     else await snapshotStore.reDo()
     return Z ? (action === 'undo' ? '已撤销。' : '已重做。') : (action === 'undo' ? 'Undone.' : 'Redone.')
@@ -937,7 +942,7 @@ const deckTurn = async (text: string) => {
       }
       replies.push(reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}`)
-      if (!['answer_question', 'undo', 'redo'].includes(c.action)) changed = true
+      if (!['answer_question', 'undo', 'redo', 'download_deck'].includes(c.action)) changed = true
     }
     if (work.every((c: any) => c.action === 'answer_question')) break // a question is answered once
   }
@@ -969,17 +974,22 @@ const send = () => {
   })
 }
 
-const undo = () => run('Reverting…', async () => {
-  if (restoreDeckBeforeCreate()) return
-  if (s.mode === 'native' || s.edited) { // editor changes are undone in the editor, one step at a time
-    await snapshotStore.unDo()
-    return save()
+// One attach control (or drop files on the box): a .pptx becomes the company template while none is set and no deck
+// was built yet; everything else is material
+const attach = (files?: FileList | File[] | null) => {
+  if (busy.value || !files) return
+  for (const f of Array.from(files)) {
+    if (/\.pptx$/i.test(f.name) && !s.template && !s.mode) uploadTemplate(f)
+    else uploadContent(f)
   }
-  const undone = s.versions.pop()!
-  s.history = s.history.slice(0, undone.h)
-  say('assistant', `Reverted to version ${s.versions.length}.`)
-  await showPptx(s.versions[s.versions.length - 1].deckUrl)
-})
+}
+
+// Enter sends, Shift+Enter is a new line; Enter while an IME is composing (picking Chinese characters) never sends
+const onEnter = (e: KeyboardEvent) => {
+  if (e.shiftKey || e.isComposing || e.keyCode === 229) return
+  e.preventDefault()
+  if (!busy.value && input.value.trim()) send()
+}
 
 const download = () => {
   if (s.mode === 'template' && !s.edited) { // the engine's own .pptx is exact; after editor changes, export the editor
@@ -1065,6 +1075,31 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.input-box {
+  border: 1px solid $borderColor;
+  border-radius: $borderRadius;
+  padding: 4px;
+  :deep(.textarea) {
+    border: 0;
+    box-shadow: none;
+  }
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+.attach {
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  display: flex;
+  &.disabled {
+    opacity: .4;
+    pointer-events: none;
+  }
 }
 .actions {
   display: flex;

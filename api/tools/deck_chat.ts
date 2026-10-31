@@ -106,6 +106,7 @@ const TOOLS = [
   fn('rebuild_from_template', 'Regenerate the whole deck from the company template with new or changed material/data (only when a company template is in use).', {
     instruction: { type: 'string' },
   }, ['instruction']),
+  fn('download_deck', 'Download the deck as a .pptx file ("下载", "download", "export pptx").', {}, []),
   fn('undo', 'Undo the last change.', {}, []),
   fn('redo', 'Redo the last undone change.', {}, []),
   fn('finish', 'Everything the user asked for is done (only after at least one step was applied).', {}, []),
@@ -167,10 +168,10 @@ Rules:
    wording only where it is broken; keep the content and design.
    Several wishes in one message ("prettier, remove the table of contents, add more") -> do each CONCRETE wish as its own
    step; for a vague one ("prettier", "more stuff"), end with answer_question asking what exactly, with 2-3 options.
-6. Questions ("how do I...", "what does page 3 say") -> answer_question only. Facts about this editor: Download (AI panel)
+6. Questions ("how do I...", "what does page 3 say") -> answer_question only. Facts about this editor: download_deck (or the download icon in the top bar)
    saves the deck as .pptx; the ☰ menu -> 导出 also exports PDF, images or JSON; ▶ at the top right presents;
-   "+ Template" uploads a company .pptx template, "+ Content" uploads material (xlsx, docx, pdf, md...); every change
-   can be undone with Undo. Say you don't know rather than inventing prices, limits or features.
+   the 📎 icon in the chat box (or dropping a file on it) attaches a company .pptx template or material (xlsx, docx,
+   pdf, md...); every change can be undone by saying "undo"/"撤销" or with the toolbar's undo. Say you don't know rather than inventing prices, limits or features.
 7. Never delete every page.
 8. Act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).
    When a request can reasonably mean an edit, do the most likely edit on the page the user is looking
