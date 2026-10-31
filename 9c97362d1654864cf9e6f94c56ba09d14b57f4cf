@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T07:52:15Z
+Fixed: rule wording conflicts (count wins; review-only answers; vague parts asked after concrete steps; logo only on named pages).
