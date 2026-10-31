@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T05:47:16Z
+Fixed: font name is reduced to letters, digits, spaces, comma, hyphen, underscore (no entity/CSS smuggling).
+Fixed: only small images (<4% of the slide) repeated at one spot count as logos.
