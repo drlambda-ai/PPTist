@@ -23,7 +23,8 @@
   <SymbolPanel v-if="showSymbolPanel" />
   <ImageLibPanel v-if="showImageLibPanel" />
   <ChatPanel v-if="showChatPanel" />
-  <TemplateDeckPanel v-if="showTemplateDeckPanel" />
+  <!-- inside ChatSlide it stays mounted (hidden) when closed: it saves and syncs the deck -->
+  <TemplateDeckPanel v-if="showTemplateDeckPanel || embedded" v-show="showTemplateDeckPanel" />
   <ChartDataEditorDialog />
   <LatexEditorDialog />
 
@@ -72,6 +73,9 @@ import MarkupPanel from './MarkupPanel.vue'
 import ImageLibPanel from './ImageLibPanel.vue'
 import ChatPanel from './ChatPanel.vue'
 import TemplateDeckPanel from './TemplateDeckPanel.vue'
+import { host } from '@/embed'
+
+const embedded = !!host
 import AIPPTDialog from './AIPPTDialog.vue'
 import Modal from '@/components/Modal.vue'
 

@@ -39,6 +39,12 @@
       </div>
     </div>
   </MoveablePanel>
+  <!-- ChatSlide: pages being turned into pictures (off-screen, outside the panel so a closed panel still renders) -->
+  <Teleport to="body">
+    <div class="chatslide-render" ref="renderRef" v-if="toRender.length">
+      <ThumbnailSlide v-for="sl in toRender" :key="sl.id" :slide="sl" :size="1600" />
+    </div>
+  </Teleport>
 </template>
 
 <script lang="ts" setup>
@@ -59,6 +65,8 @@ import { upload } from '@/utils/blobUpload'
 import Button from '@/components/Button.vue'
 import TextArea from '@/components/TextArea.vue'
 import FileInput from '@/components/FileInput.vue'
+import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
+import { toJpeg } from 'html-to-image'
 import MoveablePanel from '@/components/MoveablePanel.vue'
 
 // One AI panel for both paths:
@@ -74,6 +82,7 @@ interface Session {
   history: { role: 'user' | 'assistant', text: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
+  synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
 }
 
 const KEY = 'ai-deck-session'
@@ -105,10 +114,13 @@ let blobMode = ''
 
 const SLIDES_KEY = 'ai-deck-slides'
 let saveTimer = 0
+let syncTimer = 0
 let saveFailed = false
 const save = () => {
   if (chatslide) { // per project, debounced; also after manual edits (watch below)
     clearTimeout(saveTimer)
+    clearTimeout(syncTimer)
+    syncTimer = window.setTimeout(() => syncToChatSlide().catch(() => undefined), 15000)
     saveTimer = window.setTimeout(() => {
       chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value })
         .then(() => saveFailed = false)
@@ -1023,10 +1035,66 @@ const restart = () => {
   save()
 }
 
+// ---- ChatSlide: the deck goes back into the project (each page as a picture, notes as its script) so Scripts,
+// Video and sharing use it. Only pages that changed since the last sync are rendered and uploaded.
+const renderRef = ref<HTMLElement>()
+const toRender = ref<Slide[]>([])
+const hashOf = (x: string) => {
+  let h = 5381
+  for (let i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0
+  return h.toString(36)
+}
+const plain = (html = '') => new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() || ''
+const plainText = (sl: Slide) => sl.elements
+  .map((el: any) => el.type === 'text' ? plain(el.content) : el.type === 'shape' ? plain(el.text?.content) : '')
+  .filter(Boolean).join('\n')
+const pageKeys = (deck: Slide[]) => deck.map(sl => `${sl.id}-${hashOf(JSON.stringify(sl))}`)
+let syncing: Promise<void> | null = null
+const syncOnce = async () => {
+  const deck: Slide[] = JSON.parse(JSON.stringify(slides.value)) // what is sent is what was rendered
+  const keys = pageKeys(deck)
+  if (s.synced && s.synced.keys.join() === keys.join()) return
+  const urls = s.synced?.urls || {}
+  const need = deck.filter((_, i) => !urls[keys[i]])
+  const images: Record<string, Blob> = {}
+  if (need.length) {
+    toRender.value = need
+    await nextTick()
+    await new Promise(r => setTimeout(r, 400)) // images inside the pages load
+    const nodes = [...(renderRef.value?.children || [])] as HTMLElement[]
+    for (const [j, sl] of need.entries()) {
+      nodes[j].querySelectorAll('foreignObject [xmlns]').forEach(e => e.removeAttribute('xmlns'))
+      const dataUrl = await toJpeg(nodes[j], { quality: 0.9, width: 1600, fontEmbedCSS: '' })
+      images[keys[deck.indexOf(sl)]] = await (await fetch(dataUrl)).blob()
+    }
+    toRender.value = []
+  }
+  const got = await chatslide!.sync(deck.map((sl, i) => ({
+    key: keys[i], url: urls[keys[i]], image: images[keys[i]], text: plainText(sl), notes: plain(sl.remark),
+  })))
+  s.synced = { keys, urls: Object.fromEntries(keys.map(k => [k, urls[k] || got[k]])) }
+  save()
+}
+// Repeats until the project has the deck as it is now: edits made during a sync are sent by the next round
+// (a caller that joins a running sync, e.g. flush before Scripts, waits for that too).
+const syncToChatSlide = () => syncing ||= (async () => {
+  try {
+    for (let round = 0; round < 5; round++) {
+      await syncOnce()
+      if (s.synced?.keys.join() === pageKeys(slides.value).join()) break
+    }
+  }
+  finally {
+    syncing = null
+    toRender.value = []
+  }
+})()
+
 // Bring the deck back after a page reload.
 onMounted(() => {
   if (chatslide) { // ChatSlide project: its saved editor state, or on first open its deck converted from ChatSlide
     if (chatslide.title) slidesStore.setTitle(chatslide.title)
+    chatslide.flush = () => syncToChatSlide() // before Scripts: the latest pages first
     run('Opening your deck…', async () => {
       const saved = await chatslide!.load()
       if (saved?.slides?.length) {
@@ -1037,8 +1105,17 @@ onMounted(() => {
       }
       else {
         const link = await chatslide!.pptx()
+        const loaded = new Promise<void>(res => {
+          const stop = watch(slides, () => {
+            stop()
+            setTimeout(res, 1500) // let the import settle
+          })
+          setTimeout(res, 20000)
+        })
         await showPptx(link)
+        await loaded
         s.edited = true // the editor copy is the deck from now on
+        s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
       }
       watch([slides, theme], save, { deep: true }) // manual edits are saved too
@@ -1084,6 +1161,11 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.chatslide-render {
+  position: fixed;
+  left: -100000px;
+  top: 0;
+}
 .body {
   height: 100%;
   display: flex;
