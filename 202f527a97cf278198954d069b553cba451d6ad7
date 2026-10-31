@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T08:13:43Z
+Fixed: per-request model choice is ignored in production (VERCEL_ENV=production), so no client can pick a pricier model.
+Declined: claude-*-5-5 ids invalid - wrong: claude-haiku-5-5, claude-sonnet-5-5 and claude-opus-5-5 returned tool calls in live calls on 2026-10-31 (router bake-off 40 prompts each, 14 slide edits each).
+Declined: text-only Claude reply becomes answer_question - the text is shown to the user, so nothing is silently dropped; the system prompt requires a tool.
+Declined-By: Claude Code
