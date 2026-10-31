@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T11:44:41Z
+Fixed: edits made during an in-flight sync were not sent; a sync now repeats until it matches the current deck, and flush waits for that.
