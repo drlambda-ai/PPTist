@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (author) + Claude (build, typecheck, rendered check on staging)
+Reviewed-At: 2026-10-31T12:01:25Z
+Note: mechanical string wrapping; no logic beyond src/i18n.ts.
