@@ -162,7 +162,13 @@ Rules:
    saves the deck as .pptx; the ☰ menu -> 导出 also exports PDF, images or JSON; ▶ at the top right presents;
    "+ Template" uploads a company .pptx template, "+ Content" uploads material (xlsx, docx, pdf, md...); every change
    can be undone with Undo. Say you don't know rather than inventing prices, limits or features.
-7. Never delete every page.`
+7. Never delete every page.
+8. Act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).
+   When a request can reasonably mean an edit, do the most likely edit on the page the user is looking
+   at (or the whole deck when they say all slides) and say what you did; the user can undo. Ask only when NO reasonable
+   action exists (rule 5's vague dislike, or a topic you cannot see at all). A bare topic or phrase ("Conclusion",
+   "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. A complaint that something is still
+   there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.`
 
 const parseArgs = (raw: any) => {
   if (raw && typeof raw === 'object') return raw
