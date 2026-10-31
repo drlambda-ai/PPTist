@@ -251,13 +251,22 @@ const generateNative = async (text: string) => {
 // "the chart" resolve. Text repeated on most pages (footer, deck name) is left out so pages are told apart by content.
 const elText = (e: any) => (e.content || e.text?.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 const readingOrder = (sl: Slide) => [...sl.elements].sort((x, y) => (x.top - y.top) || (x.left - y.left))
-const pageText = (sl: Slide, common = new Set<string>()) => {
+const imgSpot = (e: any) => `${Math.round(e.left / 10)},${Math.round(e.top / 10)},${Math.round(e.width / 10)}`
+const logoSpots = () => { // an image at the same spot on most pages is a logo, never "the picture"
+  const n: Record<string, number> = {}
+  const { width: W, height: H } = slideSize()
+  const small = (e: any) => e.width * e.height < W * H * 0.04 // a repeated big photo is content, not a logo
+  for (const sl of slides.value) for (const k of new Set(sl.elements.filter(e => e.type === 'image' && small(e)).map(imgSpot))) n[k] = (n[k] || 0) + 1
+  return new Set(Object.keys(n).filter(k => slides.value.length > 2 && n[k] > slides.value.length / 2))
+}
+const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>()) => {
   let img = 0
-  const biggest = Math.max(0, ...sl.elements.filter(e => e.type === 'image').map((e: any) => e.width * e.height))
+  const biggest = Math.max(0, ...sl.elements.filter(e => e.type === 'image' && !logos.has(imgSpot(e))).map((e: any) => e.width * e.height))
   return readingOrder(sl).map((e: any) => {
     if (e.type === 'image') { // size and place let the router tell a photo from an icon or a logo
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
+      if (logos.has(imgSpot(e))) return `[image ${++img}: logo]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       return `[image ${++img}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
@@ -271,7 +280,8 @@ const deckLines = () => {
   const count: Record<string, number> = {}
   for (const sl of slides.value) for (const t of new Set(sl.elements.map(elText))) if (t) count[t] = (count[t] || 0) + 1
   const common = new Set(Object.keys(count).filter(t => slides.value.length > 2 && count[t] > slides.value.length / 2))
-  return slides.value.map(sl => pageText(sl, common))
+  const logos = logoSpots()
+  return slides.value.map(sl => pageText(sl, common, logos))
 }
 const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewportSize.value * viewportRatio.value) })
 
@@ -678,6 +688,25 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const reply = await editSlide(i, args.instruction)
     slidesStore.updateSlideIndex(i)
     return reply
+  }
+  if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const font = String(args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
+    if (!font) fail(Z ? '请说明要换成哪种字体。' : 'Which font?')
+    const setIn = (html: string) => html.replace(/font-family:\s*[^;"]*/g, `font-family: ${font}`)
+    let n = 0
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      const title = (e: any) => e.textType === 'title' || e.text?.type === 'title' || e === readingOrder(sl).find((x: any) => elText(x))
+      for (const e of sl.elements as any[]) {
+        if (!(e.type === 'text' || (e.type === 'shape' && e.text)) || !elText(e)) continue
+        if (args.scope === 'titles' ? !title(e) : args.scope === 'body' ? title(e) : false) continue
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { defaultFontName: font, content: setIn(e.content) }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, defaultFontName: font, content: setIn(e.text.content) } }, slideId: id })
+        n++
+      }
+    }
+    return Z ? `已把 ${targets.length} 页上 ${n} 处文字换成 ${font}。` : `Set ${font} on ${n} text boxes across ${targets.length} page(s).`
   }
   if (action === 'edit_all_pages') { // 3 pages at a time; each edit is merged into its own slide by id
     const all = slides.value.map(x => x.id)

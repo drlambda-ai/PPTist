@@ -45,6 +45,11 @@ const TOOLS = [
   fn('edit_page', 'Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
   }, ['index', 'instruction']),
+  fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
+    pages: { ...pages, description: 'Pages; empty = every page' },
+    font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"' },
+    scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
+  }, ['pages', 'font', 'scope']),
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
     instruction: { type: 'string' },
   }, ['instruction']),
@@ -113,10 +118,12 @@ Rules:
 3. Reordering ("move page 5 forward", "put 2 and 3 at the end", "swap 2 and 4") -> move_pages. Forward = earlier.
    Exchanging two pages -> swap_pages. A full new order or a sort -> reorder_pages.
 4. Anything about what is ON a page (text, fonts, colours, sizes, positions of text/images/shapes) -> edit_page for that page.
+   Only a font FAMILY change (字体/font/Schrift/шрифт) -> set_font, never edit_page/edit_all_pages.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
 5. A new or different picture -> change_image, ONE call for the one image meant: "the picture/photo" is the image marked "the largest
-   image here" on that page; never an icon or a logo unless the user names it. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.
+   image here" on that page; never an icon or a [logo] unless the user names it. If that page has no image except
+   icons/logos, use add_image instead. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.
    Merging pages A and B: edit_page on A (instruction: combine B's content into A, giving its full text), then delete_pages B.
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
