@@ -37,7 +37,7 @@ Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the langu
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { elements = [], instruction = '', history = [], slideSize, patch = false } = await readBody(req)
+    const { elements = [], instruction = '', history = [], slideSize, patch = false, model: asked = '' } = await readBody(req)
     const W = Math.round(slideSize?.width || 1000)
     const H = Math.round(slideSize?.height || 562)
 
@@ -54,7 +54,7 @@ export default async function handler(req: any, res: any) {
       },
     ]
 
-    const raw = await chat(messages, { jsonMode: true, model: process.env.SLIDE_EDIT_MODEL || 'gpt-5.5', effort: 'low', maxTokens: 32000 })
+    const raw = await chat(messages, { jsonMode: true, model: process.env.VERCEL_ENV !== 'production' && ['gpt-5.5', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5'].includes(asked) ? asked : (process.env.SLIDE_EDIT_MODEL || 'claude-haiku-5-5'), effort: 'low', maxTokens: 32000 })
     let parsed: any
     try { parsed = JSON.parse(raw) }
     catch { res.status(200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }

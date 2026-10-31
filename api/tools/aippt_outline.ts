@@ -23,7 +23,7 @@ Write in ${language}. Output only the outline, no preface, no code fences. If th
   ]
 
   try {
-    await chatStream(messages, (delta) => res.write(delta), { model: 'gpt-5.5', effort: 'low' })
+    await chatStream(messages, (delta) => res.write(delta), { model: 'gpt-6.1-sol', effort: 'low' })
     res.end()
   }
   catch (e: any) {

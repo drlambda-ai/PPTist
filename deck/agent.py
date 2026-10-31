@@ -6,7 +6,7 @@ import os
 
 from openai import OpenAI
 
-MODEL = os.environ.get("DECK_MODEL", "gpt-5.5")
+MODEL = os.environ.get("DECK_MODEL", "gpt-5.5")  # gpt-6.1-sol tried 2026-10-31: 40% faster but left slots empty and chrome missing
 _client = None
 
 
@@ -68,6 +68,8 @@ The client's standard (non-negotiable):
 - Slots marked "has highlight style" mix a highlight colour into their text in the template: wrap the one key
   phrase or number per line in **double asterisks** there, the way the template highlights its key words.
 - A slot that is empty in the template (now: '') is deliberate spacing: leave it empty.
+- Notes about the material itself ("示例数据", "sample data", data period, source) go only in a note/source slot;
+  never in a label, section heading, banner or title (a "背景"/"目标" section label stays a section label).
 - Never write page markers, slot names or category names as a slot's content ("第二页", "情感权益" in a text slot) to
   fill space; a slot with nothing from the material is removed if the rules allow, otherwise it takes "—".
 - Match each slot's text density and line structure in the template (e.g. a card with lead line / key line / detail

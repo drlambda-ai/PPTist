@@ -16,13 +16,37 @@ interface ChatOpts {
   effort?: 'low' | 'medium' | 'high'
 }
 
-// gpt-5 models take max_completion_tokens + reasoning_effort and reject a custom temperature.
-const params = (opts: ChatOpts, model: string, fallbackTemp: number) => model.startsWith('gpt-5')
+// gpt-5/6 models take max_completion_tokens + reasoning_effort and reject a custom temperature.
+const params = (opts: ChatOpts, model: string, fallbackTemp: number) => model.startsWith('gpt-5') || model.startsWith('gpt-6')
   ? { max_completion_tokens: opts.maxTokens ?? 16000, reasoning_effort: opts.effort ?? 'low' }
   : { temperature: opts.temperature ?? fallbackTemp, max_tokens: opts.maxTokens ?? 4096 }
 
+// Claude via the Anthropic Messages API: system messages become the (cached) system prompt; JSON mode is asked for in
+// the prompt and the reply is cut to its outermost {...}.
+async function claude(messages: any[], opts: ChatOpts): Promise<string> {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key) throw new Error('ANTHROPIC_API_KEY not set')
+  const system = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n')
+    + (opts.jsonMode ? '\n\nReply with one JSON object only, no prose, no code fences.' : '')
+  const turns = messages.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content) }))
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: opts.model, max_tokens: Math.min(opts.maxTokens ?? 8192, 32000),
+      system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: turns,
+    }),
+  })
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`)
+  const text = ((await res.json()).content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
+  if (!opts.jsonMode) return text
+  const a = text.indexOf('{'), b = text.lastIndexOf('}')
+  return a >= 0 && b > a ? text.slice(a, b + 1) : '{}'
+}
+
 // Non-streaming chat completion → returns the assistant text.
 export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string> {
+  if (opts.model?.startsWith('claude')) return claude(messages, opts)
   const res = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {

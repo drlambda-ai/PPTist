@@ -4,7 +4,11 @@ import { getKey, readBody } from '../_llm.js'
 // but able to do several steps: the editor calls it in a loop, applying each round's calls and sending back what was
 // done, until the model calls finish. Page numbers always refer to the deck as listed in that round.
 
-const MODEL = process.env.DECK_ROUTER_MODEL || 'gpt-5.5'
+// planning/routing: claude-haiku-5-5 tied the best on 40 real ChatSlide prompts and ran multi-step loops correctly,
+// at ~1/50 of gpt-5.5's price (bake-off 2026-10-31)
+const MODEL = process.env.DECK_ROUTER_MODEL || 'claude-haiku-5-5'
+// models a request may pick (for side-by-side tests); anything else falls back to MODEL
+const ALLOWED = ['gpt-5.5', 'gpt-5.4', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5']
 
 const page = { type: 'integer', description: '1-based page number in the deck as listed' }
 const pages = { type: 'array', items: page }
@@ -160,45 +164,96 @@ Rules:
    can be undone with Undo. Say you don't know rather than inventing prices, limits or features.
 7. Never delete every page.`
 
+const parseArgs = (raw: any) => {
+  if (raw && typeof raw === 'object') return raw
+  try {
+    return JSON.parse(raw || '{}')
+  }
+  catch {
+    return {} // malformed arguments become an empty call, never a 500
+  }
+}
+
+const viaOpenAI = async (model: string, context: string, history: any[], user: string) => {
+  const r = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
+    body: JSON.stringify({
+      model, tools: TOOLS, tool_choice: 'required', parallel_tool_calls: false,
+      messages: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }],
+    }),
+  })
+  if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
+  return ((await r.json()).choices?.[0]?.message?.tool_calls || []).map((c: any) => ({ action: c.function?.name || 'answer_question', args: parseArgs(c.function?.arguments) }))
+}
+
+// gpt-6.x: function tools with reasoning are only served by the Responses API
+const viaResponses = async (model: string, context: string, history: any[], user: string) => {
+  const r = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
+    body: JSON.stringify({
+      model, reasoning: { effort: 'low' }, tool_choice: 'required', parallel_tool_calls: false,
+      tools: TOOLS.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
+      input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }],
+    }),
+  })
+  if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
+  return ((await r.json()).output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
+}
+
+// Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
+const viaAnthropic = async (model: string, context: string, history: any[], user: string) => {
+  const key = process.env.ANTHROPIC_API_KEY
+  if (!key) throw new Error('ANTHROPIC_API_KEY not set')
+  const tools = TOOLS.map((t: any, i: number) => ({
+    name: t.function.name, description: t.function.description, input_schema: t.function.parameters,
+    ...(i === TOOLS.length - 1 ? { cache_control: { type: 'ephemeral' } } : {}),
+  }))
+  // turns must alternate user/assistant and start with the user
+  const turns = history.slice(-6).filter((h: any) => h?.content).reduce((acc: any[], h: any) => {
+    if (acc.length && acc[acc.length - 1].role === h.role) acc[acc.length - 1].content += `\n${h.content}`
+    else acc.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content) })
+    return acc
+  }, [])
+  while (turns.length && turns[0].role !== 'user') turns.shift()
+  const last = `${context}\n\nRequest: ${user}`
+  if (turns.length && turns[turns.length - 1].role === 'user') turns[turns.length - 1].content += `\n\n${last}`
+  else turns.push({ role: 'user', content: last })
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model, max_tokens: 2048, tools, tool_choice: { type: 'auto', disable_parallel_tool_use: true }, // some Claude models refuse a forced tool choice
+      system: [{ type: 'text', text: `${SYSTEM}\nAlways respond by calling exactly one tool.`, cache_control: { type: 'ephemeral' } }],
+      messages: turns,
+    }),
+  })
+  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`)
+  const content = (await r.json()).content || []
+  const used = content.filter((c: any) => c.type === 'tool_use').map((c: any) => ({ action: c.name, args: parseArgs(c.input) }))
+  const text = content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n').trim()
+  return used.length ? used : [{ action: 'answer_question', args: { answer: text } }] // plain text = an answer
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST only' }); return
   }
   try {
-    const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = await readBody(req)
+    const body = await readBody(req)
+    const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
     // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
     // everything that changes (deck, current page, template) comes after it
     const context = `The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}`
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
-      body: JSON.stringify({
-        model: MODEL,
-        tools: TOOLS,
-        tool_choice: 'required',
-        parallel_tool_calls: false,
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'system', content: context },
-          ...history.slice(-6),
-          { role: 'user', content: instruction + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '') },
-        ],
-      }),
-    })
-    if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
-    const calls = ((await r.json()).choices?.[0]?.message?.tool_calls || []).map((c: any) => {
-      let args: any = {}
-      try {
-        args = JSON.parse(c.function?.arguments || '{}')
-      }
-      catch {
-        args = {}
-      } // malformed arguments become an empty call, never a 500
-      return { action: c.function?.name || 'answer_question', args }
-    })
+    // per-request model choice is for side-by-side tests only, never in production
+    const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
+    const user = instruction + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
+    const calls = model.startsWith('claude') ? await viaAnthropic(model, context, history, user)
+      : model.startsWith('gpt-6') ? await viaResponses(model, context, history, user) : await viaOpenAI(model, context, history, user)
     res.status(200).json({ calls: calls.length ? calls : [{ action: 'answer_question', args: {} }] })
   }
   catch (e: any) {

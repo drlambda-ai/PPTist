@@ -8,11 +8,11 @@ export default async function handler(req: any, res: any) {
     res.status(405).json({ error: 'POST only' }); return
   }
   try {
-    const { instruction = '', strong = false } = await readBody(req)
+    const { instruction = '', strong = false, model: asked = '' } = await readBody(req)
     const raw = await chat([
       { role: 'system', content: 'Answer with one JSON object only, exactly in the shape the instruction asks for.' },
       { role: 'user', content: String(instruction).slice(0, 30000) },
-    ], { model: strong ? 'gpt-5.5' : 'gpt-5.4-mini', effort: 'low', jsonMode: true, maxTokens: 8000 }) // numbers for charts/tables use the strong model
+    ], { model: process.env.VERCEL_ENV !== 'production' && ['gpt-5.5', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5'].includes(asked) ? asked : strong ? 'gpt-6.1-sol' : 'gpt-5.4-mini', effort: 'low', jsonMode: true, maxTokens: 8000 }) // numbers, notes, extensions: gpt-6.1-sol (exact with figures, 1/3 of gpt-5.5)
     res.status(200).json(JSON.parse(raw || '{}'))
   }
   catch (e: any) {
