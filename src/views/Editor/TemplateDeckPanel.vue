@@ -299,6 +299,9 @@ const editSlide = async (index: number, instruction: string) => {
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
+  if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) { // say so, don't echo the request
+    fail(zh(userText) ? `第 ${index + 1} 页没有需要改的地方（可能已经是这样了）。` : `Nothing to change on page ${index + 1}; it may already be that way.`)
+  }
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
   const removed = new Set<string>(ret.patch.removed || [])
@@ -313,8 +316,49 @@ const editSlide = async (index: number, instruction: string) => {
     }),
     ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)),
   ]
+  const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
   slidesStore.updateSlide({ elements: merged }, slide.id)
-  return ret.reply
+  await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
+  const n = (ret.patch.changes?.length || 0) + (ret.patch.added?.length || 0) + (ret.patch.removed?.length || 0)
+  const echo = !ret.reply || ret.reply.replace(/[。.！!\s]/g, '') === userText.replace(/[。.！!\s]/g, '') // the model repeated the request
+  return echo ? (zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`) : ret.reply
+}
+
+// A text box grows to fit its content when its page is shown. After an edit, show the page and shrink the font sizes
+// of any changed box that grew past its old height (translations run longer), so it never spills onto other elements.
+let fitQueue: Promise<void> = Promise.resolve() // one page shown at a time, even when pages are edited in parallel
+const fitText = (slideId: string, ids: string[], before: Record<string, number>) => {
+  fitQueue = fitQueue.then(() => fitOne(slideId, ids, before)).catch(() => undefined)
+  return fitQueue
+}
+const fitOne = async (slideId: string, ids: string[], before: Record<string, number>) => {
+  if (!ids.length) return
+  const at = slides.value.findIndex(x => x.id === slideId)
+  if (at < 0) return
+  slidesStore.updateSlideIndex(at)
+  for (let round = 0; round < 3; round++) {
+    await nextTick()
+    await new Promise(r => setTimeout(r, 350)) // the editor measures and stores the new heights
+    const sl = slides.value.find(x => x.id === slideId)
+    let changed = false
+    for (const e of (sl?.elements || []) as any[]) {
+      if (!ids.includes(e.id) || e.type !== 'text' || e.height <= before[e.id] * 1.06 + 4) continue
+      const k = Math.max(0.6, before[e.id] / e.height)
+      const scale = (v: number) => Math.max(9, Math.round(v * k * 10) / 10)
+      let content = String(e.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${scale(Number(v))}px`)
+      if (content === e.content) { // no inline sizes: scale the size the editor actually renders, set on each paragraph
+        const node = document.querySelector(`#editable-element-${e.id} .ProseMirror, #editable-element-${e.id} .text`)
+        const px = node ? parseFloat(getComputedStyle(node).fontSize) : 0
+        if (!px) continue
+        content = content.replace(/<p(\s[^>]*)?>/g, (_m: string, attrs = '') => (/style="/.test(attrs)
+          ? `<p${attrs.replace(/style="/, `style="font-size: ${scale(px)}px; `)}>` : `<p${attrs} style="font-size: ${scale(px)}px;">`))
+        if (content === e.content) continue
+      }
+      slidesStore.updateElement({ id: e.id, props: { content }, slideId })
+      changed = true
+    }
+    if (!changed) return
+  }
 }
 
 const cloneSlide = (sl: Slide): Slide => {
@@ -739,6 +783,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'edit_all_pages') { // 3 pages at a time; each edit is merged into its own slide by id
     const all = slides.value.map(x => x.id)
+    const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one
     let done = 0
     for (let i = 0; i < all.length; i += 3) {
       await Promise.all(all.slice(i, i + 3).map(async id => {
@@ -746,6 +791,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
         busy.value = `Updated ${++done} of ${all.length} pages…`
       }))
     }
+    await fitQueue
+    if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     return Z ? `已更新全部 ${slides.value.length} 页。` : `Updated all ${slides.value.length} pages.`
   }
   if (action === 'change_image') {
