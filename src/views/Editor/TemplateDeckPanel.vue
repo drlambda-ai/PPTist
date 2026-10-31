@@ -55,7 +55,7 @@ import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import api from '@/services'
-import type { Slide } from '@/types/slides'
+import type { Slide, PPTImageElement } from '@/types/slides'
 import type { AIPPTSlide } from '@/types/AIPPT'
 import { jsonrepair } from 'jsonrepair'
 import { upload } from '@/utils/blobUpload'
@@ -76,6 +76,7 @@ interface Session {
   docs: { name: string, text: string }[]
   history: { role: 'user' | 'assistant', text: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
+  edited?: boolean // template deck changed in the editor since the last build
 }
 
 const KEY = 'ai-deck-session'
@@ -91,11 +92,11 @@ const loadSession = (): Session => {
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
-const { slides, slideIndex, viewportSize, viewportRatio } = storeToRefs(slidesStore)
+const { slides, slideIndex, viewportSize, viewportRatio, theme } = storeToRefs(slidesStore)
 const { importPPTXFile } = useImport()
 const { AIPPT, getMdContent } = useAIPPT()
 const { resetSlides } = useSlideHandler()
-const { addHistorySnapshot, undo: undoEditor } = useHistorySnapshot()
+const { addHistorySnapshot, undo: undoEditor, redo: redoEditor } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 const input = ref('')
@@ -108,9 +109,11 @@ const save = () => {
   try {
     localStorage.setItem(KEY, JSON.stringify(s))
     // PPTist keeps no slides across reloads; a generated deck is kept here (a template deck reloads from its .pptx)
-    if (s.mode === 'native') localStorage.setItem(SLIDES_KEY, JSON.stringify(slides.value))
+    if (s.mode === 'native' || s.edited) localStorage.setItem(SLIDES_KEY, JSON.stringify(slides.value))
   }
-  catch { /* storage full: the session still works until reload */ }
+  catch { // storage full: the session still works until reload; never leave an older saved deck behind
+    localStorage.removeItem(SLIDES_KEY)
+  }
 }
 const say = (role: 'user' | 'assistant', text: string) => {
   s.history.push({ role, text })
@@ -120,7 +123,7 @@ const say = (role: 'user' | 'assistant', text: string) => {
   })
 }
 const close = () => mainStore.setTemplateDeckPanelState(false)
-const canUndo = computed(() => s.mode === 'template' ? s.versions.length > 1 : s.mode === 'native')
+const canUndo = computed(() => s.mode === 'native' || !!s.edited || s.versions.length > 1)
 
 const run = async (label: string, fn: () => Promise<void>) => {
   busy.value = label
@@ -187,6 +190,8 @@ const templateTurn = async (text: string) => {
   if (r.deckUrl) {
     s.versions.push({ spec: r.spec, deckUrl: r.deckUrl, h: s.history.length - 2 })
     s.mode = 'template'
+    s.edited = false
+    localStorage.removeItem(SLIDES_KEY)
     save()
     await showPptx(r.deckUrl)
   }
@@ -235,124 +240,488 @@ const generateNative = async (text: string) => {
   say('assistant', languageOf(text) === '中文' ? `已生成 ${slides.value.length} 页。可以继续要求增加、删除、移动或改写页面。` : `Generated ${slides.value.length} pages. Ask for any change: add, delete, move or rewrite pages.`)
 }
 
-const pageText = (sl: Slide) => sl.elements.map((e: any) => (e.content || e.text?.content || '').replace(/<[^>]+>/g, ' '))
-  .join(' ').replace(/\s+/g, ' ').trim()
+// One line per page for the router: text in reading order (top to bottom), numbered images/charts so "image 2" and
+// "the chart" resolve. Text repeated on most pages (footer, deck name) is left out so pages are told apart by content.
+const elText = (e: any) => (e.content || e.text?.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+const readingOrder = (sl: Slide) => [...sl.elements].sort((x, y) => (x.top - y.top) || (x.left - y.left))
+const pageText = (sl: Slide, common = new Set<string>()) => {
+  let img = 0
+  const biggest = Math.max(0, ...sl.elements.filter(e => e.type === 'image').map((e: any) => e.width * e.height))
+  return readingOrder(sl).map((e: any) => {
+    if (e.type === 'image') { // size and place let the router tell a photo from an icon or a logo
+      const { width: W, height: H } = slideSize()
+      const area = (e.width * e.height) / (W * H)
+      const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
+      const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
+      return `[image ${++img}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
+    }
+    if (e.type === 'chart') return '[chart]'
+    const t = elText(e)
+    return common.has(t) ? '' : t
+  }).join(' ').replace(/\s+/g, ' ').trim()
+}
+const deckLines = () => {
+  const count: Record<string, number> = {}
+  for (const sl of slides.value) for (const t of new Set(sl.elements.map(elText))) if (t) count[t] = (count[t] || 0) + 1
+  const common = new Set(Object.keys(count).filter(t => slides.value.length > 2 && count[t] > slides.value.length / 2))
+  return slides.value.map(sl => pageText(sl, common))
+}
 const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewportSize.value * viewportRatio.value) })
 
-// Rewrite one slide through chat_edit, merging kept elements by id (same contract as the slide chat panel).
+// Rewrite one slide through chat_edit, merging kept elements by id. Image sources (often MBs of base64) never go to
+// the model: it sees a short token and the real src is restored on merge.
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
-  const ret = await api.AI_Edit({ elements: slide.elements, instruction, slideSize: slideSize() })
-  if (!ret.elements) return ret.reply
+  const elements = slide.elements.map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
+    : e.type === 'shape' && e.path?.length > 80 ? { ...e, path: `path:${e.id}` } : e)) // long SVG paths: token, restored below
+  const ret = await api.AI_Edit({ elements, instruction, slideSize: slideSize() })
+  if (!ret.elements) fail(ret.reply || 'That edit could not be applied.')
   const byId: Record<string, any> = Object.fromEntries(slide.elements.map(e => [e.id, e]))
-  slidesStore.updateSlide({ elements: ret.elements.map((e: any) => (byId[e.id] ? { ...byId[e.id], ...e } : e)) }, slide.id)
+  const seen = new Set<string>()
+  const merged = ret.elements.filter((e: any) => (e.type !== 'image' || byId[e.id]) && !seen.has(e.id) && seen.add(e.id)) // never an invented image or a duplicate
+    .map((e: any) => {
+      const was: any = byId[e.id]
+      if (!was) return e
+      return { ...was, ...e, ...(e.type === 'image' ? { src: was.src } : {}), ...(String(e.path || '').startsWith('path:') ? { path: was.path } : {}) }
+    })
+  slidesStore.updateSlide({ elements: merged }, slide.id)
   return ret.reply
 }
 
-const cloneSlide = (sl: Slide): Slide => ({
-  ...JSON.parse(JSON.stringify(sl)), id: nanoid(10),
-  elements: sl.elements.map(e => ({ ...JSON.parse(JSON.stringify(e)), id: nanoid(10) })),
-})
+const cloneSlide = (sl: Slide): Slide => {
+  const newId: Record<string, string> = Object.fromEntries(sl.elements.map(e => [e.id, nanoid(10)]))
+  return {
+    ...JSON.parse(JSON.stringify(sl)), id: nanoid(10),
+    elements: sl.elements.map(e => ({ ...JSON.parse(JSON.stringify(e)), id: newId[e.id] })),
+    animations: (sl.animations || []).filter(a => newId[a.elId]).map(a => ({ ...a, id: nanoid(10), elId: newId[a.elId] })),
+  }
+}
 
-const nativeTurn = async (text: string) => {
-  const { action, args } = await (await fetch('/api/tools/deck_chat', {
-    method: 'POST',
-    body: JSON.stringify({
-      instruction: text, pages: slides.value.map(pageText), current: slideIndex.value + 1,
-      history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
-    }),
-    headers: { 'Content-Type': 'application/json' },
-  })).json()
+const zh = (text: string) => languageOf(text) === '中文'
+// A step that cannot be done stops the turn (the router would otherwise retry it with new arguments).
+class StepFailed extends Error {}
+function fail(msg: string): never {
+  throw new StepFailed(msg)
+}
+
+// A new content page from the same outline + JSONL generator as a prompt-built deck (layout matches item count).
+const generatePage = async (text: string, instruction: string, at: number, count = 1) => {
+  const ask = `Exactly ${count} content slide(s) for an existing deck (no cover, no closing slide, no contents slide). Deck so far: ${deckLines().join(' | ').slice(0, 1500)}. The new slide(s): ${instruction}`
+  const brief = s.docs.length ? `${ask}\n\nUse only this material (never invent numbers):\n${material()}` : ask
+  let outline = ''
+  await readStream(await api.AIPPT_Outline({ content: brief, language: languageOf(text), model: '' }), t => {
+    outline += t
+  })
+  let jsonl = ''
+  await readStream(await api.AIPPT({ content: `User request: ${ask}\n\n${getMdContent(outline)}`, language: languageOf(text), style: '通用', model: '' }), t => {
+    jsonl += t
+  })
+  const items = jsonl.split('\n').map(l => {
+    try {
+      return JSON.parse(jsonrepair(l.trim())) as AIPPTSlide
+    }
+    catch {
+      return null
+    }
+  }).filter((x): x is AIPPTSlide => x?.type === 'content').slice(0, count)
+  if (!items.length) return false
   const n = slides.value.length
-  const at = (p: number) => Math.min(Math.max((p || 1) - 1, 0), n - 1)
-  let reply = ''
-  if (action === 'add_page' && s.mode === 'native') {
-    // same generator as the deck, so the layout matches the item count and the content follows the same rules
-    const ask = `One single content slide for an existing deck (no cover, no closing slide, no contents slide). Deck so far: ${slides.value.map(pageText).join(' | ').slice(0, 1500)}. The new slide: ${args.instruction}`
-    const brief = s.docs.length ? `${ask}\n\nUse only this material (never invent numbers):\n${material()}` : ask
-    let outline = ''
-    await readStream(await api.AIPPT_Outline({ content: brief, language: languageOf(text), model: '' }), t => {
-      outline += t
-    })
-    let jsonl = ''
-    await readStream(await api.AIPPT({ content: `User request: ${ask}\n\n${getMdContent(outline)}`, language: languageOf(text), style: '通用', model: '' }), t => {
-      jsonl += t
-    })
-    const item = jsonl.split('\n').map(l => {
-      try {
-        return JSON.parse(jsonrepair(l.trim())) as AIPPTSlide
+  AIPPT((await api.getMockData('template_1')).slides, items) // appends at the end (an item with 5+ points may split in 2)
+  const list = [...slides.value]
+  list.splice(at, 0, ...list.splice(n))
+  slidesStore.setSlides(list)
+  return true
+}
+
+const CHART = `Return JSON {"title": "...", "labels": ["..."], "legends": ["series name"], "series": [[numbers per label] per legend], "note": "one line on the source, or empty"}.
+Copy every number exactly, each under its own year/label. Use only numbers the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for the numbers>"}.`
+
+const addChartPage = async (text: string, instruction: string, chartType: string, at: number) => {
+  const res = await fetch('/api/tools/ask_json', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strong: true, instruction: `${CHART}\n\nChart: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
+  })
+  const d = await res.json()
+  if (d.error || !d.labels?.length) fail(d.error || (zh(text) ? '缺少图表数据。' : 'No numbers to chart.'))
+  const { width: W, height: H } = slideSize()
+  insertPage(at, d.title, d.note, {
+    type: 'chart', id: nanoid(10), chartType, left: W * 0.08, top: H * 0.2, width: W * 0.84, height: H * (d.note ? 0.66 : 0.72),
+    rotate: 0, themeColors: theme.value.themeColors, textColor: theme.value.fontColor,
+    data: { labels: d.labels, legends: d.legends || [''], series: d.series },
+  })
+  return ''
+}
+
+// A new page in the deck's look: a copy of a content page with its title, footer and logo kept and its body replaced by
+// one main element (chart, table). Footer = elements in the bottom 12% or repeated on most pages.
+const insertPage = (at: number, heading: string, note: string, main: any) => {
+  const { width: W, height: H } = slideSize()
+  const base = slides.value[Math.min(Math.max(1, at - 1), slides.value.length - 1)] // a content page, not the cover
+  const count: Record<string, number> = {}
+  for (const sl of slides.value) for (const t of new Set(sl.elements.map(elText))) if (t) count[t] = (count[t] || 0) + 1
+  const isFooter = (e: any) => e.top > H * 0.88 || (elText(e) && count[elText(e)] > slides.value.length / 2)
+  const texts = base.elements.filter((e: any) => (e.type === 'text' || e.type === 'shape') && elText(e) && !isFooter(e))
+  const title: any = texts.find((e: any) => e.textType === 'title') || [...texts].sort((x, y) => x.top - y.top)[0]
+  const keep = base.elements.filter((e: any) => isFooter(e) || e === title || (e.top + (e.height || 0) <= (title ? title.top + title.height : 0) + 2))
+    .map(e => ({ ...JSON.parse(JSON.stringify(e)), id: nanoid(10) }))
+  const t = keep.find((e: any) => title && e.left === title.left && e.top === title.top && elText(e) === elText(title)) as any
+  const esc = (x: string) => String(x).replace(/</g, '&lt;')
+  if (t) { // the deck's own title box and styling, new words
+    const html = t.type === 'shape' ? t.text.content : t.content
+    const styled = html.replace(/(<[^/][^>]*>)([^<]+)(<)/, (_m: string, open: string, _w: string, close: string) => `${open}${esc(heading)}${close}`)
+    if (t.type === 'shape') t.text.content = styled
+    else t.content = styled
+  }
+  const top = t ? t.top + t.height + H * 0.03 : H * 0.18
+  const bottom = Math.min(H * 0.86, ...keep.filter(isFooter).map((e: any) => e.top - H * 0.02))
+  const body = { ...main, left: W * 0.06, top, width: W * 0.88, height: Math.max(bottom - top - (note ? H * 0.06 : 0), H * 0.3) }
+  if (body.type === 'table') body.height = Math.min(body.height, body.data.length * 40)
+  // the colour the title actually shows: its inline CSS colour (a fixed grammar: #hex or rgb()), else its default colour
+  const titleHtml = t ? (t.type === 'shape' ? t.text.content : t.content) : ''
+  const accent = titleHtml.match(/color:\s*(#[0-9a-fA-F]{6}|rgba?\([^)]*\))/)?.[1] || (t?.defaultColor || t?.text?.defaultColor || '')
+  if (accent && body.type === 'chart') body.themeColors = [accent, ...theme.value.themeColors]
+  if (accent && body.type === 'table') body.theme = { ...body.theme, color: accent }
+  const slide: Slide = {
+    ...JSON.parse(JSON.stringify(base)), id: nanoid(10), animations: [],
+    elements: [
+      ...(t ? keep : [{
+        type: 'text', id: nanoid(10), left: W * 0.06, top: H * 0.06, width: W * 0.88, height: H * 0.1, rotate: 0, textType: 'title',
+        content: `<p style="font-size: 28px;"><strong>${esc(heading)}</strong></p>`, defaultFontName: theme.value.fontName, defaultColor: theme.value.fontColor,
+      } as any, ...keep]),
+      body,
+      ...(note ? [{
+        type: 'text', id: nanoid(10), left: W * 0.06, top: body.top + body.height + H * 0.01, width: W * 0.88, height: H * 0.05, rotate: 0,
+        content: `<p style="font-size: 11px;">${esc(note)}</p>`, defaultFontName: theme.value.fontName, defaultColor: theme.value.fontColor,
+      } as any] : []),
+    ],
+  }
+  const list = [...slides.value]
+  list.splice(at, 0, slide)
+  slidesStore.setSlides(list)
+}
+
+const addTablePage = async (text: string, instruction: string, at: number) => {
+  const res = await fetch('/api/tools/ask_json', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ strong: true, instruction: `Return JSON {"title": "...", "rows": [["header 1", "header 2"], ["cell", "cell"]], "note": "one line on the source, or empty"}. At most 8 rows and 6 columns, short cells. Copy every number exactly from the deck or material and keep each value under its own year/column (check direction: which year is higher). Use only facts the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for them>"}.\n\nTable: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
+  })
+  const d = await res.json()
+  if (d.error || !d.rows?.length) fail(d.error || (zh(text) ? '缺少表格内容。' : 'Nothing to put in a table.'))
+  const { width: W, height: H } = slideSize()
+  const cols = Math.max(...d.rows.map((r: any[]) => r.length))
+  const style = { fontname: theme.value.fontName, color: theme.value.fontColor, fontsize: '14px' }
+  insertPage(at, d.title, d.note, {
+    type: 'table', id: nanoid(10), left: W * 0.08, top: H * 0.22, width: W * 0.84, height: d.rows.length * 40, rotate: 0,
+    colWidths: new Array(cols).fill(1 / cols), cellMinHeight: 36,
+    outline: { width: 1, style: 'solid', color: '#cccccc' },
+    theme: { color: theme.value.themeColors[0], rowHeader: true, rowFooter: false, colHeader: false, colFooter: false },
+    data: d.rows.map((r: any[], i: number) => Array.from({ length: cols }, (_, j) => ({
+      id: nanoid(10), colspan: 1, rowspan: 1, text: String(r[j] ?? ''),
+      style: i === 0 ? { ...style, color: '#ffffff', bold: true } : style, // header row sits on the accent colour
+    }))),
+  })
+}
+
+// The free rectangle nearest to the requested box (same aspect, shrinking down to 40%) on a 24x14 occupancy grid;
+// full-slide backgrounds don't count as occupied. Falls back to the requested box when nothing is free.
+const freeBox = (sl: Slide, want: { left: number, top: number, width: number, height: number }) => {
+  const { width: W, height: H } = slideSize()
+  const C = 24, R = 14, cw = W / C, rh = H / R
+  const busyCell = Array.from({ length: R }, () => new Array(C).fill(false))
+  for (let r = Math.floor(R * 0.86); r < R; r++) busyCell[r].fill(true) // the footer band
+  for (const e of sl.elements as any[]) {
+    if (!e.width || !e.height || e.width * e.height > W * H * 0.6) continue
+    for (let r = Math.max(0, Math.floor(e.top / rh)); r < Math.min(R, Math.ceil((e.top + e.height) / rh)); r++) {
+      for (let c = Math.max(0, Math.floor(e.left / cw)); c < Math.min(C, Math.ceil((e.left + e.width) / cw)); c++) busyCell[r][c] = true
+    }
+  }
+  const cx = want.left + want.width / 2, cy = want.top + want.height / 2
+  for (let k = 1; k >= 0.4; k -= 0.1) {
+    const w = Math.max(1, Math.round(want.width * k / cw)), h = Math.max(1, Math.round(want.height * k / rh))
+    let best: any = null
+    for (let r = 0; r + h <= R; r++) {
+      for (let c = 0; c + w <= C; c++) {
+        let ok = true
+        for (let i = r; i < r + h && ok; i++) for (let j = c; j < c + w && ok; j++) ok = !busyCell[i][j]
+        const d = Math.hypot((c + w / 2) * cw - cx, (r + h / 2) * rh - cy)
+        if (ok && (!best || d < best.d)) best = { d, left: c * cw, top: r * rh, width: w * cw, height: h * rh }
       }
-      catch {
-        return null
-      }
-    }).find(x => x?.type === 'content')
-    if (!item) reply = languageOf(text) === '中文' ? '没能生成这一页，请换个说法再试。' : 'Could not write that page, please rephrase.'
-    else {
-      const template = await api.getMockData('template_1')
-      AIPPT(template.slides, [item]) // appends at the end (2 slides if it splits 5+ items); move them into place
+    }
+    if (best) return best
+  }
+  return want
+}
+
+// Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
+const findPicture = async (query: string, source: string, landscape: boolean) => {
+  if (source === 'photo') {
+    const r = await api.searchImage({ query, per_page: 1, orientation: landscape ? 'landscape' : 'portrait' } as any)
+    const src = r.data?.[0]?.src // the services axios instance already unwraps response.data
+    if (src) return src as string
+  }
+  const r = await fetch('/api/tools/ai_image', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: query, size: landscape ? '1536x1024' : '1024x1536' }),
+  })
+  return ((await r.json()).src || '') as string
+}
+
+const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
+  const sl = slides.value.find(x => x.id === slideId)
+  const el = sl && readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image')[Math.max(0, (image || 1) - 1)]
+  if (!sl || !el) fail(zh(text) ? '这一页没有图片。' : 'That page has no picture.')
+  const src = await findPicture(query, source, el.width >= el.height)
+  if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
+  slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
+  return ''
+}
+
+const writeNotes = async (ids: string[], instruction: string) => {
+  for (const id of ids) {
+    const sl = slides.value.find(x => x.id === id)!
+    busy.value = `Writing notes ${ids.indexOf(id) + 1} of ${ids.length}…`
+    const r = await fetch('/api/tools/ask_json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
+    })
+    const notes = (await r.json()).notes
+    if (notes) slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
+  }
+}
+
+const runCall = async (text: string, action: string, args: any, ids: string[]) => {
+  const idOf = (p: number) => {
+    if (!(p >= 1 && p <= ids.length)) fail(zh(text) ? `没有第 ${p} 页（共 ${ids.length} 页）。` : `There is no page ${p} (the deck has ${ids.length}).`)
+    return ids[p - 1]
+  }
+  const pos = (id: string) => slides.value.findIndex(x => x.id === id)
+  const nums = (ps: number[]) => [...new Set((ps || []).map(idOf))].filter(id => pos(id) >= 0)
+  const n = slides.value.length
+  const Z = zh(text)
+  if (action === 'add_page') {
+    const after = pos(idOf(args.after)) + 1
+    if (s.mode === 'native') {
+      return await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10)) ? (Z ? `已在第 ${after} 页后加了一页。` : `Added page ${after + 1}.`) : fail(Z ? '没能生成这一页。' : 'Could not write that page.')
+    }
+    const count = Math.min(Math.max(args.count || 1, 1), 10)
+    for (let k = 0; k < count; k++) {
+      busy.value = `Writing page ${k + 1} of ${count}…`
       const list = [...slides.value]
-      list.splice(at(args.after) + 1, 0, ...list.splice(n))
+      list.splice(after + k, 0, cloneSlide(slides.value[pos(idOf(args.layout_from || args.after))]))
       slidesStore.setSlides(list)
-      slidesStore.updateSlideIndex(at(args.after) + 1)
-      reply = `Added page ${at(args.after) + 2}.`
+      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${args.instruction}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
     }
+    return Z ? `已在第 ${after} 页后加了 ${count} 页。` : `Added ${count} page(s) after page ${after}.`
   }
-  else if (action === 'add_page') {
-    const copy = cloneSlide(slides.value[at(args.layout_from || args.after)])
-    const list = [...slides.value]
-    list.splice(at(args.after) + 1, 0, copy)
-    slidesStore.setSlides(list)
-    await editSlide(at(args.after) + 1, `This is a NEW page. Replace all its text with: ${args.instruction}. Keep the layout and styling. Write in the language of that text.`)
-    slidesStore.updateSlideIndex(at(args.after) + 1)
-    reply = `Added page ${at(args.after) + 2}.`
+  if (action === 'add_chart_page') {
+    const after = pos(idOf(args.after)) + 1
+    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页（第 ${after + 1} 页）。` : `Added a chart on page ${after + 1}.`)
   }
-  else if (action === 'delete_page') {
-    const ids = (args.pages || []).map((p: number) => slides.value[at(p)]?.id).filter(Boolean)
-    if (ids.length >= n) reply = 'A deck needs at least one page, so I kept it.'
-    else {
-      slidesStore.deleteSlide(ids)
-      reply = `Deleted ${ids.length} page(s).`
+  if (action === 'add_table_page') {
+    const after = pos(idOf(args.after)) + 1
+    await addTablePage(text, args.instruction, after)
+    slidesStore.updateSlideIndex(after)
+    return Z ? `已加入表格页（第 ${after + 1} 页）。` : `Added a table on page ${after + 1}.`
+  }
+  if (action === 'add_image') {
+    const id = idOf(args.index)
+    const { width: W, height: H } = slideSize()
+    const b = args.box || { x: 55, y: 20, w: 40, h: 60 }
+    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
+    const src = await findPicture(args.query, args.source, b.w * W >= b.h * H)
+    if (!src) fail(Z ? '没有找到合适的图片。' : 'Could not get a picture.')
+    const clamp = (v: number) => Math.min(Math.max(v || 0, 0), 100) / 100
+    const sl = slides.value[pos(id)]
+    const box = freeBox(sl, { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H })
+    slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...box } as any] }, id)
+    slidesStore.updateSlideIndex(pos(id))
+    return Z ? '已插入图片。' : 'Picture added.'
+  }
+  if (action === 'set_transition') {
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    for (const id of targets) slidesStore.updateSlide({ turningMode: args.effect }, id)
+    return Z ? `已设置 ${targets.length} 页的切换效果。` : `Transition set on ${targets.length} page(s).`
+  }
+  if (action === 'animate_pages') {
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      const animations = args.effect === 'none' ? [] : readingOrder(sl).filter((e: any) => e.type !== 'line').map((e, k) => ({
+        id: nanoid(10), elId: e.id, effect: args.effect, type: 'in' as const, duration: 600,
+        trigger: (k === 0 || args.trigger === 'click' ? 'click' : 'auto') as 'click' | 'auto',
+      }))
+      slidesStore.updateSlide({ animations }, id)
     }
+    return Z ? (args.effect === 'none' ? '已移除动画。' : `已给 ${targets.length} 页加上动画。`) : (args.effect === 'none' ? 'Animations removed.' : `Animated ${targets.length} page(s).`)
   }
-  else if (action === 'duplicate_page') {
+  if (action === 'delete_pages') {
+    const del = nums(args.pages)
+    if (del.length >= n) fail(Z ? '至少要保留一页。' : 'A deck needs at least one page, so I kept it.')
+    slidesStore.deleteSlide(del)
+    return Z ? `已删除 ${del.length} 页。` : `Deleted ${del.length} page(s).`
+  }
+  if (action === 'duplicate_pages') {
     const list = [...slides.value]
-    list.splice(at(args.index) + 1, 0, cloneSlide(slides.value[at(args.index)]))
+    for (const id of nums(args.pages)) {
+      const i = list.findIndex(x => x.id === id)
+      list.splice(i + 1, 0, cloneSlide(list[i]))
+    }
     slidesStore.setSlides(list)
-    reply = `Duplicated page ${at(args.index) + 1}.`
+    return Z ? '已复制。' : 'Duplicated.'
   }
-  else if (action === 'move_page') {
+  if (action === 'move_pages') {
+    const move = nums(args.pages)
+    const moved = slides.value.filter(x => move.includes(x.id)) // keep deck order
+    const rest = slides.value.filter(x => !move.includes(x.id))
+    const at = Math.min(Math.max((args.to || 1) - 1, 0), rest.length)
+    rest.splice(at, 0, ...moved)
+    slidesStore.setSlides(rest)
+    return Z ? `已移动到第 ${at + 1} 页。` : `Moved to position ${at + 1}.`
+  }
+  if (action === 'reorder_pages') {
+    const order = nums(args.order)
+    const list = [...order, ...slides.value.map(x => x.id).filter(id => !order.includes(id))] // pages left out keep their relative order at the end
+      .map(id => slides.value[pos(id)])
+    slidesStore.setSlides(list)
+    return Z ? '已重新排序。' : 'Reordered.'
+  }
+  if (action === 'swap_pages') {
     const list = [...slides.value]
-    const [moved] = list.splice(at(args.from), 1)
-    list.splice(at(args.to), 0, moved)
+    const i = pos(idOf(args.a)), j = pos(idOf(args.b))
+    ;[list[i], list[j]] = [list[j], list[i]]
     slidesStore.setSlides(list)
-    reply = `Moved page ${at(args.from) + 1} to position ${at(args.to) + 1}.`
+    return Z ? `已对调第 ${i + 1} 页和第 ${j + 1} 页。` : `Swapped pages ${i + 1} and ${j + 1}.`
   }
-  else if (action === 'update_slide') {
-    reply = await editSlide(at(args.index), args.instruction)
-    slidesStore.updateSlideIndex(at(args.index))
+  if (action === 'edit_page') {
+    const i = pos(idOf(args.index))
+    const reply = await editSlide(i, args.instruction)
+    slidesStore.updateSlideIndex(i)
+    return reply
   }
-  else if (action === 'update_all_pages') {
-    for (let i = 0; i < n; i++) {
-      busy.value = `Updating page ${i + 1} of ${n}…`
+  if (action === 'edit_all_pages') {
+    for (let i = 0; i < slides.value.length; i++) {
+      busy.value = `Updating page ${i + 1} of ${slides.value.length}…`
       await editSlide(i, args.instruction)
     }
-    reply = `Updated all ${n} pages.`
+    return Z ? `已更新全部 ${slides.value.length} 页。` : `Updated all ${slides.value.length} pages.`
   }
-  else reply = args.answer || 'Could you say that more specifically?'
-  if (action !== 'answer_question') addHistorySnapshot()
-  say('assistant', reply + (args.followup_note ? `\n(Not done yet: ${args.followup_note})` : ''))
+  if (action === 'change_image') {
+    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
+    const id = idOf(args.index)
+    slidesStore.updateSlideIndex(pos(id))
+    return (await changeImage(text, id, args.image, args.query, args.source)) || (Z ? '图片已更换。' : 'Picture replaced.')
+  }
+  if (action === 'move_element_to_page') {
+    const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)
+    const list = readingOrder(from) // same order and image numbering the router saw
+    let img = 0
+    const r = await fetch('/api/tools/ask_json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instruction: `Which element is "${args.element}"? Elements: ${JSON.stringify(list.map((e: any, k) => ({ k, type: e.type === 'image' ? `image ${++img}` : e.type, text: elText(e).slice(0, 60), left: Math.round(e.left), top: Math.round(e.top), width: Math.round(e.width), height: Math.round(e.height || 0) })))}. "The picture" is the largest image. Return JSON {"k": <index>} or {"k": -1}.` }),
+    })
+    const el = list[(await r.json()).k]
+    if (!el) fail(Z ? '没找到这个元素。' : 'Could not find that element.')
+    if (!args.copy) slidesStore.updateSlide({ elements: from.elements.filter(e => e.id !== el.id) }, from.id)
+    const target = slides.value[pos(to)]
+    slidesStore.updateSlide({ elements: [...target.elements, { ...JSON.parse(JSON.stringify(el)), id: nanoid(10) }] }, to)
+    slidesStore.updateSlideIndex(pos(to))
+    return args.copy ? (Z ? '已复制过去。' : 'Copied.') : (Z ? '已移动。' : 'Moved.')
+  }
+  if (action === 'set_background') {
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    for (const id of targets) slidesStore.updateSlide({ background: { type: 'solid', color: args.color } }, id)
+    return Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`
+  }
+  if (action === 'write_notes') {
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    await writeNotes(targets, args.instruction || '')
+    return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
+  }
+  if (action === 'undo' || action === 'redo') {
+    if (action === 'undo') undoEditor()
+    else redoEditor()
+    return Z ? (action === 'undo' ? '已撤销。' : '已重做。') : (action === 'undo' ? 'Undone.' : 'Redone.')
+  }
+  return args.answer || (Z ? '能再具体一点吗？' : 'Could you say that more specifically?')
+}
+
+// Footer page numbers are static text in an imported deck: after pages move, set each to its page's position.
+// A bare 1-3 digit number near the bottom, at a spot shared by most pages, is that page's number.
+const renumber = () => {
+  const H = slideSize().height
+  const isNum = (e: any) => e.top + (e.height || 0) / 2 >= H * 0.85 && /^\d{1,3}$/.test(elText(e))
+  const at = (e: any) => `${Math.round(e.left / 10)},${Math.round(e.top / 10)}`
+  const spots: Record<string, number> = {}
+  for (const sl of slides.value) for (const k of new Set(sl.elements.filter(isNum).map(at))) spots[k] = (spots[k] || 0) + 1
+  slides.value.forEach((sl, i) => {
+    for (const e of sl.elements as any[]) { // the page-number box sits at the same spot on most pages
+      if (!isNum(e) || spots[at(e)] <= slides.value.length / 2 || elText(e) === String(i + 1)) continue
+      const swap = (html: string) => html.replace(/>\s*\d{1,3}\s*</, `>${i + 1}<`)
+      if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: swap(e.content) }, slideId: sl.id })
+      else if (e.type === 'shape' && e.text) slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content: swap(e.text.content) } }, slideId: sl.id })
+    }
+  })
+}
+
+// Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
+const deckTurn = async (text: string) => {
+  const done: string[] = []
+  const replies: string[] = []
+  let changed = false
+  for (let round = 0; round < 8; round++) {
+    const { calls, error } = await (await fetch('/api/tools/deck_chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        instruction: text, pages: deckLines(), current: slideIndex.value + 1, template: !!s.template, done,
+        history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
+      }),
+      headers: { 'Content-Type': 'application/json' },
+    })).json()
+    if (error) throw new Error(error)
+    if (calls.some((c: any) => c.action === 'rebuild_from_template') && s.template) return templateTurn(text)
+    // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
+    // is re-planned against the updated deck in the next round
+    const work = calls.filter((c: any) => !['finish', 'rebuild_from_template'].includes(c.action)).slice(0, 1)
+    if (!work.length) break
+    const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
+    if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
+    for (const c of work) {
+      busy.value = `Working (step ${done.length + 1})…`
+      let reply = ''
+      try {
+        reply = await runCall(text, c.action, c.args || {}, ids)
+      }
+      catch (e) {
+        if (!(e instanceof StepFailed)) throw e
+        replies.push(e.message)
+        round = 99 // stop: report what could not be done instead of retrying it
+        break
+      }
+      replies.push(reply)
+      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}`)
+      if (!['answer_question', 'undo', 'redo'].includes(c.action)) changed = true
+    }
+    if (work.every((c: any) => c.action === 'answer_question')) break // a question is answered once
+  }
+  if (changed) {
+    renumber()
+    addHistorySnapshot()
+    if (s.mode === 'template') s.edited = true
+  }
+  say('assistant', replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.'))
 }
 
 const send = () => {
   const text = input.value.trim()
   input.value = ''
   say('user', text)
-  if (s.template && s.mode !== 'native') return run('Building the deck (about a minute)…', () => templateTurn(text))
+  if (s.template && !s.mode) return run('Building the deck (about a minute)…', () => templateTurn(text))
   if (!s.mode) return run('Writing the deck…', () => generateNative(text))
   const before = JSON.parse(JSON.stringify(slides.value))
   return run('Working…', async () => {
     try {
-      await nativeTurn(text)
+      await deckTurn(text)
+      save()
     }
     catch (e) { // never leave a half-applied operation (e.g. an inserted page that was never rewritten)
       slidesStore.setSlides(before)
@@ -362,7 +731,7 @@ const send = () => {
 }
 
 const undo = () => run('Reverting…', async () => {
-  if (s.mode === 'native') {
+  if (s.mode === 'native' || s.edited) { // editor changes are undone in the editor, one step at a time
     undoEditor()
     return nextTick(save)
   }
@@ -373,7 +742,7 @@ const undo = () => run('Reverting…', async () => {
 })
 
 const download = () => {
-  if (s.mode === 'template') {
+  if (s.mode === 'template' && !s.edited) { // the engine's own .pptx is exact; after editor changes, export the editor
     const a = document.createElement('a')
     a.href = s.versions[s.versions.length - 1].deckUrl
     a.download = 'deck.pptx'
@@ -390,15 +759,15 @@ const restart = () => {
 
 // Bring the deck back after a page reload.
 onMounted(() => {
-  if (s.mode === 'template' && s.versions.length) {
-    run('Loading your deck…', () => showPptx(s.versions[s.versions.length - 1].deckUrl))
+  let saved: Slide[] | null = null
+  try {
+    saved = (s.mode === 'native' || s.edited) ? JSON.parse(localStorage.getItem(SLIDES_KEY) || 'null') : null
   }
-  else if (s.mode === 'native') {
-    try {
-      const saved = JSON.parse(localStorage.getItem(SLIDES_KEY) || 'null')
-      if (saved?.length) slidesStore.setSlides(saved)
-    }
-    catch { /* nothing saved */ }
+  catch { /* nothing saved */ }
+  if (saved?.length) slidesStore.setSlides(saved)
+  else if (s.mode === 'template' && s.versions.length) {
+    s.edited = false // the editor copy was lost; the last built version is what is shown
+    run('Loading your deck…', () => showPptx(s.versions[s.versions.length - 1].deckUrl))
   }
 })
 </script>
