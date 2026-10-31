@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T05:36:38Z
+Fixed: slide-count rule now says the count wins; cover/closing are kept only while N leaves room.
