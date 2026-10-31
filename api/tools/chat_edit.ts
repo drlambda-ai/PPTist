@@ -8,15 +8,25 @@ You edit ONE slide. The canvas is {W}px wide and {H}px tall, origin at the top-l
 
 Each element is a JSON object with at least: id, type, left, top, width, height, rotate.
 - type "text": has "content" (an HTML string, e.g. "<p>Hello</p>"), "defaultColor", "defaultFontName", optional "fill".
-- type "image": has "src" (URL).
-- type "shape": has "fill", "path", "viewBox".
+- type "image": has "src" (a placeholder token: keep it exactly as given).
+- type "chart" / "table": keep them; you may move or resize them.
+Text styling lives in two places: "defaultFontName"/"defaultColor" on the element, and inline CSS in "content"
+(e.g. <span style="font-family: Microsoft YaHei; font-size: 24px; color: #1a2b8c;"><strong>...</strong></span>).
+To change a font, size, colour, bold/italic/underline or alignment (<p style="text-align: center;">), change BOTH
+the element default and any inline style that would override it. Font sizes are px.
+"Move left/right/up/down" means change left/top by a visible amount (about 5-15% of the canvas) unless a size is given;
+"bigger/smaller" scales width and height together around the element's centre.
+- type "shape": has "fill", "path", "viewBox" ("path" may be a placeholder token: keep it exactly as given).
+To MOVE an element, change its left/top; never add a copy of it.
 
 Rules:
 - Apply the user's instruction by modifying the elements.
 - You MAY change text content, colors, sizes, positions; move/resize/rotate; add new TEXT or SHAPE elements; or delete elements.
-- NEVER create a new "image" element, and never invent or alter an image "src". You have no real images. You may reposition, resize, or delete an existing image, but you cannot add one. If the user asks for a new picture, do not add an image element — instead set "reply" telling them to use the "Image" button.
+- NEVER create a new "image" element, and never invent or alter an image "src". You have no real images. You may reposition, resize, or delete an existing image, but you cannot add one. If the user asks for a new picture, do not add an image element; say in "reply" that pictures are changed with a separate step.
 - KEEP element "id" stable for elements you keep. Only omit an element if the user wants it deleted.
 - For a NEW text/shape element, invent a short unique "id" and include all required fields for its type.
+- Text must stay inside its own box: when wording gets longer (translation, rewrite, more points), shorten it or
+  lower its font size so it fits the element's width and height; never let it spill onto other elements.
 - Keep every element fully on-canvas (0..{W} horizontally, 0..{H} vertically).
 - Preserve fields you are not changing.
 - Text "content" must stay valid HTML.
@@ -40,7 +50,7 @@ export default async function handler(req: any, res: any) {
       },
     ]
 
-    const raw = await chat(messages, { jsonMode: true, model: 'gpt-4o', temperature: 0.3, maxTokens: 8192 })
+    const raw = await chat(messages, { jsonMode: true, model: process.env.SLIDE_EDIT_MODEL || 'gpt-5.5', effort: 'low', maxTokens: 32000 })
     let parsed: any
     try { parsed = JSON.parse(raw) }
     catch { res.status(200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }
