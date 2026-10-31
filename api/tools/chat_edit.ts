@@ -37,11 +37,14 @@ Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the langu
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { elements = [], instruction = '', history = [], slideSize } = await readBody(req)
+    const { elements = [], instruction = '', history = [], slideSize, patch = false } = await readBody(req)
     const W = Math.round(slideSize?.width || 1000)
     const H = Math.round(slideSize?.height || 562)
 
-    const sys = SYSTEM.replaceAll('{W}', String(W)).replaceAll('{H}', String(H))
+    // patch mode (AI panel): the model writes only what changes, a fraction of the tokens of the whole slide
+    const sys = SYSTEM.replaceAll('{W}', String(W)).replaceAll('{H}', String(H)).replace(/Respond ONLY with JSON:[\s\S]*$/, patch
+      ? 'Respond ONLY with JSON: {"reply": "<one short sentence to the user>", "changes": [{"id": "<existing id>", <only the fields you change, each with its full new value>}], "added": [<new text/shape elements, complete>], "removed": ["<id>", ...]}. Never repeat an unchanged element or field.'
+      : 'Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the language of the instruction>", "elements": [ ...full updated array... ]}.')
     const messages = [
       { role: 'system', content: sys },
       ...history.slice(-6),
@@ -56,6 +59,12 @@ export default async function handler(req: any, res: any) {
     try { parsed = JSON.parse(raw) }
     catch { res.status(200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }
 
+    if (patch) {
+      const ok = Array.isArray(parsed.changes) || Array.isArray(parsed.added) || Array.isArray(parsed.removed)
+      const arr = (v: any) => (Array.isArray(v) ? v : []) // a malformed field becomes empty, never a crash downstream
+      res.status(200).json({ reply: parsed.reply || 'Done.', patch: ok ? { changes: arr(parsed.changes), added: arr(parsed.added), removed: arr(parsed.removed) } : null })
+      return
+    }
     res.status(200).json({
       reply: parsed.reply || 'Done.',
       elements: Array.isArray(parsed.elements) ? parsed.elements : null,

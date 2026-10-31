@@ -290,18 +290,29 @@ const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewpor
 let userText = '' // the message being handled: replies are written in its language
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
-  const elements = slide.elements.map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
+  // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
+  const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
     : e.type === 'shape' && e.path?.length > 80 ? { ...e, path: `path:${e.id}` } : e)) // long SVG paths: token, restored below
-  const ret = await api.AI_Edit({ elements, instruction: `${instruction}\n(Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")`, slideSize: slideSize() })
-  if (!ret.elements) fail(ret.reply || 'That edit could not be applied.')
-  const byId: Record<string, any> = Object.fromEntries(slide.elements.map(e => [e.id, e]))
+  const r = await fetch('/api/tools/chat_edit', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ patch: true, elements, slideSize: slideSize(), instruction: `${instruction}\n(Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+  })
+  const ret = await r.json()
+  if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
+  const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
+  const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
+  const removed = new Set<string>(ret.patch.removed || [])
   const seen = new Set<string>()
-  const merged = ret.elements.filter((e: any) => (e.type !== 'image' || byId[e.id]) && !seen.has(e.id) && seen.add(e.id)) // never an invented image or a duplicate
-    .map((e: any) => {
-      const was: any = byId[e.id]
-      if (!was) return e
-      return { ...was, ...e, ...(e.type === 'image' ? { src: was.src } : {}), ...(String(e.path || '').startsWith('path:') ? { path: was.path } : {}) }
-    })
+  const merged = [
+    ...live.elements.filter(e => !removed.has(e.id)).map((e: any) => {
+      const c = changes[e.id]
+      if (!c) return e
+      const { src: _src, path, ...rest } = c // image sources and tokenised paths are never taken from the model
+      void _src
+      return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
+    }),
+    ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)),
+  ]
   slidesStore.updateSlide({ elements: merged }, slide.id)
   return ret.reply
 }
