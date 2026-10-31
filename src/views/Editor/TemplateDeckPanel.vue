@@ -277,11 +277,12 @@ const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewpor
 
 // Rewrite one slide through chat_edit, merging kept elements by id. Image sources (often MBs of base64) never go to
 // the model: it sees a short token and the real src is restored on merge.
+let userText = '' // the message being handled: replies are written in its language
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   const elements = slide.elements.map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
     : e.type === 'shape' && e.path?.length > 80 ? { ...e, path: `path:${e.id}` } : e)) // long SVG paths: token, restored below
-  const ret = await api.AI_Edit({ elements, instruction, slideSize: slideSize() })
+  const ret = await api.AI_Edit({ elements, instruction: `${instruction}\n(Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")`, slideSize: slideSize() })
   if (!ret.elements) fail(ret.reply || 'That edit could not be applied.')
   const byId: Record<string, any> = Object.fromEntries(slide.elements.map(e => [e.id, e]))
   const seen = new Set<string>()
@@ -757,6 +758,7 @@ const renumber = () => {
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
+  userText = text
   const done: string[] = []
   const replies: string[] = []
   let changed = false

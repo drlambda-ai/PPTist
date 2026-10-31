@@ -120,6 +120,12 @@ Rules:
    Merging pages A and B: edit_page on A (instruction: combine B's content into A, giving its full text), then delete_pages B.
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
+   "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain
+   (the count wins: keep the cover and the closing page only while N leaves room for them after the content; prefer
+   deleting pages that repeat others). Never write_notes for it. When the cut removes half the deck or
+   more (e.g. "only one page"), FIRST edit_page the content page that will stay so it summarises the key points of the
+   pages being removed, THEN delete_pages; never leave only an agenda or cover.
+   Notes/script tools only when the message is about the script, speaker notes, 讲稿, Sprechertext, guion, narration text.
    "Add/include another slide" with no topic -> add_page on the next logical topic of the deck, after the current page; don't ask.
    A message that is just pasted content (a paragraph of facts, no instruction) -> edit_page on the current page: put that
    content on it (or add_page if the current page is a cover/agenda/closing page).
