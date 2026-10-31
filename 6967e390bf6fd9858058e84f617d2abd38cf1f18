@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T06:00:12Z
+Fixed: listed image numbers apply on every targeted page instead of falling back to removing every picture.
