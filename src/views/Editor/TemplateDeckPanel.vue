@@ -266,7 +266,38 @@ const nativeTurn = async (text: string) => {
   const n = slides.value.length
   const at = (p: number) => Math.min(Math.max((p || 1) - 1, 0), n - 1)
   let reply = ''
-  if (action === 'add_page') {
+  if (action === 'add_page' && s.mode === 'native') {
+    // same generator as the deck, so the layout matches the item count and the content follows the same rules
+    const ask = `One single content slide for an existing deck (no cover, no closing slide, no contents slide). Deck so far: ${slides.value.map(pageText).join(' | ').slice(0, 1500)}. The new slide: ${args.instruction}`
+    const brief = s.docs.length ? `${ask}\n\nUse only this material (never invent numbers):\n${material()}` : ask
+    let outline = ''
+    await readStream(await api.AIPPT_Outline({ content: brief, language: languageOf(text), model: '' }), t => {
+      outline += t
+    })
+    let jsonl = ''
+    await readStream(await api.AIPPT({ content: `User request: ${ask}\n\n${getMdContent(outline)}`, language: languageOf(text), style: '通用', model: '' }), t => {
+      jsonl += t
+    })
+    const item = jsonl.split('\n').map(l => {
+      try {
+        return JSON.parse(jsonrepair(l.trim())) as AIPPTSlide
+      }
+      catch {
+        return null
+      }
+    }).find(x => x?.type === 'content')
+    if (!item) reply = languageOf(text) === '中文' ? '没能生成这一页，请换个说法再试。' : 'Could not write that page, please rephrase.'
+    else {
+      const template = await api.getMockData('template_1')
+      AIPPT(template.slides, [item]) // appends at the end (2 slides if it splits 5+ items); move them into place
+      const list = [...slides.value]
+      list.splice(at(args.after) + 1, 0, ...list.splice(n))
+      slidesStore.setSlides(list)
+      slidesStore.updateSlideIndex(at(args.after) + 1)
+      reply = `Added page ${at(args.after) + 2}.`
+    }
+  }
+  else if (action === 'add_page') {
     const copy = cloneSlide(slides.value[at(args.layout_from || args.after)])
     const list = [...slides.value]
     list.splice(at(args.after) + 1, 0, copy)
