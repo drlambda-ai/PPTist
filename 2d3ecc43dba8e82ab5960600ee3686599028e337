@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T04:55:23Z
+Fixed: theme is saved before the slides, so a quota failure on it can no longer clear the saved deck.
