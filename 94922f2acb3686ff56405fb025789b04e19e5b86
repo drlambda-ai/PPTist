@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T08:24:23Z
+Fixed: rule 8 defers to rule 5's vague-dislike and vague-part rules.
+Declined: bare phrases trigger an add/edit - intended: real ChatSlide users type a topic ('Висновок', 'Puntos 12-14') meaning put it on the slide; every change is one Undo away.
+Declined-By: Claude Code
