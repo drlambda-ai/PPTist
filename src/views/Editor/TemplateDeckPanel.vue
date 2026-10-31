@@ -29,13 +29,13 @@
         <TextArea v-model:value="input" :rows="3" placeholder="e.g. 用附件里的数据做一份年度复盘 / delete page 3 / add a page on Q3 risks" />
         <div class="actions">
           <FileInput accept=".pptx" @change="files => uploadTemplate(files[0])" v-if="!s.mode">
-            <Button :disabled="!!busy">Template</Button>
+            <Button :disabled="!!busy">+ Template</Button>
           </FileInput>
           <FileInput accept=".xlsx,.csv,.txt,.md,.docx,.pdf,.pptx,.json" @change="files => uploadContent(files[0])">
             <Button :disabled="!!busy">+ Content</Button>
           </FileInput>
           <span class="grow"></span>
-          <Button :disabled="!!busy || !canUndo" @click="undo()">Undo</Button>
+          <Button v-if="canUndo" :disabled="!!busy" @click="undo()">Undo</Button>
           <Button v-if="s.mode" :disabled="!!busy" @click="download()">Download</Button>
           <Button type="primary" :disabled="!!busy || !input.trim()" @click="send()">Send</Button>
         </div>
@@ -423,6 +423,7 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   align-items: center;
+  white-space: nowrap;
 }
 .grow {
   flex: 1;

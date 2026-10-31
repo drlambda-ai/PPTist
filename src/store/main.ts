@@ -82,7 +82,7 @@ export const useMainStore = defineStore('main', {
     showImageLibPanel: false, // 打开图片库面板
     showAIPPTDialog: false, // 打开AIPPT创建窗口
     showChatPanel: false, // 打开AI对话编辑面板
-    showTemplateDeckPanel: false, // 打开模板填充面板
+    showTemplateDeckPanel: true, // 打开模板填充面板（AI 是入口，默认打开）
   }),
 
   getters: {
