@@ -109,7 +109,10 @@ const save = () => {
   try {
     localStorage.setItem(KEY, JSON.stringify(s))
     // PPTist keeps no slides across reloads; a generated deck is kept here (a template deck reloads from its .pptx)
-    if (s.mode === 'native' || s.edited) localStorage.setItem(SLIDES_KEY, JSON.stringify(slides.value))
+    if (s.mode === 'native' || s.edited) {
+      localStorage.setItem(`${SLIDES_KEY}-theme`, JSON.stringify(theme.value)) // tiny, first: chart/table colours follow it after a reload
+      localStorage.setItem(SLIDES_KEY, JSON.stringify(slides.value))
+    }
   }
   catch { // storage full: the session still works until reload; never leave an older saved deck behind
     localStorage.removeItem(SLIDES_KEY)
@@ -362,7 +365,11 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   const isFooter = (e: any) => e.top > H * 0.88 || (elText(e) && count[elText(e)] > slides.value.length / 2)
   const texts = base.elements.filter((e: any) => (e.type === 'text' || e.type === 'shape') && elText(e) && !isFooter(e))
   const title: any = texts.find((e: any) => e.textType === 'title') || [...texts].sort((x, y) => x.top - y.top)[0]
-  const keep = base.elements.filter((e: any) => isFooter(e) || e === title || (e.top + (e.height || 0) <= (title ? title.top + title.height : 0) + 2))
+  // header band: anything that starts above the title's bottom edge (+4%), e.g. an icon box or the rule under the title,
+  // except big pictures that belong to the old body
+  const band = title ? title.top + title.height + H * 0.04 : 0
+  const keep = base.elements.filter((e: any) => isFooter(e) || e === title
+    || (e.top <= band && !(e.type === 'text' && e !== title) && (e.width || 0) * (e.height || 0) < W * H * 0.15))
     .map(e => ({ ...JSON.parse(JSON.stringify(e)), id: nanoid(10) }))
   const t = keep.find((e: any) => title && e.left === title.left && e.top === title.top && elText(e) === elText(title)) as any
   const esc = (x: string) => String(x).replace(/</g, '&lt;')
@@ -379,8 +386,15 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   // the colour the title actually shows: its inline CSS colour (a fixed grammar: #hex or rgb()), else its default colour
   const titleHtml = t ? (t.type === 'shape' ? t.text.content : t.content) : ''
   const accent = titleHtml.match(/color:\s*(#[0-9a-fA-F]{6}|rgba?\([^)]*\))/)?.[1] || (t?.defaultColor || t?.text?.defaultColor || '')
-  if (accent && body.type === 'chart') body.themeColors = [accent, ...theme.value.themeColors]
-  if (accent && body.type === 'table') body.theme = { ...body.theme, color: accent }
+  // a grey or black title is no brand colour: then the deck theme's first colour leads
+  const isGrey = (c: string) => { // #rrggbb or rgb(r, g, b): channels within 24 of each other
+    const v = c.startsWith('#') ? (c.length === 4 ? [1, 2, 3].map(k => parseInt(c[k] + c[k], 16)) : [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16)))
+      : (c.match(/\d+/g) || []).slice(0, 3).map(Number)
+    return v.length === 3 && Math.max(...v) - Math.min(...v) < 24
+  }
+  const lead = accent && !isGrey(accent) ? accent : (theme.value.themeColors.find(c => !isGrey(c)) || theme.value.themeColors[0])
+  if (body.type === 'chart') body.themeColors = [lead, ...theme.value.themeColors.filter(c => c !== lead)]
+  if (body.type === 'table') body.theme = { ...body.theme, color: lead }
   const slide: Slide = {
     ...JSON.parse(JSON.stringify(base)), id: nanoid(10), animations: [],
     elements: [
@@ -764,7 +778,14 @@ onMounted(() => {
     saved = (s.mode === 'native' || s.edited) ? JSON.parse(localStorage.getItem(SLIDES_KEY) || 'null') : null
   }
   catch { /* nothing saved */ }
-  if (saved?.length) slidesStore.setSlides(saved)
+  if (saved?.length) {
+    slidesStore.setSlides(saved)
+    try {
+      const t = JSON.parse(localStorage.getItem(`${SLIDES_KEY}-theme`) || 'null')
+      if (t) slidesStore.setTheme(t)
+    }
+    catch { /* no saved theme */ }
+  }
   else if (s.mode === 'template' && s.versions.length) {
     s.edited = false // the editor copy was lost; the last built version is what is shown
     run('Loading your deck…', () => showPptx(s.versions[s.versions.length - 1].deckUrl))
