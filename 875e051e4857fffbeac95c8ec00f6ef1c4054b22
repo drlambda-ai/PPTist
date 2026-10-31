@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-10-31T06:05:29Z
+Fixed: each patch field is coerced to an array server-side, so a malformed one cannot break the merge.
