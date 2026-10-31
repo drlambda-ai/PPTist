@@ -117,6 +117,14 @@ def turn(p):
 ACTIONS = {"read": read, "learn": learn, "turn": turn}
 
 
+def drop(p):
+    """{url} -> remove a one-time upload (a deck opened from ChatSlide) once it has been read."""
+    return {"dropped": blob.drop(p["url"])}
+
+
+ACTIONS["drop"] = drop
+
+
 def run(action, payload):
     if action not in ACTIONS:
         raise ValueError(f"unknown action {action}")

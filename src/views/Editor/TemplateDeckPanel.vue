@@ -1009,6 +1009,24 @@ const restart = () => {
 
 // Bring the deck back after a page reload.
 onMounted(() => {
+  // opened from ChatSlide ("Edit in advanced editor"): ?pptx=<blob url> loads that deck as a fresh session
+  const link = new URLSearchParams(location.search).get('pptx')
+  let host = ''
+  try {
+    host = link ? new URL(link).hostname : ''
+  }
+  catch { /* not a URL */ }
+  if (link && host.endsWith('.public.blob.vercel-storage.com')) {
+    history.replaceState(null, '', location.pathname)
+    run('Opening your deck…', async () => {
+      await showPptx(link)
+      Object.assign(s, blank()) // only once the deck is in: a failed import keeps the previous session
+      localStorage.removeItem(SLIDES_KEY)
+      save()
+      deckApi('drop', { url: link }).catch(() => undefined) // the one-time copy is not kept in public storage
+    })
+    return
+  }
   let saved: Slide[] | null = null
   try {
     saved = (s.mode === 'native' || s.edited) ? JSON.parse(localStorage.getItem(SLIDES_KEY) || 'null') : null

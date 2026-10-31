@@ -29,6 +29,18 @@ def put(name, data, content_type="application/octet-stream"):
         return json.load(r)["url"]
 
 
+def drop(url):
+    """Delete a file this app stored (only our own store's deck/ files; best effort)."""
+    host = urllib.parse.urlparse(url).hostname or ""
+    if not TOKEN or not host.endswith(".blob.vercel-storage.com") or "/deck/" not in url:
+        return False
+    req = urllib.request.Request("https://vercel.com/api/blob/delete", data=json.dumps({"urls": [url]}).encode(),
+                                 method="POST", headers={"authorization": f"Bearer {TOKEN}", "x-api-version": "13",
+                                                         "content-type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30):
+        return True
+
+
 def get(url):
     if url.startswith(LOCAL_PREFIX):
         rel = os.path.normpath(url[len(LOCAL_PREFIX):])
