@@ -792,16 +792,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const total = parts.filter(p => /^\[page \d+\]/.test(p)).length
     const missing = want.filter(n => n < 1 || n > total)
     if (want.length && total && missing.length === want.length) fail(Z ? `「${doc.name}」只有 ${total} 页。` : `${doc.name} has only ${total} pages.`)
-    const picked = want.length && total ? parts.filter(p => want.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
+    const got = want.filter(n => !missing.includes(n))
+    const picked = want.length && total ? parts.filter(p => got.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
     if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(Z ? `「${doc.name}」这几页读不出文字（可能是扫描图片）。` : `No text could be read from ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''} (it may be a scanned image).`)
-    memo = `Text of ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''}:\n${picked.slice(0, 12000)}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}`
-    return Z ? `已读取「${doc.name}」${want.length ? `第 ${want.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${want.join(', ')}` : ''}.`
+    memo = `<file-content name="${doc.name}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${picked.slice(0, 12000)}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
+    const skipped = missing.length && total ? (Z ? `（没有第 ${missing.join('、')} 页，共 ${total} 页）` : ` (no page ${missing.join(', ')}; it has ${total})`) : ''
+    return (Z ? `已读取「${doc.name}」${want.length ? `第 ${got.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${got.join(', ')}` : ''}.`) + skipped
   }
   if (action === 'web_search') {
     busy.value = Z ? '正在网上搜索…' : 'Searching the web…'
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
     if (r.error || !r.sources?.length) fail(Z ? `网上没有找到可靠的来源（${args.query}），所以没有添加引用。` : `I found no reliable sources online for "${args.query}", so I added no citations.`)
-    memo = `Web search results (cite only these):\n${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}`
+    memo = `<web-results>\n${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}\n</web-results>`
     return Z ? `已在网上找到 ${r.sources.length} 个来源。` : `Found ${r.sources.length} source(s) online.`
   }
   if (action === 'merge_pages') {
@@ -1056,7 +1058,7 @@ let memo = ''
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
-  const hadPending = !!s.pending
+  const pendingAtStart = s.pending || null
   const done: string[] = []
   const replies: string[] = []
   let changed = false
@@ -1107,7 +1109,7 @@ const deckTurn = async (text: string) => {
     }
     if (work.every((c: any) => ['answer_question', 'ask_user'].includes(c.action))) break // a question is asked/answered once
   }
-  if (hadPending) { // the answer was used (or superseded); the question is no longer open
+  if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
     save()
   }
