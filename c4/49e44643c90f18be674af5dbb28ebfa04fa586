@@ -1,0 +1,2 @@
+Codex-Review: passed
+Fixed: P2 polling shorter than the route maxDuration; P2 every 402 shown as credits; P2 figure cache reused across same-name files
