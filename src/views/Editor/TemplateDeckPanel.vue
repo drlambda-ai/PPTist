@@ -1092,7 +1092,10 @@ const deckTurn = async (text: string) => {
     // is re-planned against the updated deck in the next round
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
-    if (!work.length && left && String(left).trim()) replies.push(String(left).trim()) // never pretend the rest is done
+    if (!work.length && left && String(left).trim()) { // never pretend the rest is done
+      replies.push(String(left).trim())
+      terse.push(String(left).trim())
+    }
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
@@ -1105,6 +1108,7 @@ const deckTurn = async (text: string) => {
       catch (e) {
         if (!(e instanceof StepFailed)) throw e
         replies.push(e.message)
+        terse.push(e.message)
         round = 99 // stop: report what could not be done instead of retrying it
         break
       }
