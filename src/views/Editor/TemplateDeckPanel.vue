@@ -633,8 +633,10 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
 // Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
 // Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
 let pictureNote = ''
+let pictureSource: 'photo' | 'wikimedia' | 'ai' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
 const findPicture = async (query: string, source: string, landscape: boolean) => {
   pictureNote = ''
+  pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   const Z = zh(userText)
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
@@ -647,6 +649,7 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
     const src = r.data?.[0]?.src // the services axios instance already unwraps response.data
     if (src) return src as string
     pictureNote = Z ? `没有匹配的图库照片，所以用 AI 生成了一张。` : 'No stock photo matched, so I generated one with AI.'
+    pictureSource = 'ai'
   }
   const r = await fetch('/api/tools/ai_image', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -685,7 +688,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
 
 // New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
 // a new page's title, for replies: page numbers shift when later steps insert pages, titles do not
-const titleAt = (i: number) => (slides.value[i] ? pageText(slides.value[i]).replace(/\[[^\]]*\]/g, '').trim().slice(0, 50) : '') || (zh(userText) ? `第 ${i + 1} 页` : `page ${i + 1}`)
+const titleAt = (i: number) => (slides.value[i] ? (readingOrder(slides.value[i]).map(elText).find(Boolean) || '').slice(0, 50) : '') || (zh(userText) ? `第 ${i + 1} 页` : `page ${i + 1}`)
 const beforeClosing = (at: number) => {
   const last = slides.value[slides.value.length - 1]
   // a generated deck marks it (type 'end'); in an imported deck the closing page is a last page with almost no text
@@ -756,7 +759,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     slidesStore.updateSlideIndex(pos(id))
-    const how = args.source === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : args.source === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     return (Z ? `已插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}".`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
@@ -928,7 +931,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
     const note = await changeImage(text, id, args.image, args.query, args.source)
-    const how = args.source === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : args.source === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced with a ${how} for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
@@ -973,7 +976,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       }
     }
     const note = missed.length ? (Z ? `（第 ${missed.join('、')} 页的大色块没能改色，可能仍会挡住背景）` : ` (the large shapes on page(s) ${missed.join(', ')} could not be recoloured and may still cover it)`) : ''
-    const bgHow = args.photo_query ? (Z ? `“${String(args.photo_query).slice(0, 60)}”的图库照片` : `a stock photo for "${String(args.photo_query).slice(0, 60)}"`) : (Z ? `颜色 ${args.color}` : `colour ${args.color}`)
+    const bgHow = args.photo_query
+      ? (pictureSource === 'ai' ? (Z ? `“${String(args.photo_query).slice(0, 60)}”的 AI 生成图片` : `an AI-generated picture for "${String(args.photo_query).slice(0, 60)}"`) : (Z ? `“${String(args.photo_query).slice(0, 60)}”的图库照片` : `a stock photo for "${String(args.photo_query).slice(0, 60)}"`))
+      : (Z ? `颜色 ${args.color}` : `colour ${args.color}`)
     return (Z ? `已把 ${targets.length} 页背景设为${bgHow}。` : `Background of ${targets.length} page(s) set to ${bgHow}.`) + note
   }
   if (action === 'write_notes') {

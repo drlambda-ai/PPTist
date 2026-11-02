@@ -314,7 +314,7 @@ export default async function handler(req: any, res: any) {
     if (body.localize) { // the turn's reply, written by code in English, said in the language of the user's message
       const raw = await chat([
         { role: 'system', content: 'Two jobs. (1) Translate the assistant reply into the language the user wrote their message in; keep its meaning, numbers and line breaks; if it is already in that language, copy it unchanged. (2) missing: the user\'s message may ask for several things; if a part was clearly asked for and NOTHING in the reply mentions doing it, asking about it, or declining it, write one short sentence in the user\'s language saying that part was not done (e.g. "I did not add more pictures."). Be conservative: when the reply plausibly covers it, missing is "". Return JSON {"reply": "<translated reply>", "missing": "<sentence or empty>"}.' },
-        { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 500)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
+        { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
       ], { model: MODEL, maxTokens: 1500, jsonMode: true })
       let reply = '', missing = ''
       try {
