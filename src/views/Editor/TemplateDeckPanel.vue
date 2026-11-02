@@ -1144,6 +1144,9 @@ const deckTurn = async (text: string) => {
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
+    // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
+    // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
+    if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) break
     for (const c of work) {
       busy.value = `Working (step ${done.length + 1})…`
       let reply = ''
@@ -1189,10 +1192,8 @@ const finalize = async (instruction: string, reply: string, steps: string[]) => 
     // the steps (tool, arguments, result) are the evidence of what was done; the reply alone is too terse to judge
     const evidence = steps.map(d => d.split('\n')[0].slice(0, 300))
     const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, steps: evidence }) })).json()
-    // a turn that ends by asking the user something has said what is still open; nothing to add
-    const asked = /[?？]\s*$/.test(reply.trim()) || /^ask_user /.test(steps[steps.length - 1] || '') // the turn ended on the question
-    const missing = asked ? '' : String(r.missing || '').trim()
-    return (r.reply || reply) + (missing ? `\n${missing}` : '')
+    void steps // the generated "not done" sentence was wrong more often than right (audited 2026-11-02); the router's not_done and the code's own replies carry that
+    return r.reply || reply
   }
   catch {
     return reply
