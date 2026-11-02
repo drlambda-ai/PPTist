@@ -1,0 +1,2 @@
+Codex-Review: passed
+Fixed: P2 second delete silently skipped -> now said in the reply (one pass per message is deliberate: a re-plan over-deleted)
