@@ -119,6 +119,12 @@ const TOOLS = [
     file: { type: 'string', description: 'The attached file name exactly as listed' },
     pages: { type: 'array', items: { type: 'integer' }, description: 'PDF page numbers to read; empty = the whole file' },
   }, ['file', 'pages']),
+  fn('find_papers', 'Find real academic papers (peer-reviewed sources, with authors, year, journal and DOI) for academic, medical or scientific citations, references, evidence or a literature slide. Returns them under "Done so far"; then cite only those.', {
+    query: { type: 'string', description: 'The research topic in English, specific' },
+  }, ['query']),
+  fn('read_link', 'Read a web page or YouTube video the user pasted (a URL in their message) so its content can go on slides. Returns the text under "Done so far".', {
+    url: { type: 'string', description: 'The URL exactly as the user gave it' },
+  }, ['url']),
   fn('web_search', 'Search the web for facts, statistics, recent information, examples, evidence, citations or sources. Returns an answer with real source links under "Done so far"; then put them on the slide(s) with edit_page/add_page, citing only those links.', {
     query: { type: 'string', description: 'What to search for, specific to the slide topic' },
   }, ['query']),
@@ -182,6 +188,8 @@ Rules:
    The user mentions a file but none is attached -> answer_question: ask them to attach it with the 📎 icon.
    What a read_file or web_search step returned goes on the page the user is looking at (edit_page on that page), or
    on the page they named; never on some other page.
+   Academic/medical/scientific citations, references, studies, "peer-reviewed", "APA/Vancouver sources", a bibliography
+   slide -> find_papers first. A URL in the user's message (a page or a YouTube video) -> read_link first, then use it.
    Citations, sources, references, evidence, statistics, "latest"/"current" facts, real-world examples, or "search
    online/google it" -> web_search first, then edit_page/add_page with ONLY the facts and links it returned. Never
    write a citation, URL, study or statistic that did not come from web_search, the deck, or a file.

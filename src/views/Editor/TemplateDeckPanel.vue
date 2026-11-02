@@ -862,6 +862,20 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const skipped = missing.length && total ? (Z ? `（没有第 ${missing.join('、')} 页，共 ${total} 页）` : ` (no page ${missing.join(', ')}; it has ${total})`) : ''
     return (Z ? `已读取「${doc.name}」${want.length ? `第 ${got.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${got.join(', ')}` : ''}.`) + skipped
   }
+  if (action === 'find_papers') {
+    busy.value = Z ? '正在查找学术文献…' : 'Finding papers…'
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'scholar', query: args.query }) })).json()
+    if (r.error || !r.papers?.length) fail(Z ? `没有找到关于“${args.query}”的学术文献，所以没有添加引用。` : `I found no papers on "${args.query}", so I added no citations.`)
+    memo = `<web-results>\n${fence(r.papers.map((p: any, i: number) => `[${i + 1}] ${p.authors} (${p.year}). ${p.title}. ${p.venue}. ${p.url} (cited ${p.cited}x)`).join('\n'))}\n</web-results>`
+    return Z ? `已找到 ${r.papers.length} 篇相关文献。` : `Found ${r.papers.length} relevant paper(s).`
+  }
+  if (action === 'read_link') {
+    busy.value = Z ? '正在读取链接…' : 'Reading the link…'
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'url', query: args.url }) })).json()
+    if (r.error || !String(r.text || '').trim()) fail(Z ? `没能读取这个链接（${r.error || '没有内容'}）。` : `I could not read that link (${r.error || 'no content'}).`)
+    memo = `<file-content name="${String(r.title).replace(/["<>]/g, '').slice(0, 80)}">\n${fence(String(r.text).slice(0, 12000))}\n</file-content>`
+    return Z ? `已读取${r.kind === 'video transcript' ? '视频字幕' : '网页'}：${String(r.title).slice(0, 60)}。` : `Read the ${r.kind}: ${String(r.title).slice(0, 60)}.`
+  }
   if (action === 'web_search') {
     busy.value = Z ? '正在网上搜索…' : 'Searching the web…'
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
@@ -1223,7 +1237,7 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'go_to_page'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
     }
     if (work.every((c: any) => ['answer_question', 'ask_user', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }

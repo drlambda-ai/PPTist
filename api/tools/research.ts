@@ -45,14 +45,45 @@ const wikimedia = async (query: string) => {
   }
 }
 
+// Academic papers (OpenAlex: free, no key, the same corpus as Semantic Scholar without its anonymous rate limit)
+const scholar = async (query: string) => {
+  const params = new URLSearchParams({ search: query, 'per-page': '6', select: 'display_name,publication_year,doi,authorships,primary_location,cited_by_count', mailto: 'contact@chatslide.ai' })
+  const r = await fetch(`https://api.openalex.org/works?${params}`)
+  if (!r.ok) throw new Error(`openalex ${r.status}`)
+  const works = ((await r.json()).results || []) as any[]
+  return {
+    papers: works.map(w => ({
+      title: w.display_name, year: w.publication_year, cited: w.cited_by_count,
+      authors: (w.authorships || []).slice(0, 3).map((a: any) => a.author?.display_name).filter(Boolean).join(', ') + ((w.authorships || []).length > 3 ? ' et al.' : ''),
+      venue: w.primary_location?.source?.display_name || '', url: w.doi || w.primary_location?.landing_page_url || '',
+    })).filter(p => p.title),
+  }
+}
+
+// A page or a YouTube video the user pasted: its text (Supadata), so the chat can build slides from it
+const readUrl = async (url: string) => {
+  const key = process.env.SUPADATA_API_KEY
+  if (!key) throw new Error('reading links is not configured')
+  if (!/^https?:\/\//i.test(url)) throw new Error('not a web link')
+  const yt = /(^|\.)(youtube\.com|youtu\.be)$/i.test(new URL(url).hostname)
+  const endpoint = yt ? 'https://api.supadata.ai/v1/transcript' : 'https://api.supadata.ai/v1/web/scrape'
+  const params = new URLSearchParams({ url, ...(yt ? { text: 'true' } : {}) })
+  const r = await fetch(`${endpoint}?${params}`, { headers: { 'x-api-key': key } })
+  if (!r.ok) throw new Error(`could not read that link (${r.status})`)
+  const d = await r.json()
+  return { title: d.name || d.title || url, text: String(d.content || '').slice(0, 60000), kind: yt ? 'video transcript' : 'web page' }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
     const { kind = '', query = '' } = await readBody(req)
     if (!String(query).trim()) { res.status(400).json({ error: 'query required' }); return }
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
+    else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))
+    else if (kind === 'url') res.status(200).json(await readUrl(String(query).trim().slice(0, 2000)))
     else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200)))
-    else res.status(400).json({ error: 'kind must be web or wikimedia' })
+    else res.status(400).json({ error: 'kind must be web, scholar, url or wikimedia' })
   }
   catch (e: any) {
     res.status(500).json({ error: String(e?.message || e) })
