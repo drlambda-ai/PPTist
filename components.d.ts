@@ -83,6 +83,7 @@ declare module 'vue' {
     'IIconParkOutline:indentRight': typeof import('~icons/icon-park-outline/indent-right')['default']
     'IIconParkOutline:insertTable': typeof import('~icons/icon-park-outline/insert-table')['default']
     'IIconParkOutline:left': typeof import('~icons/icon-park-outline/left')['default']
+    'IIconParkOutline:link': typeof import('~icons/icon-park-outline/link')['default']
     'IIconParkOutline:linkOne': typeof import('~icons/icon-park-outline/link-one')['default']
     'IIconParkOutline:list': typeof import('~icons/icon-park-outline/list')['default']
     'IIconParkOutline:listView': typeof import('~icons/icon-park-outline/list-view')['default']
