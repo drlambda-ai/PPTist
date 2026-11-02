@@ -769,7 +769,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     touched([id])
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
-    return (Z ? `已插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}".`) + (pictureNote ? ` ${pictureNote}` : '')
+    const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
+    const where = Z ? `${cy < 1 / 3 ? '上' : cy > 2 / 3 ? '下' : '中'}${cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '中'}` : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
+    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}" at the ${where} (the free space there).`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -831,7 +833,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
     if (r.error || !r.sources?.length) fail(Z ? `网上没有找到可靠的来源（${args.query}），所以没有添加引用。` : `I found no reliable sources online for "${args.query}", so I added no citations.`)
     memo = `<web-results>\n${fence(`${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}`)}\n</web-results>`
-    return Z ? `已在网上找到 ${r.sources.length} 个来源。` : `Found ${r.sources.length} source(s) online.`
+    return Z ? '已在网上查到资料。' : 'Searched online.'
   }
   if (action === 'merge_pages') {
     const ids = nums(args.pages)
@@ -858,6 +860,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const rest = slides.value.filter(x => !move.includes(x.id))
     const at = Math.min(Math.max((args.to || 1) - 1, 0), rest.length)
     rest.splice(at, 0, ...moved)
+    if (rest.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(Z ? '这些页已经在那个位置了，顺序没有变化。' : 'Those pages are already there; the order is unchanged.')
     slidesStore.setSlides(rest)
     return Z ? `已移动到第 ${at + 1} 页。` : `Moved to position ${at + 1}.`
   }
@@ -865,6 +868,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const order = nums(args.order)
     const list = [...order, ...slides.value.map(x => x.id).filter(id => !order.includes(id))] // pages left out keep their relative order at the end
       .map(id => slides.value[pos(id)])
+    if (list.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(Z ? '这已经是当前的顺序，没有变化。' : 'That is already the current order; nothing changed.')
     slidesStore.setSlides(list)
     return Z ? '已重新排序。' : 'Reordered.'
   }
@@ -1171,7 +1175,7 @@ const deckTurn = async (text: string) => {
       memo = ''
       if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'go_to_page'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => ['answer_question', 'ask_user'].includes(c.action))) break // a question is asked/answered once
+    if (work.every((c: any) => ['answer_question', 'ask_user', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
