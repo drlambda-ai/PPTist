@@ -841,7 +841,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const extra = rest.map(id => readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')).join('\n\n')
     await editSlide(pos(keep), `Combine the content below into this page: keep this page's title, add the points of the other page(s) condensed so everything fits without overflow, and rearrange the layout if needed. ${args.instruction || ''}\n\nContent of the other page(s):\n${extra}`)
     slidesStore.deleteSlide(rest)
-    return Z ? `已把 ${ids.length} 页合并为第 ${pos(keep) + 1} 页。` : `Combined ${ids.length} pages into page ${pos(keep) + 1}.`
+    return Z ? `已把 ${ids.length} 页合并为第 ${pos(keep) + 1} 页，现在共 ${slides.value.length} 页。` : `Combined ${ids.length} pages into page ${pos(keep) + 1}; ${slides.value.length} remain.`
   }
   if (action === 'duplicate_pages') {
     const list = [...slides.value]
