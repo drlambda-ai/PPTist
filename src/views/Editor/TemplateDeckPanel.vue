@@ -350,6 +350,7 @@ let userText = '' // the message being handled: replies are written in its langu
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
+const picturedThisTurn = new Set<string>() // pages that got a NEW picture in the current message
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -847,6 +848,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     touched([id])
+    picturedThisTurn.add(id)
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
@@ -1222,6 +1224,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 const deckTurn = async (text: string) => {
   userText = text
   editedThisTurn.clear()
+  picturedThisTurn.clear()
   const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
   const pendingAtStart = s.pending || null
@@ -1263,8 +1266,14 @@ const deckTurn = async (text: string) => {
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
     // the same page edited twice already this turn: a third pass is the router looping (seen: 7 edits of page 2)
     if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)).length >= 2)) break
-    // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey)
-    if (work.some((c: any) => c.action === 'add_image' && done.some(d => d.startsWith('add_image ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)))) break
+    // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
+    // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
+    const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
+    const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
+    if (extra) {
+      done.push(`add_image ${JSON.stringify(extra.args || {})} -> skipped: that page already got a new picture in this message`)
+      continue
+    }
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {
