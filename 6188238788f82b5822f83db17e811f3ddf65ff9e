@@ -1,0 +1,3 @@
+Codex-Review: passed
+Declined: MEDIUM 'nothing was changed' after partial edits (send() restores the pre-message deck before run() shows the line, so it is true for chat turns)
+Declined-By: Claude (triage), Quanlai may overrule
