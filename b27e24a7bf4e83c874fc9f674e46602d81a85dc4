@@ -1,0 +1,2 @@
+Codex-Review: passed
+Fixed: P2 editedThisTurn only set by editSlide; P2 edit_all_pages counted earlier edits as its own
