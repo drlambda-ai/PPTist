@@ -915,7 +915,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const ok = all.length - same.length - failed.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
     const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
-      + (same.length ? (Z ? `第 ${list(same)} 页没有改动。` : ` Page(s) ${list(same)} were not changed.`) : '')
+      + (same.length ? (Z ? `第 ${list(same)} 页已经是这样了。` : ` Page(s) ${list(same)} already were.`) : '')
+    if (!ok && !failed.length) fail(Z ? '没有哪一页有需要这样改的内容。' : 'No page had anything to change for that.')
     if (!ok) fail((Z ? '这个修改我没能做成。' : 'I could not make that change.') + why)
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} of ${all.length} pages.`) + why
   }
