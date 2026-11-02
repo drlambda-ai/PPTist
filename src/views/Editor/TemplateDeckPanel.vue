@@ -1190,7 +1190,7 @@ const finalize = async (instruction: string, reply: string, steps: string[]) => 
     const evidence = steps.map(d => d.split('\n')[0].slice(0, 300))
     const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, steps: evidence }) })).json()
     // a turn that ends by asking the user something has said what is still open; nothing to add
-    const asked = /[?？]\s*$/.test(reply.trim()) || steps.some(d => /^(ask_user|answer_question|talk_to_human) /.test(d))
+    const asked = /[?？]\s*$/.test(reply.trim()) || /^ask_user /.test(steps[steps.length - 1] || '') // the turn ended on the question
     const missing = asked ? '' : String(r.missing || '').trim()
     return (r.reply || reply) + (missing ? `\n${missing}` : '')
   }
