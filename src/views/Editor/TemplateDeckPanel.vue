@@ -321,6 +321,7 @@ const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewpor
 let userText = '' // the message being handled: replies are written in its language
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
+const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -670,6 +671,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const src = await findPicture(query, source, el.width >= el.height)
   if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
+  touched([slideId])
   return pictureNote
 }
 
@@ -763,6 +765,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
     if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
+    touched([id])
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     return (Z ? `已插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}".`) + (pictureNote ? ` ${pictureNote}` : '')
@@ -778,6 +781,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       if (!drop.size) continue
       n += drop.size
       slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter(e => !drop.has(e.id)) }, id)
+      touched([id])
     }
     if (!n) fail(Z ? '没有可删除的图片。' : 'There is no picture to remove.')
     return Z ? `已删除 ${n} 张图片。` : `Removed ${n} picture(s).`
@@ -878,6 +882,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    touched(targets)
     const font = String(args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
     if (!font) fail(Z ? '请说明要换成哪种字体。' : 'Which font?')
     const setIn = (html: string) => html.replace(/font-family:\s*[^;"]*/g, `font-family: ${font}`)
@@ -925,7 +930,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     const earlier = same.filter(p => editedThisTurn.has(all[p - 1])) // done by an earlier step of this turn
     const untouched = same.filter(p => !editedThisTurn.has(all[p - 1]))
-    const ok = all.length - untouched.length - failed.length
+    const changedNow = all.length - same.length - failed.length
+    if (!changedNow && earlier.length && !untouched.length && !failed.length) return Z ? '这些页在前一步已经改好，没有进一步的改动。' : 'No further change: the earlier step already covered these pages.'
+    const ok = changedNow + earlier.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
     const what = String(args.instruction || '').slice(0, 60)
     const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
@@ -969,6 +976,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     }
     else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(Z ? '请给出背景颜色。' : 'Which background colour?')
     for (const id of targets) slidesStore.updateSlide({ background }, id)
+    touched(targets)
     const missed: number[] = []
     // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too
     if (!args.photo_query) {
