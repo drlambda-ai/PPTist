@@ -318,6 +318,14 @@ const editSlide = async (index: number, instruction: string) => {
   // a shape's words (every text box of an imported ChatSlide/PowerPoint deck) are shown like a text box's: the model
   // edits "content" the same way on both, and the merge puts it back inside the shape's text
   const flat = (e: any) => (e.type === 'shape' && e.text ? (({ text, ...r }) => ({ ...r, content: text.content, defaultColor: text.defaultColor, defaultFontName: text.defaultFontName }))(e) : e)
+  // the model copies what it sees, so a new box often comes back as a "shape" with "content": put the words where
+  // the editor draws them (a shape's text, or a plain text box when it has no outline)
+  const unflat = (e: any) => {
+    if (e.type !== 'shape' || e.content === undefined) return e
+    const { content, defaultColor, defaultFontName, ...rest } = e
+    if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
+    return { ...rest, text: { content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', align: 'middle' } }
+  }
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
@@ -346,7 +354,7 @@ const editSlide = async (index: number, instruction: string) => {
       }
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
-    ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)),
+    ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
   ]
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
   slidesStore.updateSlide({ elements: merged }, slide.id)
