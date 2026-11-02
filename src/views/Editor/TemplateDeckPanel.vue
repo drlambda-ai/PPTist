@@ -1045,6 +1045,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
   }
   if (action === 'open_step') {
+    if (!chatslide?.goto && args.step !== 'video') { // no Scripts step outside ChatSlide: the notes here ARE the script
+      const targets = slides.value.map(x => x.id)
+      const written = await writeNotes(targets, text)
+      if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
+      return Z ? `已写好 ${written} 页的演讲备注（脚本）。` : `Wrote the speaker notes (the script) for ${written} page(s).`
+    }
     if (!chatslide?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
     await chatslide.goto(args.step === 'video' ? 'video' : 'scripts')
     return args.step === 'video' ? (Z ? '正在打开视频步骤。' : 'Opening the Video step.') : (Z ? '正在打开脚本步骤。' : 'Opening the Scripts step.')
@@ -1160,6 +1166,8 @@ const deckTurn = async (text: string) => {
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
+    // the same page edited twice already this turn: a third pass is the router looping (seen: 7 edits of page 2)
+    if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && d.includes(`"index":${c.args?.index},`)).length >= 2)) break
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {

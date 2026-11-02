@@ -192,6 +192,8 @@ Rules:
    A complaint that the deck is (still) in English / in the wrong language ("continuam em inglês", "all in English")
    -> edit_all_pages translating into the language the user wrote in.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
+   "Limit to N / at most N / 不超过N页" when the deck already has N or fewer pages -> answer_question saying it already
+   has that many; NEVER duplicate or add pages to reach a limit.
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain
    (the count wins: keep the cover and the closing page only while N leaves room for them after the content; prefer
    deleting pages that repeat others). Never write_notes for it. When the cut removes half the deck or
