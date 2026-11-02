@@ -884,7 +884,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return Z ? `已对调第 ${i + 1} 页和第 ${j + 1} 页。` : `Swapped pages ${i + 1} and ${j + 1}.`
   }
   if (action === 'edit_page') {
-    const i = pos(idOf(args.index))
+    // no page named: the page the user is looking at, like the classic assistant
+    const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
+    const i = pos(idOf(target))
     const reply = await editSlide(i, args.instruction)
     slidesStore.updateSlideIndex(i)
     return reply

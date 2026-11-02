@@ -57,7 +57,8 @@ const TOOLS = [
   }, ['pages', 'instruction']),
   fn('edit_page', 'Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
-  }, ['index', 'instruction']),
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
+  }, ['index', 'instruction', 'page_named']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"' },
