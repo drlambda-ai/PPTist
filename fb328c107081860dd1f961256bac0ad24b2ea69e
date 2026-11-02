@@ -1,0 +1,2 @@
+Codex-Review: passed
+Fixed: MEDIUM whole-file heuristic -> per page with image check; MEDIUM unbounded pixmap -> 1600px cap; MEDIUM one failure lost all -> per-page try, 60s/1 retry
