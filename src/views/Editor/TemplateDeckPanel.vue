@@ -797,6 +797,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(after)
     return Z ? `已加入表格页「${titleAt(after)}」。` : `Added a table page "${titleAt(after)}".`
   }
+  if (args.page_named === false && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
     if (!file) fail(s.docs.some(d => d.name === args.file)
@@ -854,7 +855,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const movedNote = moved ? (Z ? `（${askedX > 2 / 3 ? '右' : '左'}侧没有空位，所以放在了这里）` : ` (no free space on the ${askedX > 2 / 3 ? 'right' : 'left'}, so it went here)`) : ''
     const zhWhere = (cy < 1 / 3 || cy > 2 / 3 ? (cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '') + (cy < 1 / 3 ? '上' : '下') + (cx >= 1 / 3 && cx <= 2 / 3 ? '方' : '') : cx < 1 / 3 ? '左侧' : cx > 2 / 3 ? '右侧' : '正中')
     const where = Z ? zhWhere : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
-    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片${movedNote}。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}" at the ${where}${movedNote}.`) + (pictureNote ? ` ${pictureNote}` : '')
+    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片${movedNote}。` : `Added a picture (${how}) for "${String(args.query || '').slice(0, 60)}" at the ${where}${movedNote}.`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -1051,7 +1052,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(pos(id))
     const note = await changeImage(text, id, args.image, args.query, args.source)
     const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
-    return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced with a ${how} for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
+    return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced (${how}) for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
     const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)
@@ -1262,6 +1263,8 @@ const deckTurn = async (text: string) => {
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
     // the same page edited twice already this turn: a third pass is the router looping (seen: 7 edits of page 2)
     if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)).length >= 2)) break
+    // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey)
+    if (work.some((c: any) => c.action === 'add_image' && done.some(d => d.startsWith('add_image ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)))) break
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {

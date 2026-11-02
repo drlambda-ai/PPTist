@@ -72,7 +72,8 @@ const TOOLS = [
     image: { type: 'integer', description: '1-based number of the image on that page, in the listed order; 1 if there is only one' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
-  }, ['index', 'image', 'query', 'source']),
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
+  }, ['index', 'image', 'query', 'source', 'page_named']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -91,7 +92,8 @@ const TOOLS = [
       description: 'Where, in percent of the slide (0-100): left, top, width, height. Pick free space on that page.',
       properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } },
     },
-  }, ['index', 'query', 'source', 'box']),
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
+  }, ['index', 'query', 'source', 'box', 'page_named']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo").', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
@@ -123,8 +125,9 @@ const TOOLS = [
     file: { type: 'string', description: 'The attached file name exactly as listed' },
     file_pages: { type: 'array', items: { type: 'integer' }, description: 'Pages of the FILE whose pictures to use; empty = any' },
     index: page,
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
     count: { type: 'integer', description: 'How many pictures, 1-6 (default 1)' },
-  }, ['file', 'file_pages', 'index', 'count']),
+  }, ['file', 'file_pages', 'index', 'count', 'page_named']),
   fn('find_papers', 'Find real academic papers (peer-reviewed sources, with authors, year, journal and DOI) for academic, medical or scientific citations, references, evidence or a literature slide. Returns them under "Done so far"; then cite only those.', {
     query: { type: 'string', description: 'The research topic in English, specific' },
   }, ['query']),
