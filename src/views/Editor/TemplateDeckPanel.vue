@@ -1146,7 +1146,11 @@ const deckTurn = async (text: string) => {
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
-    if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) break
+    if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {
+      replies.push(zh(text) ? '这一轮只做一次整体删除/重排/全页修改；如果还有别的页要处理，请再说一次。' : 'One round of deleting, reordering or deck-wide editing per message; if more pages should change, say which.')
+      terse.push(replies[replies.length - 1])
+      break
+    }
     for (const c of work) {
       busy.value = `Working (step ${done.length + 1})…`
       let reply = ''
