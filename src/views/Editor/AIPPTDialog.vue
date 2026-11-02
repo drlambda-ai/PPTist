@@ -124,6 +124,7 @@ import { ref, onMounted, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { jsonrepair } from 'jsonrepair'
 import api from '@/services'
+import { OutOfCredits } from '@/embed'
 import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import type { AIPPTSlide } from '@/types/AIPPT'
@@ -189,11 +190,19 @@ const createOutline = async () => {
   loading.value = true
   outlineCreating.value = true
   
-  const stream = await api.AIPPT_Outline({
-    content: keyword.value,
-    language: language.value,
-    model: model.value,
-  })
+  let stream: any
+  try {
+    stream = await api.AIPPT_Outline({
+      content: keyword.value,
+      language: language.value,
+      model: model.value,
+    })
+  }
+  catch (e) {
+    loading.value = false
+    outlineCreating.value = false
+    return message.error(e instanceof OutOfCredits ? t('积分不够了，升级方案后可以继续') : String((e as Error).message || e))
+  }
   if (typeof stream === 'object' && stream.state === -1) {
     loading.value = false
     return message.error(t('该模型API的并发数过高，请更换其他模型重试'))
@@ -234,12 +243,21 @@ const createPPT = async (template?: { slides: Slide[], theme: SlideTheme }) => {
 
   if (overwrite.value) resetSlides()
 
-  const stream = await api.AIPPT({
-    content: outline.value,
-    language: language.value,
-    style: style.value,
-    model: model.value,
-  })
+  let stream: any
+  try {
+    stream = await api.AIPPT({
+      content: outline.value,
+      language: language.value,
+      style: style.value,
+      model: model.value,
+    })
+  }
+  catch (e) {
+    loading.value = false
+    message.closeAll()
+    mainStore.setAIPPTDialogState(true)
+    return message.error(e instanceof OutOfCredits ? t('积分不够了，升级方案后可以继续') : String((e as Error).message || e))
+  }
   if (typeof stream === 'object' && stream.state === -1) {
     loading.value = false
     message.closeAll()

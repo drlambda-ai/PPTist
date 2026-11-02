@@ -16,6 +16,22 @@ export interface ChatSlideHost {
   share?: () => Promise<{ url: string, copied: boolean }>
   goto?: (step: 'scripts' | 'video') => Promise<void>
   support?: (message: string) => Promise<string>
+  outOfCredits?: () => void // ChatSlide opens its plans/paywall
+}
+
+// A proxied call that ChatSlide refused for lack of credits (HTTP 402).
+export class OutOfCredits extends Error {
+  credits = 0
+  required = 0
+}
+
+// Credits the proxy charged since the last takeSpend() (read by the chat panel for its footnote).
+let spent = 0
+let left = -1
+export const takeSpend = () => {
+  const out = { charged: spent, left }
+  spent = 0
+  return out
 }
 
 export const host: ChatSlideHost | null = (() => {
@@ -44,7 +60,21 @@ if (host) {
     const req = new Request(to, input instanceof Request ? input : undefined)
     const headers = new Headers(init?.headers || req.headers)
     headers.set('Authorization', `Bearer ${await host.token()}`)
-    return fetch0(new Request(req, { ...init, headers }))
+    const r = await fetch0(new Request(req, { ...init, headers }))
+    if (r.status === 402) {
+      const data = await r.json().catch(() => ({}))
+      host.outOfCredits?.()
+      const e = new OutOfCredits('out of credits')
+      e.credits = Number(data.credits) || 0
+      e.required = Number(data.required) || 0
+      throw e
+    }
+    const charged = Number(r.headers.get('x-credits-charged') || 0)
+    if (charged > 0) {
+      spent += charged
+      left = Number(r.headers.get('x-credits-left') || -1)
+    }
+    return r
   }
 }
 

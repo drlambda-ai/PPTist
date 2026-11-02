@@ -52,7 +52,7 @@
 
 <script lang="ts" setup>
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { host as chatslide } from '@/embed'
+import { host as chatslide, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
@@ -164,7 +164,8 @@ const run = async (label: string, fn: () => Promise<void>) => {
     await fn()
   }
   catch (e) {
-    say('assistant', 'That failed: ' + ((e as Error).message || e))
+    if (e instanceof OutOfCredits) say('assistant', zh(userText) ? `积分不够了（还需 ${e.required}，剩 ${e.credits}）。升级方案后可以继续。` : `You're out of credits (this needs ${e.required}, you have ${e.credits}). Upgrade your plan to keep going.`)
+    else say('assistant', 'That failed: ' + ((e as Error).message || e))
   }
   busy.value = ''
 }
@@ -1120,7 +1121,9 @@ const deckTurn = async (text: string) => {
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
   const reply = replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
-  say('assistant', zh(text) ? reply : await localize(text, reply))
+  const sp = takeSpend()
+  const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
+  say('assistant', (zh(text) ? reply : await localize(text, reply)) + fee)
 }
 
 // Step replies are written by code in English or Chinese; any other language gets them translated (one small call)
