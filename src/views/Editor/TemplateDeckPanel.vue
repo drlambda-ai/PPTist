@@ -770,9 +770,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
+    const askedX = clamp(b.x) + clamp(b.w) / 2 // where the router wanted it; the free-space search may have moved it
+    const moved = (askedX > 2 / 3 && cx <= 2 / 3) || (askedX < 1 / 3 && cx >= 1 / 3)
+    const movedNote = moved ? (Z ? `（${askedX > 2 / 3 ? '右' : '左'}侧没有空位，所以放在了这里）` : ` (no free space on the ${askedX > 2 / 3 ? 'right' : 'left'}, so it went here)`) : ''
     const zhWhere = (cy < 1 / 3 || cy > 2 / 3 ? (cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '') + (cy < 1 / 3 ? '上' : '下') + (cx >= 1 / 3 && cx <= 2 / 3 ? '方' : '') : cx < 1 / 3 ? '左侧' : cx > 2 / 3 ? '右侧' : '正中')
     const where = Z ? zhWhere : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
-    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}" at the ${where} (the free space there).`) + (pictureNote ? ` ${pictureNote}` : '')
+    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片${movedNote}。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}" at the ${where}${movedNote}.`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)

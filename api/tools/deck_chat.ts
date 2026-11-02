@@ -1,4 +1,4 @@
-import { FALLBACK_MODEL, chat, getKey, readBody, vendorDown } from '../_llm.js'
+import { chat, getKey, readBody, vendorDown } from '../_llm.js'
 
 // Deck-level chat router, modelled on ChatSlide's assistant menu (chatslide-backend util/assistant/slide_tools.json)
 // but able to do several steps: the editor calls it in a loop, applying each round's calls and sending back what was
@@ -342,10 +342,12 @@ export default async function handler(req: any, res: any) {
     const user = instruction + pending + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
     const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
       : m.startsWith('gpt-6') ? viaResponses(m, context, history, user) : viaOpenAI(m, context, history, user)
+    // routing fallback: gpt-6.1-sol scored 164/220 on the real-prompt router eval (Haiku 157); gpt-5.4-mini misroutes
+    // "this slide" and loops, so the generic cheap fallback is not used here
     const calls = await route(model).catch(e => {
       if (!vendorDown(e)) throw e
       console.error('[deck_chat] Anthropic unavailable, falling back:', String(e.message).slice(0, 160))
-      return route(FALLBACK_MODEL)
+      return route(process.env.ROUTER_FALLBACK_MODEL || 'gpt-6.1-sol')
     })
     res.status(200).json({ calls: calls.length ? calls : [{ action: 'answer_question', args: {} }] })
   }
