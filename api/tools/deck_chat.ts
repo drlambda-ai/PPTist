@@ -304,11 +304,14 @@ export default async function handler(req: any, res: any) {
   try {
     const body = await readBody(req)
     if (body.localize) { // the turn's reply, written by code in English, said in the language of the user's message
-      const text = await chat([
-        { role: 'system', content: 'Translate the assistant reply into the language the user wrote their message in. Keep its meaning, numbers and line breaks; if it is already in that language, copy it unchanged. Output ONLY the reply text itself: no preface, no note about languages, no quotes.' },
+      const raw = await chat([
+        { role: 'system', content: 'Translate the assistant reply into the language the user wrote their message in. Keep its meaning, numbers and line breaks; if it is already in that language, copy it unchanged. Return JSON {"reply": "<the translated reply, nothing else>"}.' },
         { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 500)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
-      ], { model: MODEL, maxTokens: 1500 })
-      res.status(200).json({ reply: text.trim() || body.localize }); return
+      ], { model: MODEL, maxTokens: 1500, jsonMode: true })
+      let reply = ''
+      try { reply = String(JSON.parse(raw).reply || '') }
+      catch { reply = '' }
+      res.status(200).json({ reply: reply.trim() || body.localize }); return
     }
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')

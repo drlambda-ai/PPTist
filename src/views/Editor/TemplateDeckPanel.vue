@@ -319,6 +319,7 @@ const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewpor
 // Rewrite one slide through chat_edit, merging kept elements by id. Image sources (often MBs of base64) never go to
 // the model: it sees a short token and the real src is restored on merge.
 let userText = '' // the message being handled: replies are written in its language
+let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -369,7 +370,8 @@ const editSlide = async (index: number, instruction: string) => {
   await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
   const n = (ret.patch.changes?.length || 0) + (ret.patch.added?.length || 0) + (ret.patch.removed?.length || 0)
   const echo = !ret.reply || ret.reply.replace(/[。.！!\s]/g, '') === userText.replace(/[。.！!\s]/g, '') // the model repeated the request
-  return echo ? (zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`) : ret.reply
+  lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`
+  return echo ? lastEditTerse : ret.reply
 }
 
 // A text box grows to fit its content when its page is shown. After an edit, show the page and shrink the font sizes
@@ -1064,6 +1066,7 @@ const deckTurn = async (text: string) => {
   const pendingAtStart = s.pending || null
   const done: string[] = []
   const replies: string[] = []
+  const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   let changed = false
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
@@ -1106,6 +1109,7 @@ const deckTurn = async (text: string) => {
         break
       }
       replies.push(reply)
+      terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search'].includes(c.action)) changed = true
@@ -1122,7 +1126,8 @@ const deckTurn = async (text: string) => {
     addHistorySnapshot()
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
-  const reply = replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
+  const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
+  const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
   say('assistant', (zh(text) ? reply : await localize(text, reply)) + fee)
