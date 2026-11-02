@@ -852,10 +852,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
             throw e
           }
         }
-        busy.value = `Updated ${++done} of ${all.length} pages…`
+        busy.value = `Working on the pages: ${++done} of ${all.length}…`
       }
     }
-    await Promise.all(Array.from({ length: Math.min(5, all.length) }, worker))
+    // wait for every worker (an edit in flight still lands), then report the first unexpected error
+    const settled = await Promise.allSettled(Array.from({ length: Math.min(5, all.length) }, worker))
+    const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
+    if (err) throw err.reason
     await fitQueue
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     const ok = all.length - same.length - failed.length
