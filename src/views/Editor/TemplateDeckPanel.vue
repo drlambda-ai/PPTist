@@ -972,9 +972,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return (Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`) + note
   }
   if (action === 'write_notes') {
-    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
-    if (args.existing_only && !targets.some(hasNotes)) fail(Z ? '这些页还没有演讲备注，所以没有可以修改的；说“写备注”我就先写出来。' : 'These pages have no speaker notes yet, so there is nothing to revise; say "write notes" and I will write them first.')
+    const asked = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const targets = args.existing_only ? asked.filter(hasNotes) : asked // revising touches only pages that have notes
+    if (args.existing_only && !targets.length) fail(Z ? '这些页还没有演讲备注，所以没有可以修改的；说“写备注”我就先写出来。' : 'These pages have no speaker notes yet, so there is nothing to revise; say "write notes" and I will write them first.')
     const written = await writeNotes(targets, args.instruction || '')
     if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
     return (Z ? `已写好 ${written} 页的演讲备注。` : `Wrote speaker notes for ${written} page(s).`) + (written < targets.length ? (Z ? `（${targets.length - written} 页没写成）` : ` (${targets.length - written} page(s) failed)`) : '')
