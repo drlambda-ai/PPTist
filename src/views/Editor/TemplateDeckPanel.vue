@@ -370,8 +370,9 @@ const editSlide = async (index: number, instruction: string) => {
   await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
   const n = (ret.patch.changes?.length || 0) + (ret.patch.added?.length || 0) + (ret.patch.removed?.length || 0)
   const echo = !ret.reply || ret.reply.replace(/[。.！!\s]/g, '') === userText.replace(/[。.！!\s]/g, '') // the model repeated the request
+  void echo
   lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`
-  return echo ? lastEditTerse : ret.reply
+  return lastEditTerse // the model's own sentence misstated the edit too often (audited 2026-11-02): code reports
 }
 
 // A text box grows to fit its content when its page is shown. After an edit, show the page and shrink the font sizes
@@ -665,6 +666,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
+  let written = 0
   for (const id of ids) {
     const sl = slides.value.find(x => x.id === id)!
     busy.value = `Writing notes ${ids.indexOf(id) + 1} of ${ids.length}…`
@@ -673,8 +675,12 @@ const writeNotes = async (ids: string[], instruction: string) => {
       body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
     })
     const notes = (await r.json()).notes
-    if (notes) slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
+    if (notes) {
+      slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
+      written++
+    }
   }
+  return written
 }
 
 // New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
@@ -702,7 +708,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       const n0 = slides.value.length
       if (!await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
       const added = slides.value.length - n0
-      return Z ? `已在第 ${after} 页后加了 ${added} 页。` : `Added ${added} page(s) after page ${after}.`
+      const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
+      return (Z ? `已在第 ${after} 页后加了 ${added} 页。` : `Added ${added} page(s) after page ${after}.`) + capped
     }
     const count = Math.min(Math.max(args.count || 1, 1), 10)
     for (let k = 0; k < count; k++) {
@@ -712,7 +719,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       slidesStore.setSlides(list)
       await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${args.instruction}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
     }
-    return Z ? `已在第 ${after} 页后加了 ${count} 页。` : `Added ${count} page(s) after page ${after}.`
+    const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
+    return (Z ? `已在第 ${after} 页后加了 ${count} 页。` : `Added ${count} page(s) after page ${after}.`) + capped
   }
   if (action === 'expand_page') {
     const i = pos(idOf(args.index))
@@ -964,8 +972,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'write_notes') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
-    await writeNotes(targets, args.instruction || '')
-    return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
+    const written = await writeNotes(targets, args.instruction || '')
+    if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
+    return (Z ? `已写好 ${written} 页的演讲备注。` : `Wrote speaker notes for ${written} page(s).`) + (written < targets.length ? (Z ? `（${targets.length - written} 页没写成）` : ` (${targets.length - written} page(s) failed)`) : '')
   }
   if (action === 'download_deck') {
     if (chatslide && !chatslide.canExport()) return Z ? '下载需要付费方案，已为你打开方案页面。' : 'Downloading needs a paid plan; I opened the plans for you.'

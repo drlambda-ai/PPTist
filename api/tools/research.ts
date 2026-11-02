@@ -28,12 +28,14 @@ const web = async (query: string) => {
 const wikimedia = async (query: string) => {
   const params = new URLSearchParams({
     action: 'query', format: 'json', generator: 'search', gsrsearch: `${query} filetype:bitmap`, gsrnamespace: '6', gsrlimit: '5',
-    prop: 'imageinfo', iiprop: 'url|extmetadata|size', iiurlwidth: '1600', origin: '*',
+    prop: 'imageinfo', iiprop: 'url|extmetadata|size|mime', iiurlwidth: '1600', origin: '*',
   })
   const r = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, { headers: { 'User-Agent': 'ChatSlide/1.0 (contact@chatslide.ai)' } })
   if (!r.ok) throw new Error(`wikimedia ${r.status}`)
   const pages = Object.values((await r.json()).query?.pages || {}) as any[]
-  const best = pages.sort((a, b) => (a.index || 0) - (b.index || 0)).find(p => p.imageinfo?.[0]?.thumburl)
+  // photographs come as JPEG; PNG/SVG on Commons are mostly drawings, maps and diagrams: a "real photo" wants the former
+  const photo = (p: any) => /jpe?g$/i.test(p.imageinfo?.[0]?.mime || '') ? 0 : 1
+  const best = pages.sort((a, b) => photo(a) - photo(b) || (a.index || 0) - (b.index || 0)).find(p => p.imageinfo?.[0]?.thumburl)
   if (!best) return { src: '' }
   const i = best.imageinfo[0], m = i.extmetadata || {}
   const plain = (h = '') => String(h).replace(/<[^>]+>/g, '').trim()
