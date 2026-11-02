@@ -47,10 +47,39 @@ def to_text(name, raw):
         if ext == ".pdf":
             from pypdf import PdfReader
             # page markers: "page 2 of the PDF" is found by read_file, and the router knows how many pages there are
-            return "\n".join(f"[page {i}]\n{p.extract_text() or ''}" for i, p in enumerate(PdfReader(path).pages, 1))
+            pages = [p.extract_text() or "" for p in PdfReader(path).pages]
+            if sum(len(t.strip()) for t in pages) < 40:  # a scan: no text layer, so read the page pictures
+                return _ocr_pdf(path)
+            return "\n".join(f"[page {i}]\n{t}" for i, t in enumerate(pages, 1))
         raise ValueError(f"unsupported file type {ext}")
     finally:
         os.unlink(path)
+
+
+OCR_PAGES = 10
+
+
+def _ocr_pdf(path):
+    """Scanned PDF -> text per page, read from page pictures by a vision model (the first OCR_PAGES pages)."""
+    import base64
+    import fitz  # PyMuPDF
+    from openai import OpenAI
+    client = OpenAI(timeout=120, max_retries=2)
+    out = []
+    for i, page in enumerate(fitz.open(path), 1):
+        if i > OCR_PAGES:
+            out.append(f"[page {i}]\n[not read: only the first {OCR_PAGES} pages of a scanned PDF are transcribed]")
+            break
+        b64 = base64.b64encode(page.get_pixmap(dpi=110).tobytes("png")).decode()
+        r = client.responses.create(
+            model=os.environ.get("OCR_MODEL", "gpt-5.4-mini"),
+            input=[{"role": "user", "content": [
+                {"type": "input_text", "text": "Transcribe every piece of text on this scanned page exactly as written, keeping line breaks; write table rows as cells separated by ' | '. Output only the transcription, nothing else."},
+                {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"},
+            ]}],
+        )
+        out.append(f"[page {i}]\n{(r.output_text or '').strip()}")
+    return "\n".join(out)
 
 
 def read(p):
