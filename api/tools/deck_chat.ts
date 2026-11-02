@@ -17,7 +17,7 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
   function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } },
 })
 
-const SOURCE = 'wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: an illustration, cartoon, diagram-like picture, or something no photo shows, or the user says generate/draw; photo: a generic stock photo (people working, a city at night, food)'
+const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name); wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: an illustration, cartoon, diagram-like picture, or something no photo shows, or the user says generate/draw; photo: a generic stock photo (people working, a city at night, food)'
 
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
@@ -71,7 +71,7 @@ const TOOLS = [
     index: page,
     image: { type: 'integer', description: '1-based number of the image on that page, in the listed order; 1 if there is only one' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
-    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai'], description: SOURCE },
+    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
   }, ['index', 'image', 'query', 'source']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
@@ -85,7 +85,7 @@ const TOOLS = [
   fn('add_image', 'Insert a NEW picture on a page (stock photo or AI-generated), at a given place.', {
     index: page,
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
-    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai'], description: SOURCE },
+    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     box: {
       type: 'object', additionalProperties: false, required: ['x', 'y', 'w', 'h'],
       description: 'Where, in percent of the slide (0-100): left, top, width, height. Pick free space on that page.',
@@ -223,9 +223,9 @@ Rules:
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
    ask_user per request; if already answered once, act on the best reading.
-   The user's OWN logo or image ("my logo", "mi logotipo", "我的图片") is not in the chat: answer_question telling them to
-   insert it once with the toolbar's image button on one page, then ask to copy it to the pages they want (only the pages
-   they name, or all if they said all/the slides).
+   The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): if it is under "Attached pictures",
+   change_image or add_image with source attached (query = its file name), on the pages they name (all pages only if
+   they say so); if none is attached, answer_question asking them to attach it with the 📎 icon.
    "Review the deck AND change/fix what is wrong" -> edit_all_pages (fix overflow, overlap, alignment, typos; keep content).
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
@@ -339,7 +339,9 @@ export default async function handler(req: any, res: any) {
     // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
     // everything that changes (deck, current page, template) comes after it
     const files = (body.files || []) as { name: string, pages?: number, chars?: number }[]
-    const fileList = files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.'
+    const pics = (body.pictures || []) as string[]
+    const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.')
+      + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
     const context = `The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}${fileList}`

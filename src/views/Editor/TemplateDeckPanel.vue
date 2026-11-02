@@ -22,16 +22,18 @@
       </div>
 
       <div class="composer">
-        <div class="chips" v-if="s.template || s.docs.length">
+        <div class="chips" v-if="s.template || s.docs.length || s.images?.length">
           <span class="chip" v-if="s.template">Template: {{ s.template.name }}
             <i @click="removeTemplate()" v-if="!busy && !s.mode">×</i></span>
+          <span class="chip" v-for="(m, i) in s.images || []" :key="'img' + m.name + i">🖼 {{ m.name }}
+            <i @click="s.images!.splice(i, 1); save()" v-if="!busy">×</i></span>
           <span class="chip" v-for="(d, i) in s.docs" :key="d.name + i">{{ d.name }}
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
         <div class="input-box" @dragover.prevent @drop.prevent="e => attach(e.dataTransfer?.files)">
           <TextArea v-model:value="input" :rows="3" placeholder="e.g. 用附件里的数据做一份年度复盘 / delete page 3 / add a page on Q3 risks" @enter="onEnter" />
           <div class="input-row">
-            <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json" @change="files => attach(files)">
+            <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json,.png,.jpg,.jpeg,.webp,.gif" @change="files => attach(files)">
               <span class="attach" :class="{ disabled: !!busy }" aria-label="Attach a company template (.pptx) or material"><i-icon-park-outline:link /></span>
             </FileInput>
             <span class="grow"></span>
@@ -83,6 +85,7 @@ interface Session {
   mode: '' | 'template' | 'native'
   template: { name: string, templateUrl: string, analysis: any, profile: any, chrome: any[] } | null
   docs: { name: string, text: string }[]
+  images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
   history: { role: 'user' | 'assistant', text: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
@@ -206,6 +209,12 @@ const removeTemplate = () => {
   s.template = null
   save()
 }
+
+// The user's own picture: uploaded once, then placed by the chat ("put my photo on slide 3")
+const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () => {
+  s.images = [...(s.images || []), { name: file.name, url: await uploadFile(file) }]
+  save()
+})
 
 const uploadContent = (file: File) => run(`Reading ${file.name}…`, async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
@@ -640,11 +649,19 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
 // Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
 // Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
 let pictureNote = ''
-let pictureSource: 'photo' | 'wikimedia' | 'ai' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
+let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
 const findPicture = async (query: string, source: string, landscape: boolean) => {
   pictureNote = ''
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   const Z = zh(userText)
+  if (source === 'attached') { // the query names one of the user's attached pictures
+    const pics = s.images || []
+    const pic = pics.find(m => m.name === query) || (pics.length === 1 ? pics[0] : undefined)
+    if (!pic) fail(pics.length ? (Z ? `没有找到附件图片「${query}」。现有：${pics.map(m => m.name).join('、')}。` : `There is no attached picture "${query}". Attached: ${pics.map(m => m.name).join(', ')}.`)
+      : (Z ? '还没有附加图片：请用 📎 图标上传你的图片。' : 'No picture is attached yet: attach it with the 📎 icon.'))
+    pictureSource = 'attached'
+    return pic.url
+  }
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
     if (!r.src) fail(Z ? `维基共享资源上没有找到「${query}」的图片。要我改用图库照片或 AI 生成吗？` : `Wikimedia Commons has no picture of "${query}". Should I use a stock photo or generate one instead?`)
@@ -768,7 +785,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     touched([id])
     slidesStore.updateSlideIndex(pos(id))
-    const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
     const askedX = clamp(b.x) + clamp(b.w) / 2 // where the router wanted it; the free-space search may have moved it
     const moved = (askedX > 2 / 3 && cx <= 2 / 3) || (askedX < 1 / 3 && cx >= 1 / 3)
@@ -957,7 +974,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
     const note = await changeImage(text, id, args.image, args.query, args.source)
-    const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced with a ${how} for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
@@ -1142,6 +1159,7 @@ const deckTurn = async (text: string) => {
         instruction: text, pages: deckLines(), current: slideIndex.value + 1, template: !!s.template, done,
         pending: s.pending || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
+        pictures: (s.images || []).map(m => m.name),
         history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -1254,7 +1272,8 @@ const send = () => {
 const attach = (files?: FileList | File[] | null) => {
   if (busy.value || !files) return
   for (const f of Array.from(files)) {
-    if (/\.pptx$/i.test(f.name) && !s.template && !s.mode) uploadTemplate(f)
+    if (/^image\//.test(f.type)) uploadPicture(f)
+    else if (/\.pptx$/i.test(f.name) && !s.template && !s.mode) uploadTemplate(f)
     else uploadContent(f)
   }
 }
