@@ -1,0 +1,4 @@
+Codex-Review: passed
+Fixed: HIGH oversized image decoded -> 40 MP cap before decode
+Declined: MEDIUM only the largest image per page is OCR'd (a scan is one picture per page; multi-image pages are text PDFs and keep their text layer)
+Declined-By: Claude (triage), Quanlai may overrule
