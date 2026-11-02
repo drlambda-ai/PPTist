@@ -1032,7 +1032,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     }
     busy.value = Z ? '正在导出 .pptx…' : 'Exporting the .pptx…'
     exportPPTX(slides.value, true, false) // the browser saves the file; no dialog
-    return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
+    const asked = String(args.asked || '').trim()
+    const other = asked && !/pptx|powerpoint|ppt/i.test(asked) // a format we cannot export to directly (Google Slides, Keynote…)
+    return other
+      ? (Z ? `这里不能直接导出为 ${asked}；正在下载 .pptx，${asked} 可以直接打开它。` : `There is no direct export to ${asked} here; downloading a .pptx, which ${asked} opens directly.`)
+      : (Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.')
   }
   if (action === 'share_deck') {
     if (!chatslide?.share) fail(Z ? '这里不能分享：请在 ChatSlide 里打开这个项目再分享。' : 'Sharing is not available here: open this project in ChatSlide to share it.')

@@ -122,9 +122,10 @@ const TOOLS = [
   fn('web_search', 'Search the web for facts, statistics, recent information, examples, evidence, citations or sources. Returns an answer with real source links under "Done so far"; then put them on the slide(s) with edit_page/add_page, citing only those links.', {
     query: { type: 'string', description: 'What to search for, specific to the slide topic' },
   }, ['query']),
-  fn('download_deck', 'Download the deck as a file ("下载", "download", "export").', {
+  fn('download_deck', 'Download the deck as a file ("下载", "download", "export"). Google Slides / Keynote / other formats are not direct exports: use pptx and the reply says so.', {
     format: { type: 'string', enum: ['pptx', 'pdf', 'images'], description: 'pptx unless the user names PDF or images' },
-  }, ['format']),
+    asked: { type: 'string', description: 'The format the user asked for in their words ("Google Slides", "Keynote", "pdf", ""), so the reply can say what was substituted' },
+  }, ['format', 'asked']),
   fn('share_deck', 'Share the deck / get a share link ("share this", "分享", "link to send").', {}, []),
   fn('open_step', 'Open another ChatSlide step when the user asks to go there or wants what it does: scripts (write/see the narration scripts page) or video (turn the deck into a video, voice-over, avatar).', {
     step: { type: 'string', enum: ['scripts', 'video'] },
