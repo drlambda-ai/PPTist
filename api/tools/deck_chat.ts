@@ -99,7 +99,9 @@ const TOOLS = [
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
-  }, ['pages', 'instruction']),
+    existing_only: { type: 'boolean', description: 'true when the user wants EXISTING notes changed (shorten, expand, translate, fix); false when they want notes written' },
+  }, ['pages', 'instruction', 'existing_only']),
+  fn('go_to_page', 'Show a page ("go to slide 3", "next slide", "back to the first one").', { page }, ['page']),
   fn('set_transition', 'Set the page transition effect.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     effect: { type: 'string', enum: ['no', 'fade', 'slideX', 'slideY', 'random', 'slideX3D', 'slideY3D', 'rotate', 'scaleY', 'scaleX', 'scale', 'scaleReverse'] },
@@ -199,6 +201,9 @@ Rules:
    app settings -> talk_to_human, NEVER answer_question: policy must come from ChatSlide, not from you.
    When a message ANSWERS the question under "You asked", continue the original request with that answer; never re-ask.
    The deck listed in the context IS the current deck after every step: count it, trust it, never say you cannot see it.
+   Page numbers under "Done so far" referred to the deck as it was at that step; a page that was deleted is gone, it was
+   never "missing". "Remove the ChatSlide logo / watermark / Created by ChatSlide" -> edit_all_pages (delete that text or
+   image on every page), not talk_to_human.
    not_done names only parts you did not do. answer_question says only what the listed deck shows: never invent a
    page's numbers, charts or text.
    Vague dislike with no target ("no me gusta", "bad slides", "不好看"): ask_user with 2-3 concrete options

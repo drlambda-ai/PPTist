@@ -792,7 +792,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const del = nums(args.pages)
     if (del.length >= n) fail(Z ? '至少要保留一页。' : 'A deck needs at least one page, so I kept it.')
     slidesStore.deleteSlide(del)
-    return Z ? `已删除 ${del.length} 页。` : `Deleted ${del.length} page(s).`
+    return Z ? `已删除 ${del.length} 页，现在共 ${slides.value.length} 页。` : `Deleted ${del.length} page(s); ${slides.value.length} remain.`
   }
   if (action === 'read_file') {
     const doc = s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
@@ -914,9 +914,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     const ok = all.length - same.length - failed.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
-    const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
-      + (same.length ? (Z ? `第 ${list(same)} 页已经是这样了。` : ` Page(s) ${list(same)} already were.`) : '')
-    if (!ok && !failed.length) fail(Z ? '没有哪一页有需要这样改的内容。' : 'No page had anything to change for that.')
+    const why = failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : ''
+    const what = String(args.instruction || '').slice(0, 60)
+    if (!ok && !failed.length) fail(Z ? `没有哪一页有需要这样改的内容：“${what}”。` : `No page had anything to change for "${what}".`)
     if (!ok) fail((Z ? '这个修改我没能做成。' : 'I could not make that change.') + why)
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} of ${all.length} pages.`) + why
   }
@@ -973,6 +973,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'write_notes') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
+    if (args.existing_only && !targets.some(hasNotes)) fail(Z ? '这些页还没有演讲备注，所以没有可以修改的；说“写备注”我就先写出来。' : 'These pages have no speaker notes yet, so there is nothing to revise; say "write notes" and I will write them first.')
     const written = await writeNotes(targets, args.instruction || '')
     if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
     return (Z ? `已写好 ${written} 页的演讲备注。` : `Wrote speaker notes for ${written} page(s).`) + (written < targets.length ? (Z ? `（${targets.length - written} 页没写成）` : ` (${targets.length - written} page(s) failed)`) : '')
@@ -1009,6 +1011,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
     busy.value = Z ? '正在联系支持…' : 'Contacting support…'
     return (await chatslide.support(args.message || userText)) || (Z ? '已转给支持团队。' : 'Sent to the support team.')
+  }
+  if (action === 'go_to_page') {
+    const id = idOf(args.page)
+    slidesStore.updateSlideIndex(pos(id))
+    return Z ? `已切换到第 ${pos(id) + 1} 页。` : `Showing page ${pos(id) + 1}.`
   }
   if (action === 'ask_user') {
     const opts = (args.options || []).filter(Boolean).slice(0, 4)
@@ -1126,7 +1133,7 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'go_to_page'].includes(c.action)) changed = true
     }
     if (work.every((c: any) => ['answer_question', 'ask_user'].includes(c.action))) break // a question is asked/answered once
   }
