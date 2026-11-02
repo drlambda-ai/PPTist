@@ -322,7 +322,7 @@ export default async function handler(req: any, res: any) {
     // everything that changes (deck, current page, template) comes after it
     const files = (body.files || []) as { name: string, pages?: number, chars?: number }[]
     const fileList = files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.'
-    const context = `The user is looking at page ${current}. ${template
+    const context = `The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
