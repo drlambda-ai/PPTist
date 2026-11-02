@@ -1,0 +1,4 @@
+Codex-Review: passed
+Fixed: MEDIUM terse/replies misaligned after a failed step
+Declined: LOW terse count may overstate (count is of patch entries; equality check guards no-ops); LOW localizer parse failure falls back to the original reply (better than nothing; rare with jsonMode)
+Declined-By: Claude (triage), Quanlai may overrule
