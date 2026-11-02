@@ -46,7 +46,8 @@ def to_text(name, raw):
                              for s in engine.analyze(path))
         if ext == ".pdf":
             from pypdf import PdfReader
-            return "\n".join(p.extract_text() or "" for p in PdfReader(path).pages)
+            # page markers: "page 2 of the PDF" is found by read_file, and the router knows how many pages there are
+            return "\n".join(f"[page {i}]\n{p.extract_text() or ''}" for i, p in enumerate(PdfReader(path).pages, 1))
         raise ValueError(f"unsupported file type {ext}")
     finally:
         os.unlink(path)
@@ -55,7 +56,7 @@ def to_text(name, raw):
 def read(p):
     """{url, name} -> {name, text}: an uploaded content file as text (capped)."""
     text = to_text(p["name"], blob.get(p["url"]))
-    return {"name": p["name"], "text": text[:60000], "chars": len(text)}
+    return {"name": p["name"], "text": text[:200000], "chars": len(text)}
 
 
 def learn(p):

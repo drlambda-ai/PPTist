@@ -235,7 +235,7 @@ const readStream = async (res: any, onText: (t: string) => void) => {
   }
 }
 
-const material = () => s.docs.map(d => `--- ${d.name} ---\n${d.text}`).join('\n\n')
+const material = () => s.docs.map(d => `--- ${d.name} ---\n${d.text.slice(0, Math.floor(80000 / s.docs.length))}`).join('\n\n') // read_file reaches the rest
 const languageOf = (text: string) => (/[\u4e00-\u9fff]/.test(text) ? '中文' : 'English') // for the panel's own short replies
 // What the generators write in: a new deck follows the request's language; pages added later follow the DECK's language
 // (a Chinese deck stays Chinese when someone types an English or Russian request), unless the request names a language.
@@ -621,11 +621,22 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
 }
 
 // Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
+// Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
+let pictureNote = ''
 const findPicture = async (query: string, source: string, landscape: boolean) => {
+  pictureNote = ''
+  const Z = zh(userText)
+  if (source === 'wikimedia') {
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
+    if (!r.src) fail(Z ? `维基共享资源上没有找到「${query}」的图片。要我改用图库照片或 AI 生成吗？` : `Wikimedia Commons has no picture of "${query}". Should I use a stock photo or generate one instead?`)
+    pictureNote = Z ? `图片来自维基共享资源：${r.title}（${r.credit}${r.license ? `，${r.license}` : ''}）${r.page}` : `Picture from Wikimedia Commons: ${r.title} (${r.credit}${r.license ? `, ${r.license}` : ''}) ${r.page}`
+    return r.src as string
+  }
   if (source === 'photo') {
     const r = await api.searchImage({ query, per_page: 1, orientation: landscape ? 'landscape' : 'portrait' } as any)
     const src = r.data?.[0]?.src // the services axios instance already unwraps response.data
     if (src) return src as string
+    pictureNote = Z ? `没有匹配的图库照片，所以用 AI 生成了一张。` : 'No stock photo matched, so I generated one with AI.'
   }
   const r = await fetch('/api/tools/ai_image', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -641,7 +652,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const src = await findPicture(query, source, el.width >= el.height)
   if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
-  return ''
+  return pictureNote
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
@@ -726,7 +737,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     slidesStore.updateSlideIndex(pos(id))
-    return Z ? '已插入图片。' : 'Picture added.'
+    return (Z ? '已插入图片。' : 'Picture added.') + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -765,6 +776,27 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (del.length >= n) fail(Z ? '至少要保留一页。' : 'A deck needs at least one page, so I kept it.')
     slidesStore.deleteSlide(del)
     return Z ? `已删除 ${del.length} 页。` : `Deleted ${del.length} page(s).`
+  }
+  if (action === 'read_file') {
+    const doc = s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
+    if (!doc) fail(s.docs.length ? (Z ? `没有找到附件「${args.file}」。现有附件：${s.docs.map(d => d.name).join('、')}。` : `There is no attached file "${args.file}". Attached: ${s.docs.map(d => d.name).join(', ')}.`)
+      : (Z ? '还没有附件：请用输入框的 📎 图标上传文件。' : 'No file is attached yet: attach it with the 📎 icon in the chat box.'))
+    const parts = doc.text.split(/^(?=\[page \d+\]$)/m)
+    const want: number[] = args.pages || []
+    const total = parts.filter(p => /^\[page \d+\]/.test(p)).length
+    const missing = want.filter(n => n < 1 || n > total)
+    if (want.length && total && missing.length === want.length) fail(Z ? `「${doc.name}」只有 ${total} 页。` : `${doc.name} has only ${total} pages.`)
+    const picked = want.length && total ? parts.filter(p => want.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
+    if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(Z ? `「${doc.name}」这几页读不出文字（可能是扫描图片）。` : `No text could be read from ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''} (it may be a scanned image).`)
+    memo = `Text of ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''}:\n${picked.slice(0, 12000)}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}`
+    return Z ? `已读取「${doc.name}」${want.length ? `第 ${want.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${want.join(', ')}` : ''}.`
+  }
+  if (action === 'web_search') {
+    busy.value = Z ? '正在网上搜索…' : 'Searching the web…'
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
+    if (r.error || !r.sources?.length) fail(Z ? `网上没有找到可靠的来源（${args.query}），所以没有添加引用。` : `I found no reliable sources online for "${args.query}", so I added no citations.`)
+    memo = `Web search results (cite only these):\n${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}`
+    return Z ? `已在网上找到 ${r.sources.length} 个来源。` : `Found ${r.sources.length} source(s) online.`
   }
   if (action === 'merge_pages') {
     const ids = nums(args.pages)
@@ -872,7 +904,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
-    return (await changeImage(text, id, args.image, args.query, args.source)) || (Z ? '图片已更换。' : 'Picture replaced.')
+    const note = await changeImage(text, id, args.image, args.query, args.source)
+    return (Z ? '图片已更换。' : 'Picture replaced.') + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
     const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)
@@ -978,17 +1011,21 @@ const restoreDeckBeforeCreate = () => {
   return true
 }
 
+// What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
+let memo = ''
+
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
   const done: string[] = []
   const replies: string[] = []
   let changed = false
-  for (let round = 0; round < 8; round++) {
+  for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
         instruction: text, pages: deckLines(), current: slideIndex.value + 1, template: !!s.template, done,
+        files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -1023,8 +1060,9 @@ const deckTurn = async (text: string) => {
         break
       }
       replies.push(reply)
-      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}`)
-      if (!['answer_question', 'undo', 'redo', 'download_deck'].includes(c.action)) changed = true
+      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
+      memo = ''
+      if (!['answer_question', 'undo', 'redo', 'download_deck', 'read_file', 'web_search'].includes(c.action)) changed = true
     }
     if (work.every((c: any) => c.action === 'answer_question')) break // a question is answered once
   }

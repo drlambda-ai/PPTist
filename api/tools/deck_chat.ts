@@ -17,6 +17,8 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
   function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } },
 })
 
+const SOURCE = 'wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: an illustration, cartoon, diagram-like picture, or something no photo shows, or the user says generate/draw; photo: a generic stock photo (people working, a city at night, food)'
+
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "make a presentation about X"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
@@ -67,8 +69,8 @@ const TOOLS = [
   fn('change_image', 'Replace a picture on a page with a new one: a stock photo search, or an AI-generated image.', {
     index: page,
     image: { type: 'integer', description: '1-based number of the image on that page, in the listed order; 1 if there is only one' },
-    query: { type: 'string', description: 'Stock search words (English) or the image-generation prompt' },
-    source: { type: 'string', enum: ['photo', 'ai'], description: 'photo unless the user asks for an illustration, AI image or something no photo shows' },
+    query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
+    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai'], description: SOURCE },
   }, ['index', 'image', 'query', 'source']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
@@ -81,8 +83,8 @@ const TOOLS = [
   }, ['from', 'to', 'element', 'copy']),
   fn('add_image', 'Insert a NEW picture on a page (stock photo or AI-generated), at a given place.', {
     index: page,
-    query: { type: 'string', description: 'Stock search words (English) or the image-generation prompt' },
-    source: { type: 'string', enum: ['photo', 'ai'] },
+    query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
+    source: { type: 'string', enum: ['photo', 'wikimedia', 'ai'], description: SOURCE },
     box: {
       type: 'object', additionalProperties: false, required: ['x', 'y', 'w', 'h'],
       description: 'Where, in percent of the slide (0-100): left, top, width, height. Pick free space on that page.',
@@ -110,6 +112,13 @@ const TOOLS = [
   fn('rebuild_from_template', 'Regenerate the whole deck from the company template with new or changed material/data (only when a company template is in use).', {
     instruction: { type: 'string' },
   }, ['instruction']),
+  fn('read_file', 'Read an attached file (or some of its pages/sheets) before using it. Use it whenever the user refers to their file, PDF, article, document, data, "page N of the PDF", or a table/figure in it. The text is returned under "Done so far"; then use it in the next step (edit_page, add_page, add_table_page...).', {
+    file: { type: 'string', description: 'The attached file name exactly as listed' },
+    pages: { type: 'array', items: { type: 'integer' }, description: 'PDF page numbers to read; empty = the whole file' },
+  }, ['file', 'pages']),
+  fn('web_search', 'Search the web for facts, statistics, recent information, examples, evidence, citations or sources. Returns an answer with real source links under "Done so far"; then put them on the slide(s) with edit_page/add_page, citing only those links.', {
+    query: { type: 'string', description: 'What to search for, specific to the slide topic' },
+  }, ['query']),
   fn('download_deck', 'Download the deck as a .pptx file ("下载", "download", "export pptx").', {}, []),
   fn('undo', 'Undo the last change.', {}, []),
   fn('redo', 'Redo the last undone change.', {}, []),
@@ -150,6 +159,14 @@ Rules:
    image here" on that page; never an icon or a [logo] unless the user names it. If that page has no image except
    icons/logos, use add_image instead. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.
    Merging/combining pages -> merge_pages (one call for all of them).
+   Attached files are listed after the deck. Anything that refers to them ("my PDF", "page 2 of the article", "the table
+   in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it
+   returned. Several files and the message does not say which -> answer_question asking which file (name them).
+   The user mentions a file but none is attached -> answer_question: ask them to attach it with the 📎 icon.
+   Citations, sources, references, evidence, statistics, "latest"/"current" facts, real-world examples, or "search
+   online/google it" -> web_search first, then edit_page/add_page with ONLY the facts and links it returned. Never
+   write a citation, URL, study or statistic that did not come from web_search, the deck, or a file.
+   A picture of a real, named thing -> change_image/add_image with source wikimedia.
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain
@@ -277,9 +294,11 @@ export default async function handler(req: any, res: any) {
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
     // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
     // everything that changes (deck, current page, template) comes after it
+    const files = (body.files || []) as { name: string, pages?: number, chars?: number }[]
+    const fileList = files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.'
     const context = `The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
-      : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}`
+      : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     const user = instruction + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
