@@ -1,0 +1,5 @@
+Codex-Review: passed
+Fixed: MEDIUM fence escape; HIGH 402 in overwrite mode cleared the deck; LOW footnote carry-over
+Declined: MEDIUM a streamed aippt failure (200 + error body) stays charged (v1; proxy cannot read the stream; support refunds)
+Declined: LOW spend log insert not awaited (balance is authoritative)
+Declined-By: Claude (triage), Quanlai may overrule
