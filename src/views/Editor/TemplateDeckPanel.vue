@@ -831,19 +831,28 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     }
     return Z ? `已把 ${targets.length} 页上 ${n} 处文字换成 ${font}。` : `Set ${font} on ${n} text boxes across ${targets.length} page(s).`
   }
-  if (action === 'edit_all_pages') { // 3 pages at a time; each edit is merged into its own slide by id
+  if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
     const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one
-    let done = 0
-    for (let i = 0; i < all.length; i += 3) {
-      await Promise.all(all.slice(i, i + 3).map(async id => {
-        await editSlide(pos(id), args.instruction)
+    let done = 0, next = 0, same = 0
+    const worker = async () => {
+      while (next < all.length) {
+        const id = all[next++]
+        try {
+          await editSlide(pos(id), args.instruction)
+        }
+        catch (e) { // a page that needs no change (a cover, a closing page) never stops the others
+          if (!(e instanceof StepFailed)) throw e
+          same++
+        }
         busy.value = `Updated ${++done} of ${all.length} pages…`
-      }))
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(5, all.length) }, worker))
     await fitQueue
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
-    return Z ? `已更新全部 ${slides.value.length} 页。` : `Updated all ${slides.value.length} pages.`
+    if (same === all.length) fail(Z ? '没有页面需要修改（可能已经是这样了）。' : 'No page needed that change; it may already be that way.')
+    return Z ? `已更新 ${all.length - same} 页。` : `Updated ${all.length - same} of ${all.length} pages.`
   }
   if (action === 'change_image') {
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
