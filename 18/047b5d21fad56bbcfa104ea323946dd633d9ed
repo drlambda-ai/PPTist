@@ -1,0 +1,2 @@
+Codex-Review: passed
+Fixed: MEDIUM guard compared raw index; MEDIUM guard ended the turn instead of skipping the step
