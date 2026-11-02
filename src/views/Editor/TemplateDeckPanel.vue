@@ -1179,14 +1179,16 @@ const deckTurn = async (text: string) => {
   const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
-  say('assistant', await finalize(text, reply) + fee)
+  say('assistant', await finalize(text, reply, done) + fee)
 }
 
 // One small call on every turn: the reply in the user's language, plus any part of the request that none of the steps
 // covered, said out loud (a Haiku router sometimes calls finish without naming what it skipped).
-const finalize = async (instruction: string, reply: string) => {
+const finalize = async (instruction: string, reply: string, steps: string[]) => {
   try {
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction }) })).json()
+    // the steps (tool, arguments, result) are the evidence of what was done; the reply alone is too terse to judge
+    const evidence = steps.map(d => d.split('\n')[0].slice(0, 300))
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, steps: evidence }) })).json()
     const missing = String(r.missing || '').trim()
     return (r.reply || reply) + (missing ? `\n${missing}` : '')
   }
