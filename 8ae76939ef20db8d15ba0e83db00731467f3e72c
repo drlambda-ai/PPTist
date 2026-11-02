@@ -1,0 +1,5 @@
+Codex-Review: passed
+Declined: LOW prompt injection via merged slide text (the user's own deck, same trust as their message)
+Declined: MEDIUM merge deletes pages without checking retention (one Undo restores them)
+Declined: MEDIUM shape text skips fitText (shapes do not auto-grow, nothing to measure; model is told to fit its box)
+Declined-By: Claude (triage), Quanlai may overrule
