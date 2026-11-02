@@ -1,4 +1,4 @@
-import { chat, getKey, readBody } from '../_llm.js'
+import { FALLBACK_MODEL, chat, getKey, readBody, vendorDown } from '../_llm.js'
 
 // Deck-level chat router, modelled on ChatSlide's assistant menu (chatslide-backend util/assistant/slide_tools.json)
 // but able to do several steps: the editor calls it in a loop, applying each round's calls and sending back what was
@@ -336,8 +336,13 @@ export default async function handler(req: any, res: any) {
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 500)}". You asked: "${String(body.pending.question).slice(0, 300)}"]` : ''
     const user = instruction + pending + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
-    const calls = model.startsWith('claude') ? await viaAnthropic(model, context, history, user)
-      : model.startsWith('gpt-6') ? await viaResponses(model, context, history, user) : await viaOpenAI(model, context, history, user)
+    const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
+      : m.startsWith('gpt-6') ? viaResponses(m, context, history, user) : viaOpenAI(m, context, history, user)
+    const calls = await route(model).catch(e => {
+      if (!vendorDown(e)) throw e
+      console.error('[deck_chat] Anthropic unavailable, falling back:', String(e.message).slice(0, 160))
+      return route(FALLBACK_MODEL)
+    })
     res.status(200).json({ calls: calls.length ? calls : [{ action: 'answer_question', args: {} }] })
   }
   catch (e: any) {

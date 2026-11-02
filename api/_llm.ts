@@ -45,8 +45,22 @@ async function claude(messages: any[], opts: ChatOpts): Promise<string> {
 }
 
 // Non-streaming chat completion → returns the assistant text.
+// Anthropic down or out of credit (2026-11-02: "credit balance is too low" took the whole chat down): the same call on
+// OpenAI's cheap model, so the editor degrades instead of failing.
+export const FALLBACK_MODEL = process.env.FALLBACK_MODEL || 'gpt-5.4-mini'
+export const vendorDown = (e: unknown) => /Anthropic (400|401|402|403|429|5\d\d)/.test(String((e as Error)?.message || e))
+
 export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string> {
-  if (opts.model?.startsWith('claude')) return claude(messages, opts)
+  if (opts.model?.startsWith('claude')) {
+    try {
+      return await claude(messages, opts)
+    }
+    catch (e) {
+      if (!vendorDown(e)) throw e
+      console.error('[llm] Anthropic unavailable, falling back:', String((e as Error).message).slice(0, 160))
+      opts = { ...opts, model: FALLBACK_MODEL }
+    }
+  }
   const res = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {

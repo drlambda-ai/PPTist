@@ -165,6 +165,7 @@ const run = async (label: string, fn: () => Promise<void>) => {
   }
   catch (e) {
     if (e instanceof OutOfCredits) say('assistant', zh(userText) ? `积分不够了（还需 ${e.required}，剩 ${e.credits}）。升级方案后可以继续。` : `You're out of credits (this needs ${e.required}, you have ${e.credits}). Upgrade your plan to keep going.`)
+    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', zh(userText) ? 'AI 服务暂时不可用，这条没有做任何修改。请稍后再试。' : 'The AI service is unavailable right now; nothing was changed. Please try again in a moment.')
     else say('assistant', 'That failed: ' + ((e as Error).message || e))
   }
   busy.value = ''
