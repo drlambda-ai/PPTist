@@ -48,8 +48,11 @@ def to_text(name, raw):
             from pypdf import PdfReader
             # page markers: "page 2 of the PDF" is found by read_file, and the router knows how many pages there are
             pages = [p.extract_text() or "" for p in PdfReader(path).pages]
-            if sum(len(t.strip()) for t in pages) < 40:  # a scan: no text layer, so read the page pictures
-                return _ocr_pdf(path)
+            # a page with no text layer is a scan: read its picture (per page, so mixed PDFs work; blank pages are skipped)
+            scanned = [i for i, t in enumerate(pages, 1) if len(t.strip()) < 20 and _has_image(path, i)]
+            if scanned:
+                for i, t in _ocr_pdf(path, scanned).items():
+                    pages[i - 1] = t
             return "\n".join(f"[page {i}]\n{t}" for i, t in enumerate(pages, 1))
         raise ValueError(f"unsupported file type {ext}")
     finally:
@@ -59,27 +62,43 @@ def to_text(name, raw):
 OCR_PAGES = 10
 
 
-def _ocr_pdf(path):
-    """Scanned PDF -> text per page, read from page pictures by a vision model (the first OCR_PAGES pages)."""
+def _has_image(path, n):
+    """Does page n carry a picture? Blank pages are not sent to the vision model."""
+    import fitz  # PyMuPDF
+    try:
+        return bool(fitz.open(path)[n - 1].get_images(full=False))
+    except Exception:
+        return False
+
+
+def _ocr_pdf(path, page_numbers):
+    """{page n: text} for scanned pages, read from the page picture by a vision model. The first OCR_PAGES pages
+    only; a page that fails keeps a note instead of losing the others."""
     import base64
     import fitz  # PyMuPDF
     from openai import OpenAI
-    client = OpenAI(timeout=120, max_retries=2)
-    out = []
-    for i, page in enumerate(fitz.open(path), 1):
-        if i > OCR_PAGES:
-            out.append(f"[page {i}]\n[not read: only the first {OCR_PAGES} pages of a scanned PDF are transcribed]")
-            break
-        b64 = base64.b64encode(page.get_pixmap(dpi=110).tobytes("png")).decode()
-        r = client.responses.create(
-            model=os.environ.get("OCR_MODEL", "gpt-5.4-mini"),
-            input=[{"role": "user", "content": [
-                {"type": "input_text", "text": "Transcribe every piece of text on this scanned page exactly as written, keeping line breaks; write table rows as cells separated by ' | '. Output only the transcription, nothing else."},
-                {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"},
-            ]}],
-        )
-        out.append(f"[page {i}]\n{(r.output_text or '').strip()}")
-    return "\n".join(out)
+    client = OpenAI(timeout=60, max_retries=1)
+    doc = fitz.open(path)
+    out = {}
+    for k, n in enumerate(page_numbers):
+        if k >= OCR_PAGES:
+            out[n] = f"[not read: only the first {OCR_PAGES} scanned pages are transcribed]"
+            continue
+        page = doc[n - 1]
+        zoom = min(1.6, 1600 / max(page.rect.width, page.rect.height, 1))  # at most ~1600 px on the long side
+        try:
+            b64 = base64.b64encode(page.get_pixmap(matrix=fitz.Matrix(zoom, zoom)).tobytes("png")).decode()
+            r = client.responses.create(
+                model=os.environ.get("OCR_MODEL", "gpt-5.4-mini"),
+                input=[{"role": "user", "content": [
+                    {"type": "input_text", "text": "Transcribe every piece of text on this scanned page exactly as written, keeping line breaks; write table rows as cells separated by ' | '. Output only the transcription, nothing else."},
+                    {"type": "input_image", "image_url": f"data:image/png;base64,{b64}"},
+                ]}],
+            )
+            out[n] = (r.output_text or "").strip()
+        except Exception as e:  # noqa: BLE001 - one page's failure is reported in place
+            out[n] = f"[page could not be read: {type(e).__name__}]"
+    return out
 
 
 def read(p):
