@@ -16,6 +16,9 @@
         </div>
         <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}</div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
+        <div class="choices" v-if="!busy && s.pending?.options?.length">
+          <span class="choice" v-for="o in s.pending.options" :key="o" @click="input = o; send()">{{ o }}</span>
+        </div>
       </div>
 
       <div class="composer">
@@ -53,6 +56,7 @@ import { host as chatslide } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
+import useExport from '@/hooks/useExport'
 import useImport from '@/hooks/useImport'
 import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
@@ -83,6 +87,7 @@ interface Session {
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
+  pending?: { request: string, question: string, options?: string[] } | null // an ask_user waiting for the user's answer
 }
 
 const KEY = 'ai-deck-session'
@@ -102,6 +107,7 @@ const slidesStore = useSlidesStore()
 const snapshotStore = useSnapshotStore() // undo/redo are async (IndexedDB): await them before saving
 const { slides, slideIndex, viewportSize, viewportRatio, theme } = storeToRefs(slidesStore)
 const { importPPTXFile } = useImport()
+const { exportPPTX } = useExport()
 const { AIPPT, getMdContent } = useAIPPT()
 const { resetSlides } = useSlideHandler()
 const { addHistorySnapshot } = useHistorySnapshot()
@@ -957,10 +963,43 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
   }
   if (action === 'download_deck') {
-    const how = download()
-    if (how === 'plans') return Z ? '下载需要付费方案，已为你打开方案页面。' : 'Downloading needs a paid plan; I opened the plans for you.'
-    if (how === 'dialog') return Z ? '已打开导出窗口：选择 PPTX（或 PDF、图片），点“导出”即可下载。' : 'I opened the Export window: choose PPTX (or PDF or images) and click Export to download.'
+    if (chatslide && !chatslide.canExport()) return Z ? '下载需要付费方案，已为你打开方案页面。' : 'Downloading needs a paid plan; I opened the plans for you.'
+    if (s.mode === 'template' && !s.edited) { // the engine's own .pptx is exact; after editor changes, export the editor
+      const a = document.createElement('a')
+      a.href = s.versions[s.versions.length - 1].deckUrl
+      a.download = 'deck.pptx'
+      a.click()
+      return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
+    }
+    if (args.format === 'pdf' || args.format === 'images') { // these need the print/render dialogs
+      mainStore.setDialogForExport(args.format === 'pdf' ? 'pdf' : 'image')
+      return Z ? '已打开导出窗口，点“导出”即可下载。' : 'I opened the Export window; click Export to download.'
+    }
+    busy.value = Z ? '正在导出 .pptx…' : 'Exporting the .pptx…'
+    exportPPTX(slides.value, true, false) // the browser saves the file; no dialog
     return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
+  }
+  if (action === 'share_deck') {
+    if (!chatslide?.share) fail(Z ? '这里不能分享：请在 ChatSlide 里打开这个项目再分享。' : 'Sharing is not available here: open this project in ChatSlide to share it.')
+    if (!chatslide.canExport()) return Z ? '分享需要付费方案，已为你打开方案页面。' : 'Sharing needs a paid plan; I opened the plans for you.'
+    const { url, copied } = await chatslide.share()
+    return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
+  }
+  if (action === 'open_step') {
+    if (!chatslide?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
+    await chatslide.goto(args.step === 'video' ? 'video' : 'scripts')
+    return args.step === 'video' ? (Z ? '正在打开视频步骤。' : 'Opening the Video step.') : (Z ? '正在打开脚本步骤。' : 'Opening the Scripts step.')
+  }
+  if (action === 'talk_to_human') {
+    if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
+    busy.value = Z ? '正在联系支持…' : 'Contacting support…'
+    return (await chatslide.support(args.message || userText)) || (Z ? '已转给支持团队。' : 'Sent to the support team.')
+  }
+  if (action === 'ask_user') {
+    const opts = (args.options || []).filter(Boolean).slice(0, 4)
+    s.pending = { request: userText, question: args.question || '', options: opts }
+    save()
+    return args.question || (Z ? '能再具体一点吗？' : 'Could you say that more specifically?')
   }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
@@ -1017,6 +1056,7 @@ let memo = ''
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
+  const hadPending = !!s.pending
   const done: string[] = []
   const replies: string[] = []
   let changed = false
@@ -1025,6 +1065,7 @@ const deckTurn = async (text: string) => {
       method: 'POST',
       body: JSON.stringify({
         instruction: text, pages: deckLines(), current: slideIndex.value + 1, template: !!s.template, done,
+        pending: s.pending || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
       }),
@@ -1062,9 +1103,13 @@ const deckTurn = async (text: string) => {
       replies.push(reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'undo', 'redo', 'download_deck', 'read_file', 'web_search'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => c.action === 'answer_question')) break // a question is answered once
+    if (work.every((c: any) => ['answer_question', 'ask_user'].includes(c.action))) break // a question is asked/answered once
+  }
+  if (hadPending) { // the answer was used (or superseded); the question is no longer open
+    s.pending = null
+    save()
   }
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
@@ -1368,6 +1413,25 @@ onMounted(() => {
     cursor: pointer;
     margin-left: 4px;
     font-style: normal;
+  }
+}
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 4px;
+
+  .choice {
+    border: 1px solid $themeColor;
+    color: $themeColor;
+    border-radius: $borderRadius;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: rgba($color: $themeColor, $alpha: .08);
+    }
   }
 }
 .new {

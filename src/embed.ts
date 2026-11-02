@@ -12,6 +12,10 @@ export interface ChatSlideHost {
   sync: (pages: { key: string, url?: string, image?: Blob, text: string, notes: string }[]) => Promise<Record<string, string>>
   flush?: () => Promise<void> // set by the editor: sync now
   pptx: () => Promise<string> // the project's deck as a .pptx (blob: URL), for the first open
+  // chat actions done by ChatSlide itself (absent when the editor runs alone)
+  share?: () => Promise<{ url: string, copied: boolean }>
+  goto?: (step: 'scripts' | 'video') => Promise<void>
+  support?: (message: string) => Promise<string>
 }
 
 export const host: ChatSlideHost | null = (() => {

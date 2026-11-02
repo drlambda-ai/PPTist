@@ -119,7 +119,20 @@ const TOOLS = [
   fn('web_search', 'Search the web for facts, statistics, recent information, examples, evidence, citations or sources. Returns an answer with real source links under "Done so far"; then put them on the slide(s) with edit_page/add_page, citing only those links.', {
     query: { type: 'string', description: 'What to search for, specific to the slide topic' },
   }, ['query']),
-  fn('download_deck', 'Download the deck as a .pptx file ("下载", "download", "export pptx").', {}, []),
+  fn('download_deck', 'Download the deck as a file ("下载", "download", "export").', {
+    format: { type: 'string', enum: ['pptx', 'pdf', 'images'], description: 'pptx unless the user names PDF or images' },
+  }, ['format']),
+  fn('share_deck', 'Share the deck / get a share link ("share this", "分享", "link to send").', {}, []),
+  fn('open_step', 'Open another ChatSlide step when the user asks to go there or wants what it does: scripts (write/see the narration scripts page) or video (turn the deck into a video, voice-over, avatar).', {
+    step: { type: 'string', enum: ['scripts', 'video'] },
+  }, ['step']),
+  fn('talk_to_human', 'The user asks for a human / real person / support, or has an account, billing or bug problem the editor cannot fix. Sends their issue to ChatSlide support.', {
+    message: { type: 'string', description: 'Their issue, in their own words' },
+  }, ['message']),
+  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it.', {
+    question: { type: 'string', description: 'The question, in the user\'s language' },
+    options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in the user\'s language, or []' },
+  }, ['question', 'options']),
   fn('undo', 'Undo the last change.', {}, []),
   fn('redo', 'Redo the last undone change.', {}, []),
   fn('finish', 'Stop: after at least one step was applied. List in not_done every part of the request that was NOT done (the editor cannot do it, or it was skipped), in the user\'s language; empty when all is done.', {
@@ -178,10 +191,14 @@ Rules:
    "Add/include another slide" with no topic -> add_page on the next logical topic of the deck, after the current page; don't ask.
    A message that is just pasted content (a paragraph of facts, no instruction) -> edit_page on the current page: put that
    content on it (or add_page if the current page is a cover/agenda/closing page).
-   Video, voice-over, narration audio, avatars, export to video: this editor cannot make them -> answer_question saying so
-   (speaker notes can be written for a script).
-   Vague dislike with no target ("no me gusta", "bad slides", "不好看"): answer_question with ONE short question offering
-   2-3 concrete options (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
+   Video, voice-over, narration audio, avatars, "make it a video": open_step video (ChatSlide's Video step does that).
+   "Write/see the script page", "go to scripts" -> open_step scripts (write_notes writes the notes themselves).
+   Sharing, a share link -> share_deck. A human, support, refunds, account or billing -> talk_to_human.
+   When a message ANSWERS the question under "You asked", continue the original request with that answer; never re-ask.
+   Vague dislike with no target ("no me gusta", "bad slides", "不好看"): ask_user with 2-3 concrete options
+   (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
+   Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
+   ask_user per request; if already answered once, act on the best reading.
    The user's OWN logo or image ("my logo", "mi logotipo", "我的图片") is not in the chat: answer_question telling them to
    insert it once with the toolbar's image button on one page, then ask to copy it to the pages they want (only the pages
    they name, or all if they said all/the slides).
@@ -301,7 +318,8 @@ export default async function handler(req: any, res: any) {
       : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
-    const user = instruction + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
+    const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 500)}". You asked: "${String(body.pending.question).slice(0, 300)}"]` : ''
+    const user = instruction + pending + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
     const calls = model.startsWith('claude') ? await viaAnthropic(model, context, history, user)
       : model.startsWith('gpt-6') ? await viaResponses(model, context, history, user) : await viaOpenAI(model, context, history, user)
     res.status(200).json({ calls: calls.length ? calls : [{ action: 'answer_question', args: {} }] })
