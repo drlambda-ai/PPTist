@@ -20,7 +20,7 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
 const SOURCE = 'wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: an illustration, cartoon, diagram-like picture, or something no photo shows, or the user says generate/draw; photo: a generic stock photo (people working, a city at night, food)'
 
 const TOOLS = [
-  fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "make a presentation about X"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
+  fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
   }, ['instruction']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
