@@ -1,0 +1,4 @@
+Codex-Review: passed
+Fixed: MEDIUM SSRF -> public host names only
+Declined: MEDIUM prompt injection from fetched pages (same fenced-data treatment as files, accepted earlier; edits stay on the user's own deck and are one undo step)
+Declined-By: Claude (triage), Quanlai may overrule
