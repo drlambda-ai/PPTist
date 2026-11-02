@@ -230,13 +230,15 @@ const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () 
 })
 
 const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
+const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
 const uploadContent = (file: File) => run(`Reading ${file.name}…`, async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
   s.docs.push({ name: r.name, text: r.text })
   docFiles.set(r.name, file)
+  figuresOf.delete(r.name) // a new file under the same name: its own figures, not the old file's
   save()
 })
-const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
+
 
 // ---- template path: the deck server builds every version ----
 const templateTurn = async (text: string) => {
@@ -802,7 +804,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       : (Z ? '还没有附件：请用 📎 图标上传文件。' : 'No file is attached yet: attach it with the 📎 icon.'))
     if (!chatslide?.extractImages) fail(Z ? '在 ChatSlide 里打开这个项目才能提取文件中的图片。' : 'Pulling pictures out of a file works inside ChatSlide: open this project there.')
     busy.value = Z ? '正在提取文件中的图片…' : 'Pulling the pictures out of the file…'
-    let figs = figuresOf.get(file.name)
+    let figs = figuresOf.get(args.file) || figuresOf.get(file.name)
     if (!figs) {
       const r = await chatslide.extractImages(file)
       if (r.error === 'plan') fail(Z ? '从文件中提取图片需要付费方案，已为你打开方案页面。' : 'Pulling pictures out of files needs a paid plan; I opened the plans for you.')
