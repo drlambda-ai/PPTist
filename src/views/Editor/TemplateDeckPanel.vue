@@ -320,6 +320,7 @@ const slideSize = () => ({ width: viewportSize.value, height: Math.round(viewpor
 // the model: it sees a short token and the real src is restored on merge.
 let userText = '' // the message being handled: replies are written in its language
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
+const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -342,7 +343,9 @@ const editSlide = async (index: number, instruction: string) => {
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
-  const unchanged = () => new NoChange(zh(userText) ? `第 ${index + 1} 页没有改动：这个修改我没能做成。` : `Page ${index + 1} was not changed: I could not make that edit.`)
+  const unchanged = () => new NoChange(editedThisTurn.has(slide.id)
+    ? (zh(userText) ? `第 ${index + 1} 页没有进一步的改动。` : `No further change on page ${index + 1}.`)
+    : (zh(userText) ? `第 ${index + 1} 页没有改动：这个修改我没能做成。` : `Page ${index + 1} was not changed: I could not make that edit.`))
   if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) throw unchanged() // say so, don't echo the request
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
@@ -371,7 +374,9 @@ const editSlide = async (index: number, instruction: string) => {
   // what actually landed: elements that differ, plus those removed (not the raw patch, which may name ids the merge ignored)
   const liveById = new Map(live.elements.map((e: any) => [e.id, JSON.stringify(e)]))
   const n = merged.filter((e: any) => liveById.get(e.id) !== JSON.stringify(e)).length + live.elements.filter((e: any) => !merged.some((m: any) => m.id === e.id)).length
-  lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`
+  void n
+  editedThisTurn.add(slide.id)
+  lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页。` : `Updated page ${index + 1}.`
   return lastEditTerse // the model's own sentence misstated the edit too often (audited 2026-11-02): code reports
 }
 
@@ -918,12 +923,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (err) throw err.reason
     await fitQueue
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
-    const ok = all.length - same.length - failed.length
+    const earlier = same.filter(p => editedThisTurn.has(all[p - 1])) // done by an earlier step of this turn
+    const untouched = same.filter(p => !editedThisTurn.has(all[p - 1]))
+    const ok = all.length - untouched.length - failed.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
-    const why = failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : ''
     const what = String(args.instruction || '').slice(0, 60)
-    if (!ok && !failed.length) fail(Z ? `没有哪一页有需要这样改的内容：“${what}”。` : `No page had anything to change for "${what}".`)
-    if (!ok) fail((Z ? '这个修改我没能做成。' : 'I could not make that change.') + why)
+    const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
+      + (untouched.length && ok ? (Z ? `第 ${list(untouched)} 页没有可改的内容。` : ` Page(s) ${list(untouched)} had nothing for that.`) : '')
+    void earlier
+    if (!ok) fail((Z ? `这个修改在任何一页都没做成：“${what}”。` : `I could not make that change on any page: "${what}".`) + why)
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
   }
   if (action === 'change_image') {
@@ -1090,6 +1098,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
+  editedThisTurn.clear()
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
   const pendingAtStart = s.pending || null
   const done: string[] = []
