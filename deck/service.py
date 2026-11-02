@@ -62,32 +62,38 @@ def to_text(name, raw):
 OCR_PAGES = 10
 
 
-def _has_image(path, n):
-    """Does page n carry a picture? Blank pages are not sent to the vision model."""
-    import fitz  # PyMuPDF
+def _page_image(path, n):
+    """The picture a scanned page consists of (bytes, or None for a blank/text page). pypdf only: no renderer."""
+    from pypdf import PdfReader
     try:
-        return bool(fitz.open(path)[n - 1].get_images(full=False))
+        imgs = PdfReader(path).pages[n - 1].images
+        return max((im.data for im in imgs), key=len) if imgs else None
     except Exception:
-        return False
+        return None
+
+
+def _has_image(path, n):
+    return _page_image(path, n) is not None
 
 
 def _ocr_pdf(path, page_numbers):
     """{page n: text} for scanned pages, read from the page picture by a vision model. The first OCR_PAGES pages
     only; a page that fails keeps a note instead of losing the others."""
     import base64
-    import fitz  # PyMuPDF
     from openai import OpenAI
+    from PIL import Image
     client = OpenAI(timeout=60, max_retries=1)
-    doc = fitz.open(path)
     out = {}
     for k, n in enumerate(page_numbers):
         if k >= OCR_PAGES:
             out[n] = f"[not read: only the first {OCR_PAGES} scanned pages are transcribed]"
             continue
-        page = doc[n - 1]
-        zoom = min(1.6, 1600 / max(page.rect.width, page.rect.height, 1))  # at most ~1600 px on the long side
         try:
-            b64 = base64.b64encode(page.get_pixmap(matrix=fitz.Matrix(zoom, zoom)).tobytes("png")).decode()
+            img = Image.open(io.BytesIO(_page_image(path, n))).convert("RGB")
+            img.thumbnail((1600, 1600))  # at most 1600 px on the long side
+            buf = io.BytesIO()
+            img.save(buf, "PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode()
             r = client.responses.create(
                 model=os.environ.get("OCR_MODEL", "gpt-5.4-mini"),
                 input=[{"role": "user", "content": [
