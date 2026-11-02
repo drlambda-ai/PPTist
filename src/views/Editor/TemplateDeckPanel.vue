@@ -688,6 +688,16 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
     pictureNote = Z ? `没有匹配的图库照片，所以用 AI 生成了一张。` : 'No stock photo matched, so I generated one with AI.'
     pictureSource = 'ai'
   }
+  if (chatslide?.generateImage) { // inside ChatSlide: its image route bills, gates and moderates
+    const g = await chatslide.generateImage(query, landscape ? '16:9' : '9:16')
+    if (g.error === 'credits') {
+      const e = new OutOfCredits('out of credits')
+      e.required = 10
+      throw e
+    }
+    if (g.error) fail(Z ? `图片没能生成（${g.error}）。` : `The picture could not be generated (${g.error}).`)
+    return g.src || ''
+  }
   const r = await fetch('/api/tools/ai_image', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: query, size: landscape ? '1536x1024' : '1024x1536' }),

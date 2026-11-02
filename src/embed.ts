@@ -17,6 +17,8 @@ export interface ChatSlideHost {
   goto?: (step: 'scripts' | 'video') => Promise<void>
   support?: (message: string) => Promise<string>
   outOfCredits?: () => void // ChatSlide opens its plans/paywall
+  // AI picture through ChatSlide's image route (its credits, gates and moderation); { src } or { error }
+  generateImage?: (prompt: string, aspectRatio: '16:9' | '9:16') => Promise<{ src?: string, error?: string }>
 }
 
 // A proxied call that ChatSlide refused for lack of credits (HTTP 402).
