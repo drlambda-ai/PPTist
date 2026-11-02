@@ -334,9 +334,8 @@ const editSlide = async (index: number, instruction: string) => {
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
-  if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) { // say so, don't echo the request
-    fail(zh(userText) ? `第 ${index + 1} 页没有需要改的地方（可能已经是这样了）。` : `Nothing to change on page ${index + 1}; it may already be that way.`)
-  }
+  const unchanged = () => new NoChange(zh(userText) ? `第 ${index + 1} 页没有改动：这个修改我没能做成。` : `Page ${index + 1} was not changed: I could not make that edit.`)
+  if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) throw unchanged() // say so, don't echo the request
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
   const removed = new Set<string>(ret.patch.removed || [])
@@ -356,6 +355,8 @@ const editSlide = async (index: number, instruction: string) => {
     }),
     ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
   ]
+  // a reply that describes changes the merge did not make is never shown as done
+  if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
   slidesStore.updateSlide({ elements: merged }, slide.id)
   await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
@@ -413,6 +414,7 @@ const cloneSlide = (sl: Slide): Slide => {
 const zh = (text: string) => languageOf(text) === '中文'
 // A step that cannot be done stops the turn (the router would otherwise retry it with new arguments).
 class StepFailed extends Error {}
+class NoChange extends StepFailed {} // the page already is what was asked (or the edit changed nothing visible)
 function fail(msg: string): never {
   throw new StepFailed(msg)
 }
@@ -834,16 +836,21 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
     const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one
-    let done = 0, next = 0, same = 0
+    let done = 0, next = 0, stop = false
+    const same: number[] = [], failed: number[] = []
     const worker = async () => {
-      while (next < all.length) {
+      while (next < all.length && !stop) {
         const id = all[next++]
         try {
           await editSlide(pos(id), args.instruction)
         }
-        catch (e) { // a page that needs no change (a cover, a closing page) never stops the others
-          if (!(e instanceof StepFailed)) throw e
-          same++
+        catch (e) { // one page never stops the others; an unexpected error stops them all
+          if (e instanceof NoChange) same.push(pos(id) + 1)
+          else if (e instanceof StepFailed) failed.push(pos(id) + 1)
+          else {
+            stop = true
+            throw e
+          }
         }
         busy.value = `Updated ${++done} of ${all.length} pages…`
       }
@@ -851,8 +858,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     await Promise.all(Array.from({ length: Math.min(5, all.length) }, worker))
     await fitQueue
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
-    if (same === all.length) fail(Z ? '没有页面需要修改（可能已经是这样了）。' : 'No page needed that change; it may already be that way.')
-    return Z ? `已更新 ${all.length - same} 页。` : `Updated ${all.length - same} of ${all.length} pages.`
+    const ok = all.length - same.length - failed.length
+    const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
+    const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
+      + (same.length ? (Z ? `第 ${list(same)} 页没有改动。` : ` Page(s) ${list(same)} were not changed.`) : '')
+    if (!ok) fail((Z ? '这个修改我没能做成。' : 'I could not make that change.') + why)
+    return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} of ${all.length} pages.`) + why
   }
   if (action === 'change_image') {
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
@@ -910,8 +921,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return Z ? `已写好 ${targets.length} 页的演讲备注。` : `Wrote speaker notes for ${targets.length} page(s).`
   }
   if (action === 'download_deck') {
-    download()
-    return Z ? '已开始下载。' : 'Download started.'
+    const how = download()
+    if (how === 'plans') return Z ? '下载需要付费方案，已为你打开方案页面。' : 'Downloading needs a paid plan; I opened the plans for you.'
+    if (how === 'dialog') return Z ? '已打开导出窗口：选择 PPTX（或 PDF、图片），点“导出”即可下载。' : 'I opened the Export window: choose PPTX (or PDF or images) and click Export to download.'
+    return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
   }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
@@ -989,6 +1002,8 @@ const deckTurn = async (text: string) => {
     // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
     // is re-planned against the updated deck in the next round
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
+    const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
+    if (!work.length && left && String(left).trim()) replies.push(String(left).trim()) // never pretend the rest is done
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
@@ -1067,14 +1082,17 @@ const onEnter = (e: KeyboardEvent) => {
   if (!busy.value && input.value.trim()) send()
 }
 
-const download = () => {
+const download = (): 'started' | 'dialog' | 'plans' => {
+  if (chatslide && !chatslide.canExport()) return 'plans' // ChatSlide has opened its plans
   if (s.mode === 'template' && !s.edited) { // the engine's own .pptx is exact; after editor changes, export the editor
     const a = document.createElement('a')
     a.href = s.versions[s.versions.length - 1].deckUrl
     a.download = 'deck.pptx'
     a.click()
+    return 'started'
   }
-  else mainStore.setDialogForExport('pptx')
+  mainStore.setDialogForExport('pptx')
+  return 'dialog'
 }
 
 const restart = () => {

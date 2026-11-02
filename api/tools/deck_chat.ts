@@ -113,7 +113,9 @@ const TOOLS = [
   fn('download_deck', 'Download the deck as a .pptx file ("下载", "download", "export pptx").', {}, []),
   fn('undo', 'Undo the last change.', {}, []),
   fn('redo', 'Redo the last undone change.', {}, []),
-  fn('finish', 'Everything the user asked for is done (only after at least one step was applied).', {}, []),
+  fn('finish', 'Stop: after at least one step was applied. List in not_done every part of the request that was NOT done (the editor cannot do it, or it was skipped), in the user\'s language; empty when all is done.', {
+    not_done: { type: 'string', description: 'e.g. "I can\'t add the table from your PDF: the file isn\'t attached here." Empty if everything was done.' },
+  }, ['not_done']),
   fn('answer_question', 'Answer a question about the deck or the editor without changing anything, or ask what the user means when the request is truly ambiguous.', {
     answer: { type: 'string' },
   }, ['answer']),
