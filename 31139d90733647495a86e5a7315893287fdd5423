@@ -1,0 +1,4 @@
+Codex-Review: passed
+Fixed: P2 index match only when followed by a comma
+Declined: P1 open_step outside ChatSlide rewrites notes (writeNotes revises the CURRENT notes with the user's instruction, and the whole turn is one undo step)
+Declined-By: Claude (triage), Quanlai may overrule
