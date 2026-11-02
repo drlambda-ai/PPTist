@@ -141,7 +141,7 @@ import Checkbox from '@/components/Checkbox.vue'
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
-const { templates } = storeToRefs(slidesStore)
+const { templates, slides } = storeToRefs(slidesStore)
 
 const { resetSlides, isEmptySlide } = useSlideHandler()
 const { AIPPT, presetImgPool, getMdContent } = useAIPPT()
@@ -241,6 +241,7 @@ const createPPT = async (template?: { slides: Slide[], theme: SlideTheme }) => {
   mainStore.setAIPPTDialogState('running')
   message.loading(t('演示文稿生成中，请稍等 ...'), { duration: 0 })
 
+  const kept = overwrite.value ? JSON.parse(JSON.stringify(slides.value)) : null // back if the request is refused
   if (overwrite.value) resetSlides()
 
   let stream: any
@@ -253,6 +254,7 @@ const createPPT = async (template?: { slides: Slide[], theme: SlideTheme }) => {
     })
   }
   catch (e) {
+    if (kept) slidesStore.setSlides(kept)
     loading.value = false
     message.closeAll()
     mainStore.setAIPPTDialogState(true)

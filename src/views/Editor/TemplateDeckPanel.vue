@@ -796,7 +796,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
     if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(Z ? `「${doc.name}」这几页读不出文字（可能是扫描图片）。` : `No text could be read from ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''} (it may be a scanned image).`)
-    memo = `<file-content name="${doc.name}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${picked.slice(0, 12000)}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
+    memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
     const skipped = missing.length && total ? (Z ? `（没有第 ${missing.join('、')} 页，共 ${total} 页）` : ` (no page ${missing.join(', ')}; it has ${total})`) : ''
     return (Z ? `已读取「${doc.name}」${want.length ? `第 ${got.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${got.join(', ')}` : ''}.`) + skipped
   }
@@ -804,7 +804,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     busy.value = Z ? '正在网上搜索…' : 'Searching the web…'
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
     if (r.error || !r.sources?.length) fail(Z ? `网上没有找到可靠的来源（${args.query}），所以没有添加引用。` : `I found no reliable sources online for "${args.query}", so I added no citations.`)
-    memo = `<web-results>\n${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}\n</web-results>`
+    memo = `<web-results>\n${fence(`${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}`)}\n</web-results>`
     return Z ? `已在网上找到 ${r.sources.length} 个来源。` : `Found ${r.sources.length} source(s) online.`
   }
   if (action === 'merge_pages') {
@@ -1055,10 +1055,12 @@ const restoreDeckBeforeCreate = () => {
 
 // What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
 let memo = ''
+const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
   userText = text
+  takeSpend() // spend from an earlier, failed turn never lands in this footnote
   const pendingAtStart = s.pending || null
   const done: string[] = []
   const replies: string[] = []
