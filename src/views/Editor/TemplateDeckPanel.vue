@@ -1113,6 +1113,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 const deckTurn = async (text: string) => {
   userText = text
   editedThisTurn.clear()
+  const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
   const pendingAtStart = s.pending || null
   const done: string[] = []
@@ -1189,6 +1190,8 @@ const deckTurn = async (text: string) => {
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
+  // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
+  if (slides.value.length !== pagesAtStart) lines.push(zh(text) ? `现在共 ${slides.value.length} 页。` : `The deck now has ${slides.value.length} pages.`)
   const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
