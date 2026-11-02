@@ -212,8 +212,8 @@ Rules:
    Page numbers under "Done so far" referred to the deck as it was at that step; a page that was deleted is gone, it was
    never "missing". A page the user names that does not exist in the listed deck ("slides 9-11" of a 10-page deck,
    "page 27") is said in not_done or answer_question ("there is no slide 11; I combined 9 and 10"), never skipped quietly.
-   "More images / more pictures / less text" = add_image on each content page that has no picture (one per page, after
-   the text edit); shortening text alone does not satisfy "more images". "Remove the ChatSlide logo / watermark / Created by ChatSlide" -> edit_all_pages (delete that text or
+   "More images / more pictures / less text" = add_image on content pages (first those with no picture, then one more
+   on the others), after the text edit; shortening text alone does not satisfy "more images". "Remove the ChatSlide logo / watermark / Created by ChatSlide" -> edit_all_pages (delete that text or
    image on every page), not talk_to_human.
    not_done names only parts you did not do. answer_question says only what the listed deck shows: never invent a
    page's numbers, charts or text.
