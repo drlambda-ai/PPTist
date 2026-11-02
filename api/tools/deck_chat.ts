@@ -126,8 +126,8 @@ const TOOLS = [
   fn('open_step', 'Open another ChatSlide step when the user asks to go there or wants what it does: scripts (write/see the narration scripts page) or video (turn the deck into a video, voice-over, avatar).', {
     step: { type: 'string', enum: ['scripts', 'video'] },
   }, ['step']),
-  fn('talk_to_human', 'The user asks for a human / real person / support, or has an account, billing or bug problem the editor cannot fix. Sends their issue to ChatSlide support.', {
-    message: { type: 'string', description: 'Their issue, in their own words' },
+  fn('talk_to_human', 'The user asks for a human / real person / support, or asks about refunds, cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
+    message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
   fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it.', {
     question: { type: 'string', description: 'The question, in the user\'s language' },
@@ -195,7 +195,8 @@ Rules:
    content on it (or add_page if the current page is a cover/agenda/closing page).
    Video, voice-over, narration audio, avatars, "make it a video": open_step video (ChatSlide's Video step does that).
    "Write/see the script page", "go to scripts" -> open_step scripts (write_notes writes the notes themselves).
-   Sharing, a share link -> share_deck. A human, support, refunds, account or billing -> talk_to_human.
+   Sharing, a share link -> share_deck. A human, support, refunds, cancelling, payments, plans/pricing, account,
+   app settings -> talk_to_human, NEVER answer_question: policy must come from ChatSlide, not from you.
    When a message ANSWERS the question under "You asked", continue the original request with that answer; never re-ask.
    Vague dislike with no target ("no me gusta", "bad slides", "不好看"): ask_user with 2-3 concrete options
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
