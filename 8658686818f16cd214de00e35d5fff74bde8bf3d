@@ -1,1 +1,3 @@
-Codex-Review: passed (covered by the review of the following commit)
+Codex-Review: passed
+Fixed (in 1af14429): MEDIUM SSRF; Declined: MEDIUM prompt injection from fetched pages (fenced data, user's own deck, one undo step)
+Declined-By: Claude (triage), Quanlai may overrule
