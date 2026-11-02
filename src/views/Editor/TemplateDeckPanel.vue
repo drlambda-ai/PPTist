@@ -684,6 +684,8 @@ const writeNotes = async (ids: string[], instruction: string) => {
 }
 
 // New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
+// a new page's title, for replies: page numbers shift when later steps insert pages, titles do not
+const titleAt = (i: number) => (slides.value[i] ? pageText(slides.value[i]).replace(/\[[^\]]*\]/g, '').trim().slice(0, 50) : '') || (zh(userText) ? `第 ${i + 1} 页` : `page ${i + 1}`)
 const beforeClosing = (at: number) => {
   const last = slides.value[slides.value.length - 1]
   // a generated deck marks it (type 'end'); in an imported deck the closing page is a last page with almost no text
@@ -731,13 +733,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   }
   if (action === 'add_chart_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
-    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页（第 ${after + 1} 页）。` : `Added a chart on page ${after + 1}.`)
+    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页「${titleAt(after)}」。` : `Added a chart page "${titleAt(after)}".`)
   }
   if (action === 'add_table_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     await addTablePage(text, args.instruction, after)
     slidesStore.updateSlideIndex(after)
-    return Z ? `已加入表格页（第 ${after + 1} 页）。` : `Added a table on page ${after + 1}.`
+    return Z ? `已加入表格页「${titleAt(after)}」。` : `Added a table page "${titleAt(after)}".`
   }
   if (action === 'add_image') {
     const id = idOf(args.index)
@@ -754,7 +756,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     slidesStore.updateSlideIndex(pos(id))
-    return (Z ? '已插入图片。' : 'Picture added.') + (pictureNote ? ` ${pictureNote}` : '')
+    const how = args.source === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : args.source === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    return (Z ? `已插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}".`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -918,14 +921,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const what = String(args.instruction || '').slice(0, 60)
     if (!ok && !failed.length) fail(Z ? `没有哪一页有需要这样改的内容：“${what}”。` : `No page had anything to change for "${what}".`)
     if (!ok) fail((Z ? '这个修改我没能做成。' : 'I could not make that change.') + why)
-    return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} of ${all.length} pages.`) + why
+    return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
   }
   if (action === 'change_image') {
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
     const note = await changeImage(text, id, args.image, args.query, args.source)
-    return (Z ? '图片已更换。' : 'Picture replaced.') + (note ? ` ${note}` : '')
+    const how = args.source === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : args.source === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced with a ${how} for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
     const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)
@@ -969,7 +973,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       }
     }
     const note = missed.length ? (Z ? `（第 ${missed.join('、')} 页的大色块没能改色，可能仍会挡住背景）` : ` (the large shapes on page(s) ${missed.join(', ')} could not be recoloured and may still cover it)`) : ''
-    return (Z ? `已设置 ${targets.length} 页背景。` : `Background set on ${targets.length} page(s).`) + note
+    const bgHow = args.photo_query ? (Z ? `“${String(args.photo_query).slice(0, 60)}”的图库照片` : `a stock photo for "${String(args.photo_query).slice(0, 60)}"`) : (Z ? `颜色 ${args.color}` : `colour ${args.color}`)
+    return (Z ? `已把 ${targets.length} 页背景设为${bgHow}。` : `Background of ${targets.length} page(s) set to ${bgHow}.`) + note
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
@@ -1152,14 +1157,16 @@ const deckTurn = async (text: string) => {
   const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
-  say('assistant', (zh(text) ? reply : await localize(text, reply)) + fee)
+  say('assistant', await finalize(text, reply) + fee)
 }
 
-// Step replies are written by code in English or Chinese; any other language gets them translated (one small call)
-const localize = async (instruction: string, reply: string) => {
+// One small call on every turn: the reply in the user's language, plus any part of the request that none of the steps
+// covered, said out loud (a Haiku router sometimes calls finish without naming what it skipped).
+const finalize = async (instruction: string, reply: string) => {
   try {
     const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction }) })).json()
-    return r.reply || reply
+    const missing = String(r.missing || '').trim()
+    return (r.reply || reply) + (missing ? `\n${missing}` : '')
   }
   catch {
     return reply
