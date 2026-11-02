@@ -89,8 +89,12 @@ def _ocr_pdf(path, page_numbers):
             out[n] = f"[not read: only the first {OCR_PAGES} scanned pages are transcribed]"
             continue
         try:
-            img = Image.open(io.BytesIO(_page_image(path, n))).convert("RGB")
-            img.thumbnail((1600, 1600))  # at most 1600 px on the long side
+            img = Image.open(io.BytesIO(_page_image(path, n)))  # lazy: the header only, no pixels yet
+            if img.width * img.height > 40_000_000:
+                out[n] = "[page could not be read: picture too large]"
+                continue
+            img.thumbnail((1600, 1600))  # at most 1600 px on the long side, decoded once at reduced size
+            img = img.convert("RGB")
             buf = io.BytesIO()
             img.save(buf, "PNG")
             b64 = base64.b64encode(buf.getvalue()).decode()
