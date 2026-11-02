@@ -16,7 +16,9 @@ To change a font, size, colour, bold/italic/underline or alignment (<p style="te
 the element default and any inline style that would override it. Font sizes are px.
 "Move left/right/up/down" means change left/top by a visible amount (about 5-15% of the canvas) unless a size is given;
 "bigger/smaller" scales width and height together around the element's centre.
-- type "shape": has "fill", "path", "viewBox" ("path" may be a placeholder token: keep it exactly as given).
+- type "shape": has "fill", "path", "viewBox" ("path" may be a placeholder token: keep it exactly as given). A shape
+  may also hold words: then it has "content", "defaultColor", "defaultFontName" exactly like a text element, and you edit
+  them the same way (most text boxes of imported decks are shapes).
 To MOVE an element, change its left/top; never add a copy of it.
 
 Rules:

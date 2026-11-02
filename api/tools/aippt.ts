@@ -10,7 +10,7 @@ Allowed line shapes:
 {"type":"contents","data":{"items":["...","..."]}}
 {"type":"transition","data":{"title":"...","text":"..."}}
 {"type":"content","data":{"title":"...","items":[{"title":"...","text":"..."}]}}
-{"type":"end"}
+{"type":"end","data":{"title":"<thank you, in the deck's language>"}}
 Order: exactly one "cover" first, then one "contents", then several "content" slides (use "transition" between major sections), then exactly one "end".
 Each "content" slide should have 2-4 items. Copy the outline's wording: an item's "title" is its bold heading, its "text" is the sentence after the colon, unchanged. The cover "text" is the outline's subtitle. Never write placeholders (XXX, 姓名, 日期, presenter, date).
 If the input starts with a user request that states a number of slides, emit exactly that many lines in total (cover and end included): drop "contents" and "transition" slides first, then merge content. Write in {LANG}. Output ONLY JSONL.`

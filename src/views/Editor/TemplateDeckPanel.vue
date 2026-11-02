@@ -315,8 +315,11 @@ let userText = '' // the message being handled: replies are written in its langu
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
+  // a shape's words (every text box of an imported ChatSlide/PowerPoint deck) are shown like a text box's: the model
+  // edits "content" the same way on both, and the merge puts it back inside the shape's text
+  const flat = (e: any) => (e.type === 'shape' && e.text ? (({ text, ...r }) => ({ ...r, content: text.content, defaultColor: text.defaultColor, defaultFontName: text.defaultFontName }))(e) : e)
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
-    : e.type === 'shape' && e.path?.length > 80 ? { ...e, path: `path:${e.id}` } : e)) // long SVG paths: token, restored below
+    : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patch: true, elements, slideSize: slideSize(), instruction: `${instruction}\n(Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
@@ -336,6 +339,11 @@ const editSlide = async (index: number, instruction: string) => {
       if (!c) return e
       const { src: _src, path, ...rest } = c // image sources and tokenised paths are never taken from the model
       void _src
+      if (e.type === 'shape' && e.text) {
+        const { content, defaultColor, defaultFontName, text, ...shape } = rest
+        const t = { ...e.text, ...(text || {}), ...(content !== undefined ? { content } : {}), ...(defaultColor ? { defaultColor } : {}), ...(defaultFontName ? { defaultFontName } : {}) }
+        return { ...e, ...shape, text: t, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
+      }
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
     ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)),
@@ -748,6 +756,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.deleteSlide(del)
     return Z ? `已删除 ${del.length} 页。` : `Deleted ${del.length} page(s).`
   }
+  if (action === 'merge_pages') {
+    const ids = nums(args.pages)
+    if (ids.length < 2) fail(Z ? '请说明要合并哪几页。' : 'Which pages should be combined?')
+    const [keep, ...rest] = ids
+    // the router sees each page in one short line; the merge gets every word of the pages being folded in
+    const extra = rest.map(id => readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')).join('\n\n')
+    await editSlide(pos(keep), `Combine the content below into this page: keep this page's title, add the points of the other page(s) condensed so everything fits without overflow, and rearrange the layout if needed. ${args.instruction || ''}\n\nContent of the other page(s):\n${extra}`)
+    slidesStore.deleteSlide(rest)
+    return Z ? `已把 ${ids.length} 页合并为第 ${pos(keep) + 1} 页。` : `Combined ${ids.length} pages into page ${pos(keep) + 1}.`
+  }
   if (action === 'duplicate_pages') {
     const list = [...slides.value]
     for (const id of nums(args.pages)) {
@@ -886,7 +904,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
         save()
         await showPptx(s.versions[s.versions.length - 1].deckUrl)
       }
-      else await snapshotStore.unDo()
+      else if (snapshotStore.canUndo) await snapshotStore.unDo()
+      else return Z ? '没有可以撤销的修改。' : 'There is nothing to undo yet.'
     }
     else await snapshotStore.reDo()
     return Z ? (action === 'undo' ? '已撤销。' : '已重做。') : (action === 'undo' ? 'Undone.' : 'Redone.')
@@ -980,7 +999,19 @@ const deckTurn = async (text: string) => {
     addHistorySnapshot()
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
-  say('assistant', replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.'))
+  const reply = replies.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
+  say('assistant', zh(text) ? reply : await localize(text, reply))
+}
+
+// Step replies are written by code in English or Chinese; any other language gets them translated (one small call)
+const localize = async (instruction: string, reply: string) => {
+  try {
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction }) })).json()
+    return r.reply || reply
+  }
+  catch {
+    return reply
+  }
 }
 
 const send = () => {

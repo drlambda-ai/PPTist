@@ -517,10 +517,17 @@ export default () => {
       else if (item.type === 'end') {
         const endTemplate = endTemplates[Math.floor(Math.random() * endTemplates.length)]
         // same as the cover: an untyped text box here is the presenter placeholder ("演讲人：XXX")
-        const elements = endTemplate.elements.filter(el => !(el.type === 'text' && !el.textType && /XXX/.test(el.content))).map(el => {
-          if (el.type === 'image' && el.imageType && imgPool.value.length) return getNewImgElement(el)
-          return el
-        })
+        const texts = endTemplate.elements.filter(el => el.type === 'text') as PPTTextElement[]
+        const size = (el: PPTTextElement) => Math.max(0, ...[...el.content.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1]))
+        const main = item.data?.title ? texts.reduce<PPTTextElement | undefined>((a, el) => (!a || size(el) > size(a) ? el : a), undefined) : undefined
+        // the template's own closing words are Chinese ("谢谢聆听"): the biggest line becomes the thank-you in the deck's
+        // language and the template's other words go
+        const elements = endTemplate.elements.filter(el => !(el.type === 'text' && !el.textType && /XXX/.test(el.content)))
+          .filter(el => !main || el.type !== 'text' || el === main).map(el => {
+            if (el.type === 'image' && el.imageType && imgPool.value.length) return getNewImgElement(el)
+            if (el === main) return getNewTextElement({ el, text: item.data!.title!, maxLine: 1 })
+            return el
+          })
         slides.push({
           ...endTemplate,
           id: nanoid(10),

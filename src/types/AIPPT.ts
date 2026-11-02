@@ -36,6 +36,7 @@ export interface AIPPTContent {
 
 export interface AIPPTEnd {
   type: 'end'
+  data?: { title?: string }
 }
 
 export type AIPPTSlide = AIPPTCover | AIPPTContents | AIPPTTransition | AIPPTContent | AIPPTEnd

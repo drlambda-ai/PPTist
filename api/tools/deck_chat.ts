@@ -1,4 +1,4 @@
-import { getKey, readBody } from '../_llm.js'
+import { chat, getKey, readBody } from '../_llm.js'
 
 // Deck-level chat router, modelled on ChatSlide's assistant menu (chatslide-backend util/assistant/slide_tools.json)
 // but able to do several steps: the editor calls it in a loop, applying each round's calls and sending back what was
@@ -49,6 +49,10 @@ const TOOLS = [
     order: { ...pages, description: 'Every current page number exactly once, in the new order' },
   }, ['order']),
   fn('swap_pages', 'Swap the positions of two pages.', { a: page, b: page }, ['a', 'b']),
+  fn('merge_pages', 'Combine/merge pages into the first one listed: its content is rewritten to hold all of their points, the others are deleted.', {
+    pages: { ...pages, description: 'The pages to combine; the first keeps its place ("combine 9-11" -> [9, 10, 11])' },
+    instruction: { type: 'string', description: 'Anything the user said about how to combine; empty if nothing' },
+  }, ['pages', 'instruction']),
   fn('edit_page', 'Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
   }, ['index', 'instruction']),
@@ -143,7 +147,7 @@ Rules:
 5. A new or different picture -> change_image, ONE call for the one image meant: "the picture/photo" is the image marked "the largest
    image here" on that page; never an icon or a [logo] unless the user names it. If that page has no image except
    icons/logos, use add_image instead. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.
-   Merging pages A and B: edit_page on A (instruction: combine B's content into A, giving its full text), then delete_pages B.
+   Merging/combining pages -> merge_pages (one call for all of them).
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain
@@ -260,6 +264,13 @@ export default async function handler(req: any, res: any) {
   }
   try {
     const body = await readBody(req)
+    if (body.localize) { // the turn's reply, written by code in English, said in the language of the user's message
+      const text = await chat([
+        { role: 'system', content: 'Rewrite the assistant reply in the language of the user\'s message. Keep its meaning, numbers and line breaks; if it is already in that language return it unchanged. Output only the reply.' },
+        { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 500)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
+      ], { model: MODEL, maxTokens: 1500 })
+      res.status(200).json({ reply: text.trim() || body.localize }); return
+    }
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
     // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
