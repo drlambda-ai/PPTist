@@ -770,7 +770,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
-    const where = Z ? `${cy < 1 / 3 ? '上' : cy > 2 / 3 ? '下' : '中'}${cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '中'}` : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
+    const zhWhere = (cy < 1 / 3 || cy > 2 / 3 ? (cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '') + (cy < 1 / 3 ? '上' : '下') + (cx >= 1 / 3 && cx <= 2 / 3 ? '方' : '') : cx < 1 / 3 ? '左侧' : cx > 2 / 3 ? '右侧' : '正中')
+    const where = Z ? zhWhere : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
     return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片。` : `Added a ${how} for "${String(args.query || '').slice(0, 60)}" at the ${where} (the free space there).`) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
