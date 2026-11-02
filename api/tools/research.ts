@@ -65,7 +65,10 @@ const readUrl = async (url: string) => {
   const key = process.env.SUPADATA_API_KEY
   if (!key) throw new Error('reading links is not configured')
   if (!/^https?:\/\//i.test(url)) throw new Error('not a web link')
-  const yt = /(^|\.)(youtube\.com|youtu\.be)$/i.test(new URL(url).hostname)
+  const host = new URL(url).hostname.toLowerCase()
+  // public sites only: no IP literals, localhost or internal names (the fetch runs on Supadata, but never point it inward)
+  if (/^[\d.]+$|^\[|:|^localhost$|\.(local|internal|localhost|lan)$/.test(host) || !host.includes('.')) throw new Error('only public web links can be read')
+  const yt = /(^|\.)(youtube\.com|youtu\.be)$/i.test(host)
   const endpoint = yt ? 'https://api.supadata.ai/v1/transcript' : 'https://api.supadata.ai/v1/web/scrape'
   const params = new URLSearchParams({ url, ...(yt ? { text: 'true' } : {}) })
   const r = await fetch(`${endpoint}?${params}`, { headers: { 'x-api-key': key } })
