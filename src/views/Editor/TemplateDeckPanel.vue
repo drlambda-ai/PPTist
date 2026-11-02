@@ -368,9 +368,9 @@ const editSlide = async (index: number, instruction: string) => {
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
   slidesStore.updateSlide({ elements: merged }, slide.id)
   await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
-  const n = (ret.patch.changes?.length || 0) + (ret.patch.added?.length || 0) + (ret.patch.removed?.length || 0)
-  const echo = !ret.reply || ret.reply.replace(/[。.！!\s]/g, '') === userText.replace(/[。.！!\s]/g, '') // the model repeated the request
-  void echo
+  // what actually landed: elements that differ, plus those removed (not the raw patch, which may name ids the merge ignored)
+  const liveById = new Map(live.elements.map((e: any) => [e.id, JSON.stringify(e)]))
+  const n = merged.filter((e: any) => liveById.get(e.id) !== JSON.stringify(e)).length + live.elements.filter((e: any) => !merged.some((m: any) => m.id === e.id)).length
   lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页（${n} 处）。` : `Updated page ${index + 1} (${n} change${n > 1 ? 's' : ''}).`
   return lastEditTerse // the model's own sentence misstated the edit too often (audited 2026-11-02): code reports
 }
@@ -674,7 +674,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
     })
-    const notes = (await r.json()).notes
+    const notes = String((await r.json()).notes || '').trim()
     if (notes) {
       slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
       written++
@@ -708,7 +708,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       const n0 = slides.value.length
       if (!await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
       const added = slides.value.length - n0
-      const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
+      const capped = (args.count || 1) > 10 ? (Z ? '（一次最多写 10 个主题，再说一次可继续加）' : ' (at most 10 topics per request; ask again for more)') : ''
       return (Z ? `已在第 ${after} 页后加了 ${added} 页。` : `Added ${added} page(s) after page ${after}.`) + capped
     }
     const count = Math.min(Math.max(args.count || 1, 1), 10)
