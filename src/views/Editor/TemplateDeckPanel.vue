@@ -212,7 +212,20 @@ const removeTemplate = () => {
 
 // The user's own picture: uploaded once, then placed by the chat ("put my photo on slide 3")
 const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () => {
-  s.images = [...(s.images || []), { name: file.name, url: await uploadFile(file) }]
+  // re-encoded through a canvas: only raster pixels are published (never SVG/HTML or a spoofed type), at most 2000 px
+  const bmp = await createImageBitmap(file).catch(() => null)
+  if (!bmp) fail(zh(userText) ? `「${file.name}」不是可用的图片。` : `${file.name} is not a picture I can use.`)
+  const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(bmp.width * k)
+  c.height = Math.round(bmp.height * k)
+  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height)
+  const blob: Blob = await new Promise((ok, no) => c.toBlob(b => (b ? ok(b) : no(new Error('encode failed'))), 'image/png'))
+  // a unique name: two attachments with the same file name stay separately addressable
+  const taken = new Set((s.images || []).map(m => m.name))
+  let name = file.name.replace(/\.[^.]+$/, '') + '.png'
+  for (let n = 2; taken.has(name); n++) name = `${file.name.replace(/\.[^.]+$/, '')} (${n}).png`
+  s.images = [...(s.images || []), { name, url: await uploadFile(new File([blob], name, { type: 'image/png' })) }]
   save()
 })
 
