@@ -119,6 +119,12 @@ const TOOLS = [
     file: { type: 'string', description: 'The attached file name exactly as listed' },
     pages: { type: 'array', items: { type: 'integer' }, description: 'PDF page numbers to read; empty = the whole file' },
   }, ['file', 'pages']),
+  fn('use_file_images', 'Put the pictures/figures/charts/images that are INSIDE an attached PDF, PPTX or DOCX onto a slide ("use the figures from my paper", "extract the images from the PDF", "add the chart from page 3 of my file").', {
+    file: { type: 'string', description: 'The attached file name exactly as listed' },
+    file_pages: { type: 'array', items: { type: 'integer' }, description: 'Pages of the FILE whose pictures to use; empty = any' },
+    index: page,
+    count: { type: 'integer', description: 'How many pictures, 1-6 (default 1)' },
+  }, ['file', 'file_pages', 'index', 'count']),
   fn('find_papers', 'Find real academic papers (peer-reviewed sources, with authors, year, journal and DOI) for academic, medical or scientific citations, references, evidence or a literature slide. Returns them under "Done so far"; then cite only those.', {
     query: { type: 'string', description: 'The research topic in English, specific' },
   }, ['query']),

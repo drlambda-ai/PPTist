@@ -229,11 +229,14 @@ const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () 
   save()
 })
 
+const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
 const uploadContent = (file: File) => run(`Reading ${file.name}…`, async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
   s.docs.push({ name: r.name, text: r.text })
+  docFiles.set(r.name, file)
   save()
 })
+const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
 
 // ---- template path: the deck server builds every version ----
 const templateTurn = async (text: string) => {
@@ -791,6 +794,40 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     await addTablePage(text, args.instruction, after)
     slidesStore.updateSlideIndex(after)
     return Z ? `已加入表格页「${titleAt(after)}」。` : `Added a table page "${titleAt(after)}".`
+  }
+  if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
+    const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
+    if (!file) fail(s.docs.some(d => d.name === args.file)
+      ? (Z ? `「${args.file}」需要重新上传一次才能提取其中的图片。` : `Attach ${args.file} again so I can pull its pictures out (it was attached in an earlier session).`)
+      : (Z ? '还没有附件：请用 📎 图标上传文件。' : 'No file is attached yet: attach it with the 📎 icon.'))
+    if (!chatslide?.extractImages) fail(Z ? '在 ChatSlide 里打开这个项目才能提取文件中的图片。' : 'Pulling pictures out of a file works inside ChatSlide: open this project there.')
+    busy.value = Z ? '正在提取文件中的图片…' : 'Pulling the pictures out of the file…'
+    let figs = figuresOf.get(file.name)
+    if (!figs) {
+      const r = await chatslide.extractImages(file)
+      if (r.error === 'plan') fail(Z ? '从文件中提取图片需要付费方案，已为你打开方案页面。' : 'Pulling pictures out of files needs a paid plan; I opened the plans for you.')
+      if (r.error) fail(Z ? `没能提取图片（${r.error}）。` : `I could not pull the pictures out (${r.error}).`)
+      figs = r.images || []
+      figuresOf.set(file.name, figs)
+    }
+    const want: number[] = args.file_pages || []
+    const chosen = (want.length ? figs.filter(m => m.page && want.includes(m.page)) : figs).slice(0, Math.min(Math.max(args.count || 1, 1), 6))
+    if (!chosen.length) fail(figs.length
+      ? (Z ? `「${file.name}」第 ${want.join('、')} 页没有图片（共提取到 ${figs.length} 张，在第 ${[...new Set(figs.map(m => m.page))].filter(Boolean).join('、')} 页）。` : `There are no pictures on page(s) ${want.join(', ')} of ${file.name} (it has ${figs.length}, on pages ${[...new Set(figs.map(m => m.page))].filter(Boolean).join(', ')}).`)
+      : (Z ? `「${file.name}」里没有可用的图片。` : `${file.name} has no pictures I can use.`))
+    const id = idOf(args.index)
+    const { width: W, height: H } = slideSize()
+    let placed = 0
+    for (const m of chosen) {
+      const box = freeBox(slides.value[pos(id)], { left: W * 0.55, top: H * 0.2, width: W * 0.4, height: H * 0.6 })
+      if (!box) break
+      slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src: m.url, fixedRatio: true, rotate: 0, ...box } as any] }, id)
+      placed++
+    }
+    touched([id])
+    slidesStore.updateSlideIndex(pos(id))
+    if (!placed) fail(Z ? `第 ${pos(id) + 1} 页没有空位放图片。` : `Page ${pos(id) + 1} has no free space for the pictures.`)
+    return (Z ? `已把「${file.name}」中的 ${placed} 张图片放到第 ${pos(id) + 1} 页。` : `Placed ${placed} picture(s) from ${file.name} on page ${pos(id) + 1}.`) + (placed < chosen.length ? (Z ? `（其余 ${chosen.length - placed} 张没有空位）` : ` (no room for the other ${chosen.length - placed})`) : '')
   }
   if (action === 'add_image') {
     const id = idOf(args.index)

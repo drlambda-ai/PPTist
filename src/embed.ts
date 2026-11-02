@@ -17,6 +17,8 @@ export interface ChatSlideHost {
   goto?: (step: 'scripts' | 'video') => Promise<void>
   support?: (message: string) => Promise<string>
   outOfCredits?: () => void // ChatSlide opens its plans/paywall
+  // the figures inside a PDF/PPTX/DOCX (ChatSlide backend extract-images), with the page each came from
+  extractImages?: (file: File) => Promise<{ images?: { url: string, page?: number, name?: string }[], error?: string }>
   // AI picture through ChatSlide's image route (its credits, gates and moderation); { src } or { error }
   generateImage?: (prompt: string, aspectRatio: '16:9' | '9:16') => Promise<{ src?: string, error?: string }>
 }
