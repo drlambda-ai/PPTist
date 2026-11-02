@@ -1216,6 +1216,18 @@ const restoreDeckBeforeCreate = () => {
   return true
 }
 
+// Earlier turns for context: only user messages that got a reply (a request left unanswered by a closed tab must
+// never be redone on the next message), the last 3 exchanges, excluding the message being handled now
+const answeredHistory = () => {
+  const h = s.history.slice(0, -1)
+  const out: { role: 'user' | 'assistant', text: string }[] = []
+  for (let i = 0; i < h.length; i++) {
+    if (h[i].role === 'user' && h[i + 1]?.role !== 'assistant') continue
+    out.push(h[i])
+  }
+  return out.slice(-6)
+}
+
 // What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
 let memo = ''
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
@@ -1240,7 +1252,7 @@ const deckTurn = async (text: string) => {
         pending: s.pending || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         pictures: (s.images || []).map(m => m.name),
-        history: s.history.slice(-7, -1).map(h => ({ role: h.role, content: h.text })),
+        history: answeredHistory().map(h => ({ role: h.role, content: h.text })),
       }),
       headers: { 'Content-Type': 'application/json' },
     })).json()
