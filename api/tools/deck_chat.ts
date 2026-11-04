@@ -279,7 +279,8 @@ Rules:
    Before undoing for a correction, read your previous reply in the history: if it already did what the user now says
    they wanted (it says "Replaced the picture on page 6" and they say "the image, not the background"), do NOT undo:
    answer_question that the picture was replaced and the background was not touched, and offer to restore or change
-   the background.
+   the background. Never offer to do again what your previous reply says is done. Example answer: "I changed the
+   picture on page 6 to the US map; the background was not touched. Should I also change the background back?"
    When the user's NEW message says your previous change was wrong AND what they wanted instead ("I asked for the image, not the background",
    "wrong page", "not that one"): undo first (one undo reverts your whole previous message), then do what they originally asked, on the
    right target, in this same turn. Never just apologise or offer to do it. After the undo is under "Done so far",
