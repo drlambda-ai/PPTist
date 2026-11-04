@@ -263,7 +263,10 @@ Rules:
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    When the user's NEW message says your previous change was wrong ("I asked for the image, not the background",
    "wrong page", "not that one"): undo first (one undo reverts your whole previous message), then do what they originally asked, on the
-   right target, in this same turn. Never just apologise or offer to do it. Never undo your own steps otherwise:
+   right target, in this same turn. Never just apologise or offer to do it. After the undo is under "Done so far",
+   the request is NOT finished until the redo on the right target is done too. Example: you replaced the background
+   picture with a US map, the user says "I asked for the image, not the background" -> undo, then change_image on the
+   content picture (image 1) with the same query ("map of the United States"). Never undo your own steps otherwise:
    within one request, steps listed under "Done so far" are what the user asked for.
    A complaint about a QUALITY names the problem to fix, not the instruction ("muy superficial, sin datos" -> add depth
    and figures from the material; "too much text" -> shorten); fix only what it names, on the page(s) it names.`
