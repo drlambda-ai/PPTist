@@ -139,9 +139,22 @@ onMounted(() => {
   h.value = props.height
 
   zIndex.value = initGlobalZIndex()
+  window.addEventListener('resize', keepInWindow)
+  keepInWindow() // opened in a small window: fit it from the start
 })
 
+// A panel placed for a wide window stayed put when the window shrank, cut off at the edge: on resize it stays inside
+// (a panel docked to the right edge keeps following it) and shortens when the window is too low for it.
+const keepInWindow = () => {
+  const W = document.body.clientWidth, H = document.body.clientHeight
+  if (props.left < 0) x.value = W + props.left - w.value
+  x.value = Math.max(0, Math.min(x.value, W - w.value - 4))
+  if (props.height) h.value = Math.min(props.height, Math.max(200, H - 20))
+  y.value = Math.max(0, Math.min(y.value, H - (h.value || realHeight.value) - 4))
+}
+
 onUnmounted(() => {
+  window.removeEventListener('resize', keepInWindow)
   onPanelClose()
 })
 
