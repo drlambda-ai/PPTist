@@ -59,6 +59,9 @@ const updateOption = () => {
     lineSmooth: props.options?.lineSmooth || false,
     stack: props.options?.stack || false,
   })
+  // axis charts: echarts' default 60px top/bottom margins left a 195px-high chart ~75px of bars; size the margins to
+  // the labels instead (and room for the legend when one is shown)
+  if (option && 'xAxis' in option) option.grid = { top: 16, left: 8, right: 16, bottom: option.legend ? 32 : 8, containLabel: true }
   if (option) chart!.setOption(option, true)
 }
 
