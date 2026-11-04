@@ -1309,6 +1309,7 @@ const deckTurn = async (text: string) => {
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
+  const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -1349,6 +1350,9 @@ const deckTurn = async (text: string) => {
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
+      // a new page anchored after a page created in this same message: the fallback router kept adding "the next" one
+      // (30 -> 32). Several new pages go in one add_page (count + topics); different ORIGINAL anchors still work.
+      || work.find((c: any) => ['add_page', 'add_chart_page'].includes(c.action) && ids[Number(c.args?.after) - 1] && !idsAtStart.has(ids[Number(c.args?.after) - 1]))
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
       || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
@@ -1359,7 +1363,9 @@ const deckTurn = async (text: string) => {
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
-      const why = turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
+      const why = ['add_page', 'add_chart_page'].includes(extra.action) && !idsAtStart.has(ids[Number(extra.args?.after) - 1])
+        ? 'that page was just created in this message: the requested page is already added; finish (several new pages go in ONE add_page with count)'
+        : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
         ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
         : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
         ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'

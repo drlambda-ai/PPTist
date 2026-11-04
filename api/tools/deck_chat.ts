@@ -178,6 +178,7 @@ Rules:
    again with the updated deck. Do every part; never drop one.
    Steps already applied for this request are listed under "Done so far"; the deck below already reflects them.
    Call the tool(s) for what remains, or finish when nothing remains.
+   Several new pages in one message -> ONE add_page with count (and every topic in its instruction), never one call each.
    "Extend/expand/展开/扩展/扩充 page N" -> expand_page (never add_page, never edit_page) unless the user asks to rewrite
    page N itself or to add a page about a NEW topic.
 3. Reordering ("move page 5 forward", "put 2 and 3 at the end", "swap 2 and 4") -> move_pages. Forward = earlier.
