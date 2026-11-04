@@ -186,6 +186,12 @@ const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
   const sl = slides.value[i]
   for (const old of was as any[]) {
     const now = sl.elements.find(e => e.id === old.id) as any
+    // the full-slide background picture keeps its box: "make the picture bigger" also stretched it to the canvas.
+    // Backgrounds change through set_background / change_image(image 0), never as a side effect of a page edit.
+    if (now && old.type === 'image' && isBackdrop(old) && ['left', 'top', 'width', 'height'].some(k => now[k] !== old[k])) {
+      slidesStore.updateElement({ id: old.id, props: { left: old.left, top: old.top, width: old.width, height: old.height }, slideId: sl.id })
+      continue
+    }
     if (!now || now.type !== old.type || !['text', 'shape'].includes(now.type)) continue
     const html = (e: any) => (e.type === 'text' ? e.content : e.text?.content) || ''
     const same = elText(now) === elText(old) && now.width === old.width && now.height === old.height
