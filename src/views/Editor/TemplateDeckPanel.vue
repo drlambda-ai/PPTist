@@ -1438,6 +1438,16 @@ const deckTurn = async (text: string) => {
     if (extra && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
       await snapshotStore.reDo()
       pendingInstead = ''
+      // the "Undone." line no longer describes the deck: the change is back
+      const at = done.findIndex(d => d.startsWith('undo '))
+      if (at >= 0) {
+        const undoneLine = done[at].split(' -> ')[1]
+        const k = replies.indexOf(undoneLine)
+        if (k >= 0) {
+          replies.splice(k, 1)
+          terse.splice(k, 1)
+        }
+      }
       const kept = zh(text) ? '上一步改的已经是你要的那张图（背景没有动），我把它保留了。要把背景也改回去吗？' : 'My last change was already to the picture you meant (the background was not touched), so I kept it. Should I also restore the background?'
       replies.push(kept)
       terse.push(kept)
