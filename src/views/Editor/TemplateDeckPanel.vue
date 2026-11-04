@@ -1310,6 +1310,7 @@ const deckTurn = async (text: string) => {
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
+  const anchorsUsed = new Set<string>() // pages that already got new pages after them in this message
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -1353,6 +1354,8 @@ const deckTurn = async (text: string) => {
       // a new page anchored after a page created in this same message: the fallback router kept adding "the next" one
       // (30 -> 32). Several new pages go in one add_page (count + topics); different ORIGINAL anchors still work.
       || work.find((c: any) => ['add_page', 'add_chart_page'].includes(c.action) && ids[Number(c.args?.after) - 1] && !idsAtStart.has(ids[Number(c.args?.after) - 1]))
+      // a second add after the same page in a later round (reworded, so not an exact repeat): 30 -> 32 for "a page"
+      || work.find((c: any) => ['add_page', 'add_chart_page'].includes(c.action) && anchorsUsed.has(ids[Number(c.args?.after) - 1]))
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
       || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
@@ -1363,7 +1366,7 @@ const deckTurn = async (text: string) => {
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
-      const why = ['add_page', 'add_chart_page'].includes(extra.action) && !idsAtStart.has(ids[Number(extra.args?.after) - 1])
+      const why = ['add_page', 'add_chart_page'].includes(extra.action) && (!idsAtStart.has(ids[Number(extra.args?.after) - 1]) || anchorsUsed.has(ids[Number(extra.args?.after) - 1]))
         ? 'that page was just created in this message: the requested page is already added; finish (several new pages go in ONE add_page with count)'
         : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
         ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
@@ -1401,6 +1404,7 @@ const deckTurn = async (text: string) => {
       replies.push(reply)
       turnCalls.push(stepKey(c.action, c.args))
       turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
+      if (c.action === 'add_page' || c.action === 'add_chart_page') anchorsUsed.add(ids[Number(c.args?.after) - 1])
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
