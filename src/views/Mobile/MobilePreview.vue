@@ -14,7 +14,7 @@
       <Divider type="vertical" style="height: 30px;" />
       <div class="menu-item" @click="changeMode('player')"><i-icon-park-outline:full-screen-play class="icon" /> {{ t('播放') }}</div>
       <Divider type="vertical" style="height: 30px;" />
-      <div class="menu-item ai" @click="openAIPPTDialog()">AIPPT</div>
+      <div class="menu-item ai" @click="openAIPPTDialog()">ChatSlide</div>
     </div>
   </div>
 

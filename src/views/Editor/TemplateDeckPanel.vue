@@ -3,7 +3,7 @@
     class="template-deck-panel"
     :width="360"
     :height="560"
-    title="AI"
+    :title="chatslide ? 'ChatSlide' : 'AI'"
     :left="-380"
     :top="60"
     @close="close()"
@@ -11,8 +11,8 @@
     <div class="body">
       <div class="messages" ref="messagesRef">
         <div class="hint" v-if="!s.history.length">
-          Ask for any change to this deck, or describe a new one. 📎 attaches your company's .pptx template or your
-          material (xlsx, docx, pdf, md…).
+          Hi! Ask me to change anything in this deck: text, pictures, charts, pages or language. Attach your company's
+          PowerPoint template or a PDF, Word, Excel or Markdown file with 📎 and I'll build from it.
         </div>
         <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}</div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>

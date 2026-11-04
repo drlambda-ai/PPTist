@@ -7,7 +7,7 @@
             <div class="ai-menu" @click="openAIPPTDialog(); mainMenuVisible = false">
               <div class="icon"><i-custom:click /></div>
               <div class="aippt-content">
-                <div class="aippt"><span>AIPPT</span></div>
+                <div class="aippt"><span>ChatSlide</span></div>
                 <div class="aippt-subtitle">{{ t('输入一句话，智能生成演示文稿') }}</div>
               </div>
             </div>
@@ -86,8 +86,10 @@
           <div class="arrow-btn"><i-icon-park-outline:down class="arrow" /></div>
         </Popover>
       </div>
-      <div class="menu-item" v-tooltip="t('AI 生成与修改（可上传公司模板和资料）')" @click="toggleTemplateDeckPanel()">
-        <span class="text ai">AI</span>
+      <div class="menu-item" v-tooltip="t('AI 生成与修改（可上传公司模板和资料）')" :aria-label="t('AI 生成与修改（可上传公司模板和资料）')" @click="toggleTemplateDeckPanel()">
+        <!-- inside ChatSlide: its logo (served by ChatSlide, same origin); standalone: the AI mark -->
+        <img v-if="chatslide" class="brand" src="/images/Chatslide-favicon.svg" alt="ChatSlide" />
+        <span v-else class="text ai">AI</span>
       </div>
       <div class="menu-item" v-if="chatslide?.classic" @click="chatslide.classic()">
         <span class="label">{{ t('经典编辑器') }}</span>
@@ -204,6 +206,10 @@ const toggleTemplateDeckPanel = () => {
   &:hover {
     background-color: #7c3aed;
   }
+}
+.menu-item .brand {
+  width: 22px;
+  height: 22px;
 }
 .menu-item .label {
   white-space: nowrap;

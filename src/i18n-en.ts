@@ -766,7 +766,7 @@ export const EN: Record<string, string> = {
   '超链接': 'Hyperlink',
   '路径绘制': 'Path drawing',
   '输入 LaTeX 公式': 'Enter a LaTeX formula',
-  '输入一句话，智能生成演示文稿': 'Describe your presentation in one sentence',
+  '输入一句话，智能生成演示文稿': 'Create a new deck from one sentence',
   '输入回复内容': 'Enter a reply',
   '输入替换内容': 'Enter replacement text',
   '输入查找内容': 'Enter text to find',
