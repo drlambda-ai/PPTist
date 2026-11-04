@@ -48,8 +48,7 @@ onMounted(async () => {
     screenStore.setScreening(true)
   }
   else {
-    const slides = await api.getMockData('slides')
-    slidesStore.setSlides(slides)
+    if (!host) slidesStore.setSlides(await api.getMockData('slides')) // inside ChatSlide the project's deck loads instead
 
     await deleteDiscardedDB()
     snapshotStore.initSnapshotDatabase()

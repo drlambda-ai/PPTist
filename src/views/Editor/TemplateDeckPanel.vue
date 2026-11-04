@@ -130,7 +130,8 @@ const save = () => {
     clearTimeout(saveTimer)
     clearTimeout(syncTimer)
     syncTimer = window.setTimeout(() => syncToChatSlide().catch(() => undefined), 15000)
-    saveTimer = window.setTimeout(() => {
+    saveTimer = window.setTimeout(async () => {
+      await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
       chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value })
         .then(() => saveFailed = false)
         .catch(() => { // said once (saying saves again): the next edit retries
@@ -152,6 +153,31 @@ const save = () => {
     localStorage.removeItem(SLIDES_KEY)
   }
 }
+// Inline pictures (data: URLs from AI images, attachments, pasted images) become their own files, uploaded once; the
+// slide keeps the link. A 10-page deck with a few AI pictures was 6 MB and took ~4 s to open; links keep it small.
+const uploaded = new Map<string, string>() // data URL -> file link, this session
+const externalizeImages = async () => {
+  if (!chatslide?.uploadImage) return
+  const swap = async (src: string) => {
+    if (!src?.startsWith('data:image/') || src.length < 20000) return src
+    if (!uploaded.has(src)) uploaded.set(src, await chatslide!.uploadImage!(await (await fetch(src)).blob()))
+    return uploaded.get(src)!
+  }
+  for (const sl of slides.value) {
+    for (const e of sl.elements as any[]) {
+      if (e.type === 'image' && e.src?.startsWith('data:image/')) {
+        const url = await swap(e.src)
+        if (url !== e.src) slidesStore.updateElement({ id: e.id, props: { src: url }, slideId: sl.id })
+      }
+    }
+    const bg = sl.background as any
+    if (bg?.type === 'image' && bg.image?.src?.startsWith('data:image/')) {
+      const url = await swap(bg.image.src)
+      if (url !== bg.image.src) slidesStore.updateSlide({ background: { ...bg, image: { ...bg.image, src: url } } }, sl.id)
+    }
+  }
+}
+
 const say = (role: 'user' | 'assistant', text: string) => {
   s.history.push({ role, text })
   save()

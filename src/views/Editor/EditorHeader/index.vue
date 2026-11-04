@@ -89,10 +89,16 @@
       <div class="menu-item" v-tooltip="t('AI 生成与修改（可上传公司模板和资料）')" @click="toggleTemplateDeckPanel()">
         <span class="text ai">AI</span>
       </div>
+      <div class="menu-item" v-if="chatslide?.classic" @click="chatslide.classic()">
+        <span class="text">{{ t('经典编辑器') }}</span>
+      </div>
+      <div class="menu-item primary" v-if="chatslide?.goto" @click="chatslide.goto('scripts')">
+        <span class="text">{{ t('演讲稿') }} →</span>
+      </div>
       <div class="menu-item" v-tooltip="t('导出')" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
       </div>
-      <a class="github-link" v-tooltip="'Copyright © 2020-PRESENT pipipi-pikachu'" href="https://github.com/pipipi-pikachu/PPTist" target="_blank">
+      <a class="github-link" v-if="!chatslide" v-tooltip="'Copyright © 2020-PRESENT pipipi-pikachu'" href="https://github.com/pipipi-pikachu/PPTist" target="_blank">
         <div class="menu-item"><i-icon-park-outline:github class="icon" /></div>
       </a>
     </div>
@@ -127,6 +133,7 @@ import Input from '@/components/Input.vue'
 import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
 import Divider from '@/components/Divider.vue'
+import { host as chatslide } from '@/embed'
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
@@ -188,6 +195,16 @@ const toggleTemplateDeckPanel = () => {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+.menu-item.primary {
+  background-color: $themeColor;
+  color: #fff;
+  margin-left: 6px;
+
+  &:hover {
+    background-color: $themeColor;
+    opacity: .9;
+  }
 }
 .menu-item {
   height: 30px;

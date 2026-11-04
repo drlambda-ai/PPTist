@@ -1,4 +1,6 @@
 export const EN: Record<string, string> = {
+  '经典编辑器': 'Classic editor',
+  '演讲稿': 'Scripts',
   '积分不够了，升级方案后可以继续': 'You are out of credits. Upgrade your plan to keep going.',
   '1-垂直：': '1 vertical:',
   '1-水平：': '1 horizontal:',
