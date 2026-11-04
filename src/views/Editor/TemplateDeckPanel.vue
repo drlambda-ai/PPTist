@@ -65,7 +65,7 @@ import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import api from '@/services'
-import type { Slide, PPTImageElement } from '@/types/slides'
+import type { Slide, PPTImageElement, PPTElement } from '@/types/slides'
 import type { AIPPTSlide } from '@/types/AIPPT'
 import { jsonrepair } from 'jsonrepair'
 import { upload } from '@/utils/blobUpload'
@@ -175,6 +175,23 @@ const externalizeImages = async () => {
     if (bg?.type === 'image' && bg.image?.src?.startsWith('data:image/')) {
       const url = await swap(bg.image.src)
       if (url !== bg.image.src) slidesStore.updateSlide({ background: { ...bg, image: { ...bg.image, src: url } } }, sl.id)
+    }
+  }
+}
+
+// A text box whose wording and box did not change has no reason for a smaller font: "make the title bigger" also
+// shrank the headline 32 -> 30px. Such a shrink is reverted (text that changed or outgrew its box may still shrink).
+const fontSizes = (html = '') => [...html.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
+const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
+  const sl = slides.value[i]
+  for (const old of was as any[]) {
+    const now = sl.elements.find(e => e.id === old.id) as any
+    if (!now || now.type !== old.type || !['text', 'shape'].includes(now.type)) continue
+    const html = (e: any) => (e.type === 'text' ? e.content : e.text?.content) || ''
+    const same = elText(now) === elText(old) && now.width === old.width && now.height === old.height
+    const shrank = fontSizes(html(now)).some((v, k) => v < (fontSizes(html(old))[k] ?? v))
+    if (same && shrank) {
+      slidesStore.updateElement({ id: old.id, props: now.type === 'text' ? { content: old.content } : { text: { ...now.text, content: old.text.content } }, slideId: sl.id })
     }
   }
 }
@@ -1058,7 +1075,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
+    const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
     const reply = await editSlide(i, args.instruction)
+    keepUnaskedSizes(i, was)
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
