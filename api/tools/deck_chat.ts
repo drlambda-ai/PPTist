@@ -28,7 +28,8 @@ const TOOLS = [
     count: { type: 'integer', description: 'How many new pages, usually 1' },
     after: page,
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
-  }, ['instruction', 'count', 'after', 'layout_from']),
+    after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },

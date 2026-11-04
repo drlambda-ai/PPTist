@@ -394,6 +394,7 @@ const editedThisTurn = new Set<string>() // slide ids changed by an earlier step
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 const picturedThisTurn = new Set<string>() // pages that got a NEW picture in the current message
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
+let currentAtSend = '' // id of the page the user was on when they sent the message
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
@@ -812,6 +813,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   const n = slides.value.length
   const Z = zh(text)
   if (action === 'add_page') {
+    // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
+    if (args.after_named === false && currentAtSend) args.after = pos(currentAtSend) + 1
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     if (s.mode === 'native') {
       const n0 = slides.value.length
@@ -1315,6 +1318,7 @@ const deckTurn = async (text: string) => {
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
+  currentAtSend = startPageId || ''
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const anchorsUsed = new Set<string>() // pages that already got new pages after them in this message
   for (let round = 0; round < 10; round++) {
