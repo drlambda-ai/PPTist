@@ -58,6 +58,7 @@ import { host as chatslide, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
+import { db } from '@/utils/database'
 import useExport from '@/hooks/useExport'
 import useImport from '@/hooks/useImport'
 import useAIPPT from '@/hooks/useAIPPT'
@@ -1353,7 +1354,10 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) {
+        changed = true
+        await snapshotStore.addSnapshot() // each chat step is one Undo
+      }
     }
     if (work.every((c: any) => ['answer_question', 'ask_user', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }
@@ -1530,6 +1534,9 @@ onMounted(() => {
         s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
       }
+      // the loaded deck is where Undo stops (not the blank page shown while it loaded)
+      await db.snapshots.clear()
+      await snapshotStore.initSnapshotDatabase()
       watch([slides, theme], save, { deep: true }) // manual edits are saved too
     })
     return

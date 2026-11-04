@@ -1,4 +1,4 @@
-import { getKey, readBody } from '../_llm.js'
+import { chat, getKey, readBody } from '../_llm.js'
 
 // Real lookups for the chat agent, so nothing it calls a source or a photo of a real thing is made up.
 //   {kind: "web", query}        -> {answer, sources: [{title, url}]}  (OpenAI web search; sources are the pages it read)
@@ -25,20 +25,50 @@ const web = async (query: string) => {
   return { answer, sources }
 }
 
-const wikimedia = async (query: string) => {
-  const params = new URLSearchParams({
-    action: 'query', format: 'json', generator: 'search', gsrsearch: `${query} filetype:bitmap`, gsrnamespace: '6', gsrlimit: '5',
-    prop: 'imageinfo', iiprop: 'url|extmetadata|size|mime', iiurlwidth: '1600', origin: '*',
-  })
-  const r = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, { headers: { 'User-Agent': 'ChatSlide/1.0 (contact@chatslide.ai)' } })
+const UA = { 'User-Agent': 'ChatSlide/1.0 (contact@chatslide.ai)' }
+const commons = async (params: Record<string, string>) => {
+  const r = await fetch(`https://commons.wikimedia.org/w/api.php?${new URLSearchParams({
+    action: 'query', format: 'json', prop: 'imageinfo', iiprop: 'url|extmetadata|size|mime', iiurlwidth: '1600', origin: '*', ...params,
+  })}`, { headers: UA })
   if (!r.ok) throw new Error(`wikimedia ${r.status}`)
-  const pages = Object.values((await r.json()).query?.pages || {}) as any[]
-  // photographs come as JPEG; PNG/SVG on Commons are mostly drawings, maps and diagrams: a "real photo" wants the former
-  const photo = (p: any) => /jpe?g$/i.test(p.imageinfo?.[0]?.mime || '') ? 0 : 1
-  const best = pages.sort((a, b) => photo(a) - photo(b) || (a.index || 0) - (b.index || 0)).find(p => p.imageinfo?.[0]?.thumburl)
-  if (!best) return { src: '' }
-  const i = best.imageinfo[0], m = i.extmetadata || {}
+  return (Object.values((await r.json()).query?.pages || {}) as any[]).filter(p => p.imageinfo?.[0]?.thumburl)
+}
+
+// Ground truth first: Wikidata lists each thing's own picture files (its photo, locator/detail maps, flag, logo).
+// Commons full-text search returned 1800s engravings and a night-lights photo for "map of the United States".
+const KIND_PROPS: Record<string, string[]> = { map: ['P1621', 'P1943', 'P242'], flag: ['P41'], logo: ['P154'], photo: ['P18'] }
+const wikidataFiles = async (query: string) => {
+  const plan = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture: "${query}". Return JSON {"subject": "<the real-world thing, its English name, e.g. United States>", "kind": "map|flag|logo|photo"}` }], { model: 'gpt-5.4-mini', jsonMode: true }))
+  const props = KIND_PROPS[plan.kind] || KIND_PROPS.photo
+  const found = await (await fetch(`https://www.wikidata.org/w/api.php?${new URLSearchParams({ action: 'wbsearchentities', search: String(plan.subject || query), language: 'en', format: 'json', limit: '1' })}`, { headers: UA })).json()
+  const id = found.search?.[0]?.id
+  if (!id) return []
+  const claims = (await (await fetch(`https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&entity=${id}`, { headers: UA })).json()).claims || {}
+  const rank = (c: any) => (c.rank === 'preferred' ? 0 : 1) // the current flag/map is marked preferred over historical ones
+  return props.flatMap(p => (claims[p] || []).filter((c: any) => c.rank !== 'deprecated').sort((a: any, b: any) => rank(a) - rank(b)))
+    .map((c: any) => c.mainsnak?.datavalue?.value).filter((v: unknown) => typeof v === 'string').slice(0, 8) as string[]
+}
+
+const wikimedia = async (query: string) => {
   const plain = (h = '') => String(h).replace(/<[^>]+>/g, '').trim()
+  const files = await wikidataFiles(query).catch(() => [] as string[])
+  const known = files.length ? await commons({ titles: files.map(f => `File:${f}`).join('|') }).catch(() => []) : []
+  // photos AND drawings: maps, flags, diagrams and logos on Commons are mostly SVG (served as a PNG thumbnail)
+  const searched = (await commons({ generator: 'search', gsrsearch: `${query} filetype:bitmap|drawing`, gsrnamespace: '6', gsrlimit: '8' }))
+    .sort((a, b) => (a.index || 0) - (b.index || 0))
+  const pages = [...known, ...searched.filter(p => !known.some(k => k.title === p.title))]
+  if (!pages.length) return { src: '' }
+  // Search rank alone picked a 1755 colonial map and a night-lights photo for "map of the United States": a small
+  // model reads the candidates' titles and descriptions and picks the one that IS the requested thing, or none.
+  let best = pages[0]
+  try {
+    const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
+    const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\nWhich file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)? Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-5.4-mini', jsonMode: true }))
+    if (out.pick === -1) return { src: '' }
+    if (pages[out.pick]) best = pages[out.pick]
+  }
+  catch { /* the search's own first result */ }
+  const i = best.imageinfo[0], m = i.extmetadata || {}
   return {
     src: i.thumburl, title: String(best.title).replace(/^File:/, ''), page: i.descriptionurl,
     credit: plain(m.Artist?.value) || 'Wikimedia Commons', license: plain(m.LicenseShortName?.value),
