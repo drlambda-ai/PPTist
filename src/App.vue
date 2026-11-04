@@ -1,6 +1,6 @@
 <template>
   <template v-if="slides.length">
-    <Screen v-if="screening" />
+    <Screen v-if="screening || viewDeck" />
     <Editor v-else-if="_isPC" />
     <Mobile v-else />
   </template>
@@ -34,6 +34,9 @@ const { slides } = storeToRefs(slidesStore)
 const { screening } = storeToRefs(screenStore)
 
 const isAudienceMode = new URLSearchParams(window.location.search).get('mode') === 'audience'
+// ?mode=view&deck=<saved deck link>: a shared ChatSlide deck, read-only, in the presenter (no editor)
+const viewParams = new URLSearchParams(window.location.search)
+const viewDeck = viewParams.get('mode') === 'view' ? viewParams.get('deck') || '' : ''
 
 if (import.meta.env.MODE !== 'development' && !host) { // inside ChatSlide edits are saved continuously
   window.onbeforeunload = () => false
@@ -45,6 +48,15 @@ onMounted(async () => {
       id: nanoid(10),
       elements: [],
     }])
+    screenStore.setScreening(true)
+  }
+  else if (viewDeck) {
+    // only our own deck storage, so the viewer can't be pointed at an arbitrary URL
+    const url = new URL(viewDeck)
+    if (url.protocol !== 'https:' || !url.hostname.endsWith('.public.blob.vercel-storage.com')) return
+    const saved = await (await fetch(url)).json()
+    if (saved.theme) slidesStore.setTheme(saved.theme)
+    slidesStore.setSlides(saved.slides || [])
     screenStore.setScreening(true)
   }
   else {
