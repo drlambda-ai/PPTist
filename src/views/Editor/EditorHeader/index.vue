@@ -197,14 +197,16 @@ const toggleTemplateDeckPanel = () => {
   align-items: center;
 }
 .menu-item.primary {
-  background-color: $themeColor;
+  background-color: #8b5cf6; // ChatSlide's primary purple
   color: #fff;
   margin-left: 6px;
 
   &:hover {
-    background-color: $themeColor;
-    opacity: .9;
+    background-color: #7c3aed;
   }
+}
+.menu-item .text {
+  white-space: nowrap;
 }
 .menu-item {
   height: 30px;
