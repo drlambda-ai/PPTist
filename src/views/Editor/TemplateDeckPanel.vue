@@ -1063,6 +1063,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
       if (left.length) await editSlide(i, `Translate these remaining lines into ${args.translate_to}, keeping their style: ${left.map(t => `"${t.slice(0, 160)}"`).join('; ')}`).catch(() => undefined)
+      lastEditTerse = Z ? `已把第 ${i + 1} 页译成${args.translate_to}（只改了这一页）。` : `Translated page ${i + 1} into ${args.translate_to} (only this page).`
+      slidesStore.updateSlideIndex(i)
+      return lastEditTerse
     }
     slidesStore.updateSlideIndex(i)
     return reply
