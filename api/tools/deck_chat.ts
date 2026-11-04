@@ -265,7 +265,8 @@ Rules:
    action exists (rule 5's vague dislike, or a topic you cannot see at all). A bare topic or phrase ("Conclusion",
    "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. A complaint that something is still
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
-   When the user's NEW message says your previous change was wrong ("I asked for the image, not the background",
+   A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
+   When the user's NEW message says your previous change was wrong AND what they wanted instead ("I asked for the image, not the background",
    "wrong page", "not that one"): undo first (one undo reverts your whole previous message), then do what they originally asked, on the
    right target, in this same turn. Never just apologise or offer to do it. After the undo is under "Done so far",
    the request is NOT finished until the redo on the right target is done too. Example: you replaced the background
