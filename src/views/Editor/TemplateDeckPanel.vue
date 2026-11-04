@@ -31,7 +31,7 @@
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
         <div class="input-box" @dragover.prevent @drop.prevent="e => attach(e.dataTransfer?.files)">
-          <TextArea v-model:value="input" :rows="3" placeholder="e.g. 用附件里的数据做一份年度复盘 / delete page 3 / add a page on Q3 risks" @enter="onEnter" />
+          <TextArea v-model:value="input" :rows="3" placeholder="e.g. Make page 3 shorter / Add a page on Q3 risks / Use the attached data" @enter="onEnter" />
           <div class="input-row">
             <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json,.png,.jpg,.jpeg,.webp,.gif" @change="files => attach(files)">
               <span class="attach" :class="{ disabled: !!busy }" aria-label="Attach a company template (.pptx) or material"><i-icon-park-outline:link /></span>
@@ -344,17 +344,32 @@ const logoSpots = () => { // an image at the same spot on most pages is a logo, 
   for (const sl of slides.value) for (const k of new Set(sl.elements.filter(e => e.type === 'image' && small(e)).map(imgSpot))) n[k] = (n[k] || 0) + 1
   return new Set(Object.keys(n).filter(k => slides.value.length > 2 && n[k] > slides.value.length / 2))
 }
+// A picture covering (nearly) the whole slide is its backdrop (ChatSlide templates draw backgrounds as pictures).
+// "The picture" means the content pictures; the backdrop only when it is the only picture on the page.
+const isBackdrop = (e: any) => {
+  const { width: W, height: H } = slideSize()
+  return e.width * e.height >= 0.8 * W * H
+}
+const pictures = (sl: Slide) => {
+  const imgs = readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image')
+  const content = imgs.filter(e => !isBackdrop(e))
+  return content.length ? content : imgs
+}
+
 const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>()) => {
-  let img = 0
-  const biggest = Math.max(0, ...sl.elements.filter(e => e.type === 'image' && !logos.has(imgSpot(e))).map((e: any) => e.width * e.height))
+  const numbered = pictures(sl) // same numbering change_image uses
+  const biggest = Math.max(0, ...numbered.filter(e => !logos.has(imgSpot(e))).map((e: any) => e.width * e.height))
   return readingOrder(sl).map((e: any) => {
     if (e.type === 'image') { // size and place let the router tell a photo from an icon or a logo
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
-      if (logos.has(imgSpot(e))) return `[image ${++img}: logo]`
+      const n = numbered.indexOf(e) + 1
+      if (!n) return '[background picture]'
+      const img = n - 1
+      if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
-      return `[image ${++img}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
+      return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
     }
     if (e.type === 'chart') return '[chart]'
     const t = elText(e)
@@ -739,13 +754,13 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
 
 const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
   const sl = slides.value.find(x => x.id === slideId)
-  const el = sl && readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image')[Math.max(0, (image || 1) - 1)]
+  const el = sl && pictures(sl)[Math.max(0, (image || 1) - 1)]
   if (!sl || !el) fail(zh(text) ? '这一页没有图片。' : 'That page has no picture.')
   const src = await findPicture(query, source, el.width >= el.height)
   if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
   touched([slideId])
-  return pictureNote
+  return { note: pictureNote, backdrop: isBackdrop(el) }
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
@@ -1078,9 +1093,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
-    const note = await changeImage(text, id, args.image, args.query, args.source)
+    const { note, backdrop } = await changeImage(text, id, args.image, args.query, args.source)
     const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
-    return (Z ? `图片已更换为“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Picture replaced (${how}) for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
+    // says WHICH picture changed, so a later reply about this step is grounded in what happened
+    const which = backdrop ? (Z ? `第 ${pos(id) + 1} 页的背景图` : `the background picture on page ${pos(id) + 1}`) : (Z ? `第 ${pos(id) + 1} 页的图片` : `the picture on page ${pos(id) + 1}`)
+    return (Z ? `已把${which}换成“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Replaced ${which} with a ${how} picture for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
     const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)

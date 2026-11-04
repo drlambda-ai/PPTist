@@ -261,6 +261,9 @@ Rules:
    action exists (rule 5's vague dislike, or a topic you cannot see at all). A bare topic or phrase ("Conclusion",
    "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. A complaint that something is still
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
+   A correction of YOUR last change ("I asked for the image, not the background", "wrong page", "not that one") means:
+   undo first (one undo call per wrong step), then do what they originally asked, on the right target, in this
+   same turn. Never just apologise or offer to do it.
    A complaint about a QUALITY names the problem to fix, not the instruction ("muy superficial, sin datos" -> add depth
    and figures from the material; "too much text" -> shorten); fix only what it names, on the page(s) it names.`
 
