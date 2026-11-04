@@ -237,6 +237,10 @@ Rules:
    image on every page), not talk_to_human.
    not_done names only parts you did not do. answer_question says only what the listed deck shows: never invent a
    page's numbers, charts or text.
+   A change to a chart already on the page (its type "make it a pie chart", numbers, adding/removing a bar, colours,
+   size) -> edit_page on that page; add_chart_page only for a NEW chart the deck does not have yet.
+   "Change/replace the picture/image" with nothing said about the new one -> change_image on that page with a query
+   about the page's topic; never ask which picture (the user can undo or say what they want).
    Vague dislike with no target ("no me gusta", "bad slides", "不好看"): ask_user with 2-3 concrete options
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one

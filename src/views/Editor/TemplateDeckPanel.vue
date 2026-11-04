@@ -372,7 +372,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
     }
-    if (e.type === 'chart') return '[chart]'
+    if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
     const t = elText(e)
     return common.has(t) ? '' : t
   }).join(' ').replace(/\s+/g, ' ').trim()
