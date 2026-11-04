@@ -117,6 +117,8 @@ const { resetSlides } = useSlideHandler()
 const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
+// eval hook (scripts/deck-eval): a replayed real conversation's earlier messages go straight into the chat history
+;(window as any).__deckPanel = { s }
 const input = ref('')
 const busy = ref('')
 const messagesRef = ref<HTMLElement>()
