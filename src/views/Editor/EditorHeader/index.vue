@@ -90,10 +90,10 @@
         <span class="text ai">AI</span>
       </div>
       <div class="menu-item" v-if="chatslide?.classic" @click="chatslide.classic()">
-        <span class="text">{{ t('经典编辑器') }}</span>
+        <span class="label">{{ t('经典编辑器') }}</span>
       </div>
       <div class="menu-item primary" v-if="chatslide?.goto" @click="chatslide.goto('scripts')">
-        <span class="text">{{ t('演讲稿') }} →</span>
+        <span class="label">{{ t('演讲稿') }} →</span>
       </div>
       <div class="menu-item" v-tooltip="t('导出')" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
@@ -205,7 +205,7 @@ const toggleTemplateDeckPanel = () => {
     background-color: #7c3aed;
   }
 }
-.menu-item .text {
+.menu-item .label {
   white-space: nowrap;
 }
 .menu-item {
