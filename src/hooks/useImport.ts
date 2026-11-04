@@ -1,6 +1,7 @@
 import { t } from '@/i18n'
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import { normalizePptx } from '@/utils/normalizePptx'
 import { parse, type Shape, type Element, type ChartItem, type BaseElement } from 'pptxtojson'
 import { nanoid } from 'nanoid'
 import tinycolor from 'tinycolor2'
@@ -589,7 +590,7 @@ export default () => {
     reader.onload = async e => {
       let json = null
       try {
-        json = await parse(e.target!.result as ArrayBuffer, {
+        json = await parse(await normalizePptx(e.target!.result as ArrayBuffer), {
           imageMode: 'base64',
           videoMode: 'blob',
           audioMode: 'blob',
