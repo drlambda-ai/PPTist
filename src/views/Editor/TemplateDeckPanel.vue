@@ -1308,11 +1308,14 @@ const deckTurn = async (text: string) => {
   let changed = false
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
+  const startPageId = slides.value[slideIndex.value]?.id
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
-        instruction: text, pages: deckLines(), current: slideIndex.value + 1, template: !!s.template, done,
+        // "this page" stays the page the user was on when they sent the message: steps that show a new page moved it,
+        // and "add a page after this one" then re-ran after each new page (30 -> 36)
+        instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
         pending: s.pending || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         pictures: (s.images || []).map(m => m.name),
