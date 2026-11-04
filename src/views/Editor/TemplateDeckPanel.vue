@@ -1307,6 +1307,7 @@ const deckTurn = async (text: string) => {
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   let changed = false
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
+  const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -1345,6 +1346,9 @@ const deckTurn = async (text: string) => {
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
+      // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
+      || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
+        && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
       || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image ?? 1}`))
       // after an Undo in a correction, redoing the very change just undone ("not the background" -> background again)
@@ -1352,7 +1356,9 @@ const deckTurn = async (text: string) => {
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
-      const why = lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
+      const why = turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
+        ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
+        : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
         ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
         : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
@@ -1385,6 +1391,7 @@ const deckTurn = async (text: string) => {
       }
       replies.push(reply)
       turnCalls.push(stepKey(c.action, c.args))
+      turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
