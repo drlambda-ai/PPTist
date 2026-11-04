@@ -791,6 +791,8 @@ const writeNotes = async (ids: string[], instruction: string) => {
 // New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
 // a new page's title, for replies: page numbers shift when later steps insert pages, titles do not
 const titleAt = (i: number) => (slides.value[i] ? (readingOrder(slides.value[i]).map(elText).find(Boolean) || '').slice(0, 50) : '') || (zh(userText) ? `第 ${i + 1} 页` : `page ${i + 1}`)
+// the new pages by number and title: the router saw only "Added 1 page(s)" and added the same TikTok page again
+const newTitles = (at: number, count: number) => Array.from({ length: count }, (_, k) => `${at + k + 1} "${titleAt(at + k)}"`).join(', ')
 const beforeClosing = (at: number) => {
   const last = slides.value[slides.value.length - 1]
   // a generated deck marks it (type 'end'); in an imported deck the closing page is a last page with almost no text
@@ -816,7 +818,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       if (!await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
       const added = slides.value.length - n0
       const capped = (args.count || 1) > 10 ? (Z ? '（一次最多写 10 个主题，再说一次可继续加）' : ' (at most 10 topics per request; ask again for more)') : ''
-      return (Z ? `已在第 ${after} 页后加了 ${added} 页。` : `Added ${added} page(s) after page ${after}.`) + capped
+      return (Z ? `已在第 ${after} 页后加了 ${added} 页：${newTitles(after, added)}。` : `Added ${added} page(s) after page ${after}: ${newTitles(after, added)}.`) + capped
     }
     const count = Math.min(Math.max(args.count || 1, 1), 10)
     for (let k = 0; k < count; k++) {
@@ -827,7 +829,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${args.instruction}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
     }
     const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
-    return (Z ? `已在第 ${after} 页后加了 ${count} 页。` : `Added ${count} page(s) after page ${after}.`) + capped
+    return (Z ? `已在第 ${after} 页后加了 ${count} 页：${newTitles(after, count)}。` : `Added ${count} page(s) after page ${after}: ${newTitles(after, count)}.`) + capped
   }
   if (action === 'expand_page') {
     const i = pos(idOf(args.index))
@@ -1404,7 +1406,7 @@ const deckTurn = async (text: string) => {
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
   if (slides.value.length !== pagesAtStart) lines.push(zh(text) ? `现在共 ${slides.value.length} 页。` : `The deck now has ${slides.value.length} pages.`)
-  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (zh(text) ? '已完成。' : 'Done.') // a repeated step reports once
+  const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.') // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
   say('assistant', await finalize(text, reply, done) + fee)
