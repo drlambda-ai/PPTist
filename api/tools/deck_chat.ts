@@ -369,7 +369,8 @@ export default async function handler(req: any, res: any) {
     const body = await readBody(req)
     if (body.localize) { // the turn's reply, written by code in English, said in the language of the user's message
       const raw = await chat([
-        { role: 'system', content: 'Translate the assistant reply into the language the user wrote their message in; keep its meaning, numbers and line breaks; if it is already in that language, copy it unchanged. Return JSON {"reply": "<translated reply>"}.' },
+        // the language is named first: asked to translate in one step, gpt-6-luna answered an English message in Spanish
+        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply). Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. Return JSON {"user_language": "<language of the user\'s message>", "reply": "<the reply in that language>"}.' },
         { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
       ], { model: process.env.FINALIZE_MODEL || 'gpt-6-luna', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
       let reply = ''
