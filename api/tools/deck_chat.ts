@@ -69,7 +69,7 @@ const TOOLS = [
   }, ['instruction']),
   fn('change_image', 'Replace a picture on a page with a new one: a stock photo search, or an AI-generated image.', {
     index: page,
-    image: { type: 'integer', description: '1-based number of the image on that page, in the listed order; 1 if there is only one' },
+    image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },

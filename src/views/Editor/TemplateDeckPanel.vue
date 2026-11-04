@@ -365,7 +365,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
       const n = numbered.indexOf(e) + 1
-      if (!n) return '[background picture]'
+      if (!n) return '[image 0: background picture covering the whole slide]'
       const img = n - 1
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
@@ -756,7 +756,8 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
 
 const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
   const sl = slides.value.find(x => x.id === slideId)
-  const el = sl && pictures(sl)[Math.max(0, (image || 1) - 1)]
+  // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
+  const el = sl && (image === 0 ? sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e)) as PPTImageElement | undefined : pictures(sl)[Math.max(0, (image || 1) - 1)])
   if (!sl || !el) fail(zh(text) ? '这一页没有图片。' : 'That page has no picture.')
   const src = await findPicture(query, source, el.width >= el.height)
   if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
@@ -1096,7 +1097,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
     const { note, backdrop } = await changeImage(text, id, args.image, args.query, args.source)
-    replacedThisTurn.add(`${id}:${args.image || 1}`)
+    replacedThisTurn.add(`${id}:${args.image ?? 1}`)
     const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
     // says WHICH picture changed, so a later reply about this step is grounded in what happened
     const which = backdrop ? (Z ? `第 ${pos(id) + 1} 页的背景图` : `the background picture on page ${pos(id) + 1}`) : (Z ? `第 ${pos(id) + 1} 页的图片` : `the picture on page ${pos(id) + 1}`)
@@ -1338,9 +1339,9 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
-      || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image || 1}`))
+      || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image ?? 1}`))
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
-      || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && changed)
+      || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'}`)
       continue
@@ -1353,7 +1354,8 @@ const deckTurn = async (text: string) => {
       break
     }
     for (const c of work) {
-      if ((c.action === 'undo' || c.action === 'redo') && changed) { // planned in the same batch as the change it would revert
+      // planned in the same batch as the change it would revert, or a second undo/redo ("Undone. Redone." for "undo")
+      if ((c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d)))) {
         done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one`)
         continue
       }
