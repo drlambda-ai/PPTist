@@ -1373,10 +1373,7 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) {
-        changed = true
-        await snapshotStore.addSnapshot() // each chat step is one Undo
-      }
+      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
     }
     if (work.every((c: any) => ['answer_question', 'ask_user', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }
@@ -1393,7 +1390,7 @@ const deckTurn = async (text: string) => {
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
   if (slides.value.length !== pagesAtStart) lines.push(zh(text) ? `现在共 ${slides.value.length} 页。` : `The deck now has ${slides.value.length} pages.`)
-  const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.')
+  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (zh(text) ? '已完成。' : 'Done.') // a repeated step reports once
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
   say('assistant', await finalize(text, reply, done) + fee)
