@@ -824,9 +824,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     for (let k = 0; k < count; k++) {
       busy.value = `Writing page ${k + 1} of ${count}…`
       const list = [...slides.value]
-      list.splice(after + k, 0, cloneSlide(slides.value[pos(idOf(args.layout_from || args.after))]))
+      const source = slides.value[pos(idOf(args.layout_from || args.after))]
+      list.splice(after + k, 0, cloneSlide(source))
       slidesStore.setSlides(list)
       await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${args.instruction}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
+      // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
+      // on a new TikTok page): one more pass names those lines
+      const copied = new Set(source.elements.map(elText).filter(Boolean))
+      const stale = slides.value[after + k].elements.map(elText).filter(t => t && copied.has(t))
+      if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
     }
     const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
     return (Z ? `已在第 ${after} 页后加了 ${count} 页：${newTitles(after, count)}。` : `Added ${count} page(s) after page ${after}: ${newTitles(after, count)}.`) + capped
