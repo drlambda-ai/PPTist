@@ -159,7 +159,9 @@ const TOOLS = [
     question: { type: 'string', description: 'The question, in the user\'s language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in the user\'s language, or []' },
   }, ['question', 'options']),
-  fn('undo', 'Undo the last change.', {}, []),
+  fn('undo', 'Undo the last change.', {
+    instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
+  }, ['instead']),
   fn('redo', 'Redo the last undone change.', {}, []),
   fn('finish', 'Stop: after at least one step was applied. List in not_done every part of the request that was NOT done (the editor cannot do it, or it was skipped), in the user\'s language; empty when all is done.', {
     not_done: { type: 'string', description: 'e.g. "I can\'t add the table from your PDF: the file isn\'t attached here." Empty if everything was done.' },

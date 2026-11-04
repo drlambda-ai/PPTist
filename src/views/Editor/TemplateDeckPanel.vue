@@ -1339,6 +1339,7 @@ const deckTurn = async (text: string) => {
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
+  let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -1375,6 +1376,13 @@ const deckTurn = async (text: string) => {
     if (!work.length && left && String(left).trim()) { // never pretend the rest is done
       replies.push(String(left).trim())
       terse.push(String(left).trim())
+    }
+    // a correction stopped at "Undone." (1 run in 4): the undo said what the user wants instead, so finishing
+    // before that is done sends the router back once
+    if (!work.length && pendingInstead && !nudged) {
+      nudged = true
+      done.push(`not finished: after the undo, the user still wants: ${pendingInstead}. Do it now on the right target.`)
+      continue
     }
     if (!work.length) break
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
@@ -1439,6 +1447,8 @@ const deckTurn = async (text: string) => {
         break
       }
       replies.push(reply)
+      if (c.action === 'undo') pendingInstead = String(c.args?.instead || '').trim()
+      else if (!['answer_question', 'ask_user', 'redo', 'go_to_page', 'read_file', 'web_search', 'find_papers', 'read_link'].includes(c.action)) pendingInstead = ''
       turnCalls.push(stepKey(c.action, c.args))
       turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
       for (const x of slides.value) if (!idsAtStart.has(x.id)) createdThisMessage.add(x.id)
