@@ -42,7 +42,14 @@ if (import.meta.env.MODE !== 'development' && !host) { // inside ChatSlide edits
   window.onbeforeunload = () => false
 }
 
+// the generated template library (tools/templates/generate.mjs) joins the built-in templates in the picker
+const loadGeneratedTemplates = async () => {
+  const list: { id: string, name: string }[] = await api.getMockData('gen/index').catch(() => [])
+  slidesStore.setTemplates([...slidesStore.templates, ...list.map(x => ({ id: `gen/${x.id}`, name: x.name, cover: `./mocks/gen/${x.id}.webp`, origin: 'ChatSlide' }))])
+}
+
 onMounted(async () => {
+  loadGeneratedTemplates()
   if (isAudienceMode) {
     slidesStore.setSlides([{
       id: nanoid(10),
