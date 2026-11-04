@@ -29,8 +29,9 @@ const TOOLS = [
     after: page,
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
     after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
+    topics: { type: 'array', items: { type: 'string' }, description: 'One topic per new page, in order (["TikTok", "Reddit"] for "one about TikTok and one about Reddit"); [] when the pages share one topic' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages']),
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
@@ -40,8 +41,9 @@ const TOOLS = [
     instruction: { type: 'string', description: 'What the chart shows, with the numbers if the user or deck gives them' },
     after: page,
     chart_type: { type: 'string', enum: ['bar', 'column', 'line', 'pie', 'ring', 'area', 'radar', 'scatter'] },
+    existing_chart_page: { type: 'integer', description: 'When the user is CHANGING a chart already on a page ("make this chart a pie chart"), that page number; 0 for a new chart' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
-  }, ['instruction', 'after', 'chart_type', 'message_new_pages']),
+  }, ['instruction', 'after', 'chart_type', 'existing_chart_page', 'message_new_pages']),
   fn('add_table_page', 'Add a new page whose main content is a table.', {
     instruction: { type: 'string', description: 'What the table shows (rows, columns, values) as the user or deck gives it' },
     after: page,

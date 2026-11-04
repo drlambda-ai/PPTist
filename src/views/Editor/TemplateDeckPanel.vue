@@ -822,7 +822,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     if (s.mode === 'native') {
       const n0 = slides.value.length
-      if (!await generatePage(text, args.instruction, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
+      const topics = Array.isArray(args.topics) && args.topics.length > 1 ? ` One page per topic, in this order: ${args.topics.join('; ')}.` : ''
+      if (!await generatePage(text, args.instruction + topics, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
       const added = slides.value.length - n0
       const capped = (args.count || 1) > 10 ? (Z ? '（一次最多写 10 个主题，再说一次可继续加）' : ' (at most 10 topics per request; ask again for more)') : ''
       return (Z ? `已在第 ${after} 页后加了 ${added} 页：${newTitles(after, added)}。` : `Added ${added} page(s) after page ${after}: ${newTitles(after, added)}.`) + capped
@@ -834,7 +835,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       const source = slides.value[pos(idOf(args.layout_from || args.after))]
       list.splice(after + k, 0, cloneSlide(source))
       slidesStore.setSlides(list)
-      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${args.instruction}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
+      // each new page from its own topic: with one shared instruction "TikTok and Reddit" became two TikTok pages
+      const topic = Array.isArray(args.topics) && args.topics.length === count ? `${args.topics[k]} (part of: ${args.instruction})` : args.instruction
+      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
       // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
       // on a new TikTok page): one more pass names those lines
       const copied = new Set(source.elements.map(elText).filter(Boolean))
@@ -852,6 +855,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return Z ? `已在第 ${i + 1} 页后加了扩展页（第 ${i + 2} 页），原页保持不变。` : `Added an extension of page ${i + 1} as page ${i + 2}; page ${i + 1} is unchanged.`
   }
   if (action === 'add_chart_page') {
+    // changing a chart that is already there ("this chart -> pie"): edit it in place, never a new chart page
+    const there = Number(args.existing_chart_page) || 0
+    if (there > 0 && slides.value[pos(idOf(there))]?.elements.some(e => e.type === 'chart')) {
+      const i = pos(idOf(there))
+      const reply = await editSlide(i, `Change the chart on this page: ${args.instruction}${args.chart_type ? ` (chart type: ${args.chart_type})` : ''}. Keep its data unless asked.`)
+      slidesStore.updateSlideIndex(i)
+      return reply
+    }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页「${titleAt(after)}」。` : `Added a chart page "${titleAt(after)}".`)
   }
