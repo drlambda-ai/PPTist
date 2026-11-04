@@ -1433,6 +1433,16 @@ const deckTurn = async (text: string) => {
       || work.find((c: any) => done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(c.action, c.args)))
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
+    // undone for a "correction", then the router wants the very same change back: the undone change was already
+    // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
+    if (extra && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
+      await snapshotStore.reDo()
+      pendingInstead = ''
+      const kept = zh(text) ? '上一步改的已经是你要的那张图（背景没有动），我把它保留了。要把背景也改回去吗？' : 'My last change was already to the picture you meant (the background was not touched), so I kept it. Should I also restore the background?'
+      replies.push(kept)
+      terse.push(kept)
+      break
+    }
     if (extra) {
       const why = ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
         ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
