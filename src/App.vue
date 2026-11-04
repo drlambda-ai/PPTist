@@ -48,7 +48,8 @@ onMounted(async () => {
     screenStore.setScreening(true)
   }
   else {
-    if (!host) slidesStore.setSlides(await api.getMockData('slides')) // inside ChatSlide the project's deck loads instead
+    // inside ChatSlide: a blank page so the editor mounts at once; it then loads the project's deck (no demo-deck fetch)
+    slidesStore.setSlides(host ? [{ id: nanoid(10), elements: [] }] : await api.getMockData('slides'))
 
     await deleteDiscardedDB()
     snapshotStore.initSnapshotDatabase()
