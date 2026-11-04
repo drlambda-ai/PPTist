@@ -9,7 +9,7 @@ const web = async (query: string) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
-      model: process.env.RESEARCH_MODEL || 'gpt-5.4-mini',
+      model: process.env.RESEARCH_MODEL || 'gpt-6-luna',
       tools: [{ type: 'web_search' }],
       tool_choice: 'required',
       input: `Search the web and answer for a presentation slide, in at most 8 short factual lines. Every fact must come from a page you read; give numbers with their year. Question: ${query}`,
@@ -38,7 +38,7 @@ const commons = async (params: Record<string, string>) => {
 // Commons full-text search returned 1800s engravings and a night-lights photo for "map of the United States".
 const KIND_PROPS: Record<string, string[]> = { map: ['P1621', 'P1943', 'P242'], flag: ['P41'], logo: ['P154'], photo: ['P18'] }
 const wikidataFiles = async (query: string) => {
-  const plan = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture: "${query}". Return JSON {"subject": "<the real-world thing, its English name, e.g. United States>", "kind": "map|flag|logo|photo"}` }], { model: 'gpt-5.4-mini', jsonMode: true }))
+  const plan = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture: "${query}". Return JSON {"subject": "<the real-world thing, its English name, e.g. United States>", "kind": "map|flag|logo|photo"}` }], { model: 'gpt-6-luna', jsonMode: true }))
   const props = KIND_PROPS[plan.kind] || KIND_PROPS.photo
   const found = await (await fetch(`https://www.wikidata.org/w/api.php?${new URLSearchParams({ action: 'wbsearchentities', search: String(plan.subject || query), language: 'en', format: 'json', limit: '1' })}`, { headers: UA })).json()
   const id = found.search?.[0]?.id
@@ -63,7 +63,7 @@ const wikimedia = async (query: string) => {
   let best = pages[0]
   try {
     const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
-    const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\nWhich file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)? Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-5.4-mini', jsonMode: true }))
+    const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\nWhich file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)? Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
     if (out.pick === -1) return { src: '' }
     if (pages[out.pick]) best = pages[out.pick]
   }

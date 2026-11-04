@@ -36,7 +36,7 @@ export default async function handler(req: any, res: any) {
       for (const line of lines) {
         if (line.trim()) res.write(line + '\n')
       }
-    }, { model: 'gpt-5.4-mini', effort: 'low', maxTokens: 8192 })
+    }, { model: 'gpt-6-luna', effort: 'low', maxTokens: 8192 })
     if (buffer.trim()) res.write(buffer + '\n')
     res.end()
   }

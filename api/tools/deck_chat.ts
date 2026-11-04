@@ -6,9 +6,10 @@ import { FALLBACK_MODEL, chat, getKey, readBody, vendorDown } from '../_llm.js'
 
 // planning/routing: claude-haiku-5-5 tied the best on 40 real ChatSlide prompts and ran multi-step loops correctly,
 // at ~1/50 of gpt-5.5's price (bake-off 2026-10-31)
-const MODEL = process.env.DECK_ROUTER_MODEL || 'claude-haiku-5-5'
+// 2026-11-04 (Quanlai: no Anthropic for now, use GPT-6): gpt-6-luna, $0.50/M output on the bill vs gpt-5.4-mini $4.50
+const MODEL = process.env.DECK_ROUTER_MODEL || 'gpt-6-luna'
 // models a request may pick (for side-by-side tests); anything else falls back to MODEL
-const ALLOWED = ['gpt-5.5', 'gpt-5.4', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5']
+const ALLOWED = ['gpt-6-luna', 'gpt-5.5', 'gpt-5.4', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5']
 
 const page = { type: 'integer', description: '1-based page number in the deck as listed' }
 const pages = { type: 'array', items: page }
@@ -370,7 +371,7 @@ export default async function handler(req: any, res: any) {
       const raw = await chat([
         { role: 'system', content: 'Translate the assistant reply into the language the user wrote their message in; keep its meaning, numbers and line breaks; if it is already in that language, copy it unchanged. Return JSON {"reply": "<translated reply>"}.' },
         { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
-      ], { model: process.env.FINALIZE_MODEL || 'gpt-5.4-mini', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
+      ], { model: process.env.FINALIZE_MODEL || 'gpt-6-luna', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
       let reply = ''
       try { reply = String(JSON.parse(raw).reply || '') }
       catch { reply = '' }
