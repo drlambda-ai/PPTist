@@ -88,7 +88,7 @@
       </div>
       <div class="menu-item" v-tooltip="t('AI 生成与修改（可上传公司模板和资料）')" :aria-label="t('AI 生成与修改（可上传公司模板和资料）')" @click="toggleTemplateDeckPanel()">
         <!-- inside ChatSlide: its logo (served by ChatSlide, same origin); standalone: the AI mark -->
-        <img v-if="chatslide" class="brand" src="/images/Chatslide-favicon.svg" alt="ChatSlide" />
+        <img v-if="chatslide" class="brand" :src="CHATSLIDE_LOGO" alt="ChatSlide" />
         <span v-else class="text ai">AI</span>
       </div>
       <div class="menu-item" v-if="chatslide?.classic" @click="chatslide.classic()">
@@ -136,6 +136,7 @@ import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
 import Divider from '@/components/Divider.vue'
 import { host as chatslide } from '@/embed'
+const CHATSLIDE_LOGO = '/images/Chatslide-favicon.svg' // ChatSlide serves it (same origin); not bundled
 
 const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
