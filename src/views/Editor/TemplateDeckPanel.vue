@@ -394,6 +394,10 @@ const editedThisTurn = new Set<string>() // slide ids changed by an earlier step
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 const picturedThisTurn = new Set<string>() // pages that got a NEW picture in the current message
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
+let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
+// a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
+const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
+  .filter(([k]) => !['query', 'instruction', 'photo_query', 'answer', 'source'].includes(k)).sort()))}`
 const editSlide = async (index: number, instruction: string) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -1300,6 +1304,7 @@ const deckTurn = async (text: string) => {
   const replies: string[] = []
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   let changed = false
+  const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -1340,10 +1345,15 @@ const deckTurn = async (text: string) => {
     const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
       || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image ?? 1}`))
+      // after an Undo in a correction, redoing the very change just undone ("not the background" -> background again)
+      || work.find((c: any) => done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(c.action, c.args)))
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
-      done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'}`)
+      const why = lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
+        ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
+        : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
+      done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       continue
     }
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
@@ -1372,6 +1382,7 @@ const deckTurn = async (text: string) => {
         break
       }
       replies.push(reply)
+      turnCalls.push(stepKey(c.action, c.args))
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
@@ -1383,6 +1394,7 @@ const deckTurn = async (text: string) => {
     s.pending = null
     save()
   }
+  lastTurnCalls = turnCalls
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
     renumber()
