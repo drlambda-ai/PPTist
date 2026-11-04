@@ -109,12 +109,14 @@ const cover = (st, v) => {
 
 const contents = (st, n) => {
   const a = area(st, 'contents'), [hf, bf] = st.fonts, { text: tc, primary, bg, surface } = st.palette
-  const rowH = Math.min(64, (a.h - 90) / n), y0 = a.y + 90
-  const els = [...decor(st, 'contents'), text('', a.x, a.y, a.w, 56, 'Contents', { size: 30, color: tc, font: hf, bold: true })]
+  // no fixed "Contents" heading: it stayed English in a Chinese deck (the filler has no text for it); the numbered
+  // list reads as the agenda on its own
+  const rowH = Math.min(70, (a.h - 30) / n), y0 = a.y + Math.max(20, (a.h - rowH * n) / 2)
+  const els = [...decor(st, 'contents')]
   for (let k = 0; k < n; k++) {
     const y = y0 + k * rowH
     els.push(shape(a.x, y + 6, 44, 44, primary, CIRCLE),
-      text('', a.x, y + 13, 44, 30, String(k + 1).padStart(2, '0'), { size: 16, color: bg === '#ffffff' || surface ? bg : '#ffffff', font: hf, bold: true, align: 'center' }),
+      text('itemNumber', a.x, y + 13, 44, 30, String(k + 1).padStart(2, '0'), { size: 16, color: bg === '#ffffff' || surface ? bg : '#ffffff', font: hf, bold: true, align: 'center' }),
       text('item', a.x + 64, y + 10, a.w - 64, 36, `Section ${k + 1}`, { size: 20, color: tc, font: bf }))
   }
   return page(st, 'contents', els)
