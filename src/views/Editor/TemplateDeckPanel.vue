@@ -186,6 +186,13 @@ const externalizeImages = async () => {
 const fontSizes = (html = '') => [...html.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
 const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
   const sl = slides.value[i]
+  const html = (e: any) => (e?.type === 'text' ? e.content : e?.text?.content) || ''
+  // only an edit that made some text BIGGER can have shrunk others as a side effect; when nothing grew, a smaller font
+  // is what was asked ("make the bullet points smaller", "the text runs off the page") and stays
+  const grew = (was as any[]).some(o => {
+    const n = sl.elements.find(e => e.id === o.id) as any
+    return n && Math.max(0, ...fontSizes(html(n))) > Math.max(0, ...fontSizes(html(o)))
+  })
   for (const old of was as any[]) {
     const now = sl.elements.find(e => e.id === old.id) as any
     // the full-slide background picture keeps its box: "make the picture bigger" also stretched it to the canvas.
@@ -194,8 +201,7 @@ const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
       slidesStore.updateElement({ id: old.id, props: { left: old.left, top: old.top, width: old.width, height: old.height }, slideId: sl.id })
       continue
     }
-    if (!now || now.type !== old.type || !['text', 'shape'].includes(now.type)) continue
-    const html = (e: any) => (e.type === 'text' ? e.content : e.text?.content) || ''
+    if (!grew || !now || now.type !== old.type || !['text', 'shape'].includes(now.type)) continue
     const same = elText(now) === elText(old) && now.width === old.width && now.height === old.height
     const shrank = fontSizes(html(now)).some((v, k) => v < (fontSizes(html(old))[k] ?? v))
     if (same && shrank) {
@@ -963,8 +969,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const logos = logoSpots()
     let n = 0
     for (const id of targets) {
-      const imgs = readingOrder(slides.value[pos(id)]).filter(e => e.type === 'image') // the numbering the router saw
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => imgs[k - 1]) : imgs.filter(e => !logos.has(imgSpot(e))))
+      // the numbering the router saw (pageText): 0 = the full-slide background picture, 1.. = the content pictures; with
+      // no numbers, "delete the pictures" removes content pictures, never the background or a logo
+      const sl = slides.value[pos(id)]
+      const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e)))
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
