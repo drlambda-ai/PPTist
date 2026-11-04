@@ -29,16 +29,19 @@ const TOOLS = [
     after: page,
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
     after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named']),
+    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
-  }, ['index', 'instruction']),
+    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
+  }, ['index', 'instruction', 'message_new_pages']),
   fn('add_chart_page', 'Add a new page whose main content is a chart (bar, column, line, pie, ring, area, radar, scatter).', {
     instruction: { type: 'string', description: 'What the chart shows, with the numbers if the user or deck gives them' },
     after: page,
     chart_type: { type: 'string', enum: ['bar', 'column', 'line', 'pie', 'ring', 'area', 'radar', 'scatter'] },
-  }, ['instruction', 'after', 'chart_type']),
+    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
+  }, ['instruction', 'after', 'chart_type', 'message_new_pages']),
   fn('add_table_page', 'Add a new page whose main content is a table.', {
     instruction: { type: 'string', description: 'What the table shows (rows, columns, values) as the user or deck gives it' },
     after: page,
@@ -59,7 +62,8 @@ const TOOLS = [
   fn('edit_page', 'Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
-  }, ['index', 'instruction', 'page_named']),
+    translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
+  }, ['index', 'instruction', 'page_named', 'translate_to']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"' },

@@ -395,6 +395,7 @@ const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 const picturedThisTurn = new Set<string>() // pages that got a NEW picture in the current message
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
 let currentAtSend = '' // id of the page the user was on when they sent the message
+const createdThisMessage = new Set<string>() // pages added since the message was sent
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
@@ -814,7 +815,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   const Z = zh(text)
   if (action === 'add_page') {
     // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
-    if (args.after_named === false && currentAtSend) args.after = pos(currentAtSend) + 1
+    if (args.after_named === false && currentAtSend) {
+      const made = slides.value.map((x, i) => (createdThisMessage.has(x.id) ? i : -1)).filter(i => i >= 0)
+      args.after = (made.length ? Math.max(...made) : pos(currentAtSend)) + 1 // a 2nd new page follows the 1st
+    }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     if (s.mode === 'native') {
       const n0 = slides.value.length
@@ -1042,7 +1046,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     // no page named: the page the user is looking at, like the classic assistant
     const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
+    const before = slides.value[i].elements.map(elText).filter(Boolean)
     const reply = await editSlide(i, args.instruction)
+    // a translation that left lines as they were (the small header stayed English): one pass naming them
+    if (args.translate_to) {
+      const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
+      if (left.length) await editSlide(i, `Translate these remaining lines into ${args.translate_to}, keeping their style: ${left.map(t => `"${t.slice(0, 160)}"`).join('; ')}`).catch(() => undefined)
+    }
     slidesStore.updateSlideIndex(i)
     return reply
   }
@@ -1319,8 +1329,11 @@ const deckTurn = async (text: string) => {
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
   currentAtSend = startPageId || ''
+  createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
-  const anchorsUsed = new Set<string>() // pages that already got new pages after them in this message
+  const created = () => slides.value.filter(x => !idsAtStart.has(x.id)).length
+  const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
+  let pagesWanted = -1 // declared by the first page-adding step (message_new_pages)
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -1361,11 +1374,9 @@ const deckTurn = async (text: string) => {
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
-      // a new page anchored after a page created in this same message: the fallback router kept adding "the next" one
-      // (30 -> 32). Several new pages go in one add_page (count + topics); different ORIGINAL anchors still work.
-      || work.find((c: any) => ['add_page', 'add_chart_page'].includes(c.action) && ids[Number(c.args?.after) - 1] && !idsAtStart.has(ids[Number(c.args?.after) - 1]))
-      // a second add after the same page in a later round (reworded, so not an exact repeat): 30 -> 32 for "a page"
-      || work.find((c: any) => ['add_page', 'add_chart_page'].includes(c.action) && anchorsUsed.has(ids[Number(c.args?.after) - 1]))
+      // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
+      // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
+      || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
       || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
@@ -1376,8 +1387,8 @@ const deckTurn = async (text: string) => {
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     if (extra) {
-      const why = ['add_page', 'add_chart_page'].includes(extra.action) && (!idsAtStart.has(ids[Number(extra.args?.after) - 1]) || anchorsUsed.has(ids[Number(extra.args?.after) - 1]))
-        ? 'that page was just created in this message: the requested page is already added; finish (several new pages go in ONE add_page with count)'
+      const why = ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
+        ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
         : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
         ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
         : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
@@ -1399,6 +1410,11 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one`)
         continue
       }
+      if (ADDS.includes(c.action) && pagesWanted < 0) pagesWanted = Math.max(1, Number(c.args?.message_new_pages) || Number(c.args?.count) || 1)
+      else if (ADDS.includes(c.action) && created() >= pagesWanted) { // planned in the same batch as the pages already added
+        done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
+        continue
+      }
       busy.value = `Working (step ${done.length + 1})…`
       let reply = ''
       try {
@@ -1414,7 +1430,7 @@ const deckTurn = async (text: string) => {
       replies.push(reply)
       turnCalls.push(stepKey(c.action, c.args))
       turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
-      if (c.action === 'add_page' || c.action === 'add_chart_page') anchorsUsed.add(ids[Number(c.args?.after) - 1])
+      for (const x of slides.value) if (!idsAtStart.has(x.id)) createdThisMessage.add(x.id)
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
