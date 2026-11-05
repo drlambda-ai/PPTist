@@ -56,7 +56,7 @@ export default async function handler(req: any, res: any) {
       },
     ]
 
-    const raw = await chat(messages, { jsonMode: true, model: advanced ? 'gpt-6.1-sol' : process.env.VERCEL_ENV !== 'production' && ['gpt-6-luna', 'gpt-5.5', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5'].includes(asked) ? asked : (process.env.SLIDE_EDIT_MODEL || 'gpt-6-luna'), effort: 'low', maxTokens: 32000 })
+    const raw = await chat(messages, { jsonMode: true, model: advanced === true ? 'gpt-6.1-sol' : process.env.VERCEL_ENV !== 'production' && ['gpt-6-luna', 'gpt-5.5', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5'].includes(asked) ? asked : (process.env.SLIDE_EDIT_MODEL || 'gpt-6-luna'), effort: 'low', maxTokens: 32000 })
     let parsed: any
     try { parsed = JSON.parse(raw) }
     catch { res.status(200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }
