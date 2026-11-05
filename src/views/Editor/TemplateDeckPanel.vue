@@ -1314,7 +1314,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'open_design') {
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
-    return Z ? '已打开右侧的“设计”面板，可以在那里选主题和模板。' : 'I opened the Design panel on the right: pick a theme or template there.'
+    return Z ? '已打开右侧的“设计”面板，可以在那里换主题。模板页面在左上角“添加幻灯片”旁的下拉箭头里，会作为新页插入。' : 'I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.'
   }
   if (action === 'talk_to_human') {
     if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
