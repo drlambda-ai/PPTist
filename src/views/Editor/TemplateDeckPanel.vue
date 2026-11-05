@@ -1125,6 +1125,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     })
     if (args.hard && !canAdvanced) upgradeLine = offer()
     keepUnaskedSizes(i, was)
+    if (JSON.stringify(slides.value[i].elements) === JSON.stringify(was)) throw new NoChange(Z ? `第 ${i + 1} 页没有改动。` : `Page ${i + 1} was not changed.`)
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
@@ -1207,7 +1208,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
   }
   if (action === 'change_image') {
-    if (args.image === 0 && !args.said_background) return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: args.page_named }, ids)
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
@@ -1486,7 +1486,13 @@ const deckTurn = async (text: string) => {
     // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
-    const extra = work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
+    // "change the image" on a page whose only picture is the background: two readings, so the user chooses (the router asks)
+    const onlyBackground = (c: any) => {
+      const sl = slides.value[pos(landsOn(c))]
+      return c.action === 'change_image' && !c.args?.said_background && !!sl && (c.args?.image === 0 || !sl.elements.some((e: any) => e.type === 'image' && !isBackdrop(e)))
+    }
+    const extra = work.find(onlyBackground)
+      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
       || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
@@ -1520,7 +1526,8 @@ const deckTurn = async (text: string) => {
       break
     }
     if (extra) {
-      const why = ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
+      const why = onlyBackground(extra) ? 'that page has no picture except its background. Do not change it: ask_user whether to replace the background picture or add a new picture'
+        : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
         ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
         : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
         ? 'this exact step already ran in this message (see Done so far): the request is done, finish'

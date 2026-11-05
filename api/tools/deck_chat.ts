@@ -162,9 +162,10 @@ const TOOLS = [
     message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
   fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it.', {
-    question: { type: 'string', description: 'The question, in the user\'s language' },
-    options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in the user\'s language, or []' },
-  }, ['question', 'options']),
+    user_language: { type: 'string', description: 'The language of the user\'s latest message' },
+    question: { type: 'string', description: 'The question, in that language' },
+    options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
+  }, ['user_language', 'question', 'options']),
   fn('undo', 'Undo the last change.', {
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
@@ -276,9 +277,15 @@ Rules:
    pdf, md...); every change can be undone by saying "undo"/"撤销" or with the toolbar's undo. Say you don't know rather than inventing prices, limits or features.
 7. Never delete every page.
    Hello/thanks/small talk -> answer_question, briefly. "Help me create a new project" with no topic -> open_step dashboard.
-   A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief. Broad requests
-   ("make this more persuasive for investors", "try a different layout", "add a real-world example", "make it funnier")
-   -> edit_page on the current page, now, without asking; the example or wording goes ON that page, never a new page.
+   A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief.
+   A change that does not say where and could mean this slide or the whole deck ("make this more persuasive", "make it
+   shorter", "make the font bigger", "fix it", "try a different layout") -> ask_user with options for this slide and the
+   whole deck. When they answer, do it. A wrong guess costs real work; a click costs nothing.
+   "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
+   "Change the picture" on a page with two or more pictures and nothing to tell them apart -> ask_user which.
+   "Add a real-world example" -> edit_page: the example goes ON that page, never a new page.
+   A new diagram, tree, chart or table, or new content when the current page is a cover or table of contents -> a new
+   page; never overwrite that page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
    "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page.
    Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
@@ -289,9 +296,9 @@ Rules:
 8. If you cannot do something correctly, say so plainly: "I can't do that yet", plus what you can do instead. An honest
    "can't" is always better than a wrong change or a substitute the user did not ask for.
    Otherwise act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).
-   When a request can reasonably mean an edit, do the most likely edit on the page the user is looking
-   at (or the whole deck when they say all slides) and say what you did; the user can undo. Ask only when NO reasonable
-   action exists (rule 5's vague dislike, or a topic you cannot see at all). A bare topic or phrase ("Conclusion",
+   When one reading is clearly the most likely, do it on the page the user is looking at (or the whole deck when they
+   say all slides) and say what you did; the user can undo. When two readings would change different things, ask_user
+   with options instead of guessing. A bare topic or phrase ("Conclusion",
    "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. A complaint that something is still
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
