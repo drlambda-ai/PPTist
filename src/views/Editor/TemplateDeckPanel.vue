@@ -1488,7 +1488,7 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     // "change the image" on a page whose only picture is the background: two readings, so the user chooses (the router asks)
     const onlyBackground = (c: any) => {
-      const sl = slides.value[pos(landsOn(c))]
+      const sl = slides.value.find(x => x.id === landsOn(c))
       return c.action === 'change_image' && !c.args?.said_background && !!sl && (c.args?.image === 0 || !sl.elements.some((e: any) => e.type === 'image' && !isBackdrop(e)))
     }
     const extra = work.find(onlyBackground)
