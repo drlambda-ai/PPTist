@@ -1,6 +1,7 @@
 import { t } from '@/i18n'
 import { defineStore } from 'pinia'
 import { omit } from 'lodash'
+import { sanitizeElements, sanitizeSlides } from '@/utils/sanitizeSlides'
 import type { Slide, SlideTheme, PPTElement, PPTAnimation, SlideTemplate } from '@/types/slides'
 
 interface RemovePropData {
@@ -131,7 +132,7 @@ export const useSlidesStore = defineStore('slides', {
     },
   
     setSlides(slides: Slide[], themeProps?: Partial<SlideTheme>) {
-      this.slides = slides
+      this.slides = sanitizeSlides(slides)
       if (themeProps) this.setTheme(themeProps)
     },
   
@@ -140,7 +141,7 @@ export const useSlidesStore = defineStore('slides', {
     },
   
     addSlide(slide: Slide | Slide[]) {
-      const slides = Array.isArray(slide) ? slide : [slide]
+      const slides = sanitizeSlides(Array.isArray(slide) ? slide : [slide])
       for (const slide of slides) {
         if (slide.sectionTag) delete slide.sectionTag
       }
@@ -199,6 +200,7 @@ export const useSlidesStore = defineStore('slides', {
   
     addElement(element: PPTElement | PPTElement[]) {
       const elements = Array.isArray(element) ? element : [element]
+      sanitizeElements(elements)
       const currentSlideEls = this.slides[this.slideIndex].elements
       const newEls = [...currentSlideEls, ...elements]
       this.slides[this.slideIndex].elements = newEls

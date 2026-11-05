@@ -53,7 +53,7 @@
               @updateValue="value => handleInput(value, rowIndex, colIndex)"
               @insertExcelData="value => insertExcelData(value, rowIndex, colIndex)"
             />
-            <div v-else class="cell-text" :style="getTextStyle(cellMinHeight, cell.style)" v-html="formatText(cell.text)" />
+            <div v-else class="cell-text" :style="getTextStyle(cellMinHeight, cell.style)" v-html="cleanHtml(formatText(cell.text))" />
           </td>
         </tr>
       </tbody>
@@ -74,6 +74,7 @@ import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import { KEYS } from '@/configs/hotkey'
 import emitter, { EmitterEvents, type TableCommand } from '@/utils/emitter'
 import message from '@/utils/message'
+import { cleanHtml } from '@/utils/sanitizeSlides'
 import { getCellStyle, getTextStyle, formatText } from './utils'
 import useHideCells from './useHideCells'
 import useSubThemeColor from './useSubThemeColor'

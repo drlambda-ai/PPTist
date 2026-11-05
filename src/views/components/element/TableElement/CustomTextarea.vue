@@ -13,6 +13,7 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, ref, watch, useTemplateRef } from 'vue'
 import { pasteCustomClipboardString, pasteExcelClipboardString, pasteHTMLTableClipboardString } from '@/utils/clipboard'
+import { cleanHtml } from '@/utils/sanitizeSlides'
 
 const props = withDefaults(defineProps<{
   value?: string
@@ -33,8 +34,8 @@ const isFocus = ref(false)
 // 当文本框聚焦时，不执行数据同步
 watch(() => props.value, () => {
   if (isFocus.value) return
-  text.value = props.value
-  if (textareaRef.value) textareaRef.value.innerHTML = props.value
+  text.value = cleanHtml(props.value)
+  if (textareaRef.value) textareaRef.value.innerHTML = text.value
 }, { immediate: true })
 
 const handleInput = () => {
@@ -63,7 +64,7 @@ const handleFocus = () => {
           const excelData = pasteExcelClipboardString(text)
           if (excelData) {
             emit('insertExcelData', excelData)
-            if (textareaRef.value) textareaRef.value.innerHTML = excelData[0][0]
+            if (textareaRef.value) textareaRef.value.innerHTML = cleanHtml(excelData[0][0])
             return
           }
   
@@ -75,7 +76,7 @@ const handleFocus = () => {
           const htmlData = pasteHTMLTableClipboardString(html)
           if (htmlData) {
             emit('insertExcelData', htmlData)
-            if (textareaRef.value) textareaRef.value.innerHTML = htmlData[0][0]
+            if (textareaRef.value) textareaRef.value.innerHTML = cleanHtml(htmlData[0][0])
           }
         }) 
       }

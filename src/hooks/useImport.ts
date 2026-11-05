@@ -13,6 +13,7 @@ import useAddSlidesOrElements from '@/hooks/useAddSlidesOrElements'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from './useHistorySnapshot'
 import message from '@/utils/message'
+import { cleanHtml } from '@/utils/sanitizeSlides'
 import { getSvgPathRange } from '@/utils/svgPathParser'
 import type {
   Slide,
@@ -1068,7 +1069,7 @@ export default () => {
                   const cellData = el.data[i][j]
 
                   let textDiv: HTMLDivElement | null = document.createElement('div')
-                  textDiv.innerHTML = cellData.text
+                  textDiv.innerHTML = cleanHtml(cellData.text)
                   const p = textDiv.querySelector('p')
                   const align = p?.style.textAlign || 'left'
 

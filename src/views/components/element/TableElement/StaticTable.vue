@@ -27,7 +27,7 @@
             :colspan="cell.colspan"
             v-show="!hideCells.includes(`${rowIndex}_${colIndex}`)"
           >
-            <div class="cell-text" :style="getTextStyle(cellMinHeight, cell.style)" v-html="formatText(cell.text)" />
+            <div class="cell-text" :style="getTextStyle(cellMinHeight, cell.style)" v-html="cleanHtml(formatText(cell.text))" />
           </td>
         </tr>
       </tbody>
@@ -38,6 +38,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import type { PPTElementOutline, TableCell, TableTheme } from '@/types/slides'
+import { cleanHtml } from '@/utils/sanitizeSlides'
 import { getCellStyle, getTextStyle, formatText } from './utils'
 import useHideCells from './useHideCells'
 import useSubThemeColor from './useSubThemeColor'
