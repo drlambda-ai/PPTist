@@ -454,13 +454,13 @@ const editSlide = async (index: number, instruction: string, advanced = false) =
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
-  const unchanged = () => new NoChange(editedThisTurn.has(slide.id)
+  const unchanged = () => Object.assign(new NoChange(editedThisTurn.has(slide.id)
     ? (zh(userText) ? `第 ${index + 1} 页没有进一步的改动。` : `No further change on page ${index + 1}.`)
-    : (zh(userText) ? `第 ${index + 1} 页没有改动。` : `Page ${index + 1} was not changed.`) + (ret.reply ? ` ${ret.reply}` : ''))
+    : (zh(userText) ? `第 ${index + 1} 页没有改动。` : `Page ${index + 1} was not changed.`) + (ret.reply ? ` ${ret.reply}` : '')), { tooHard: ret.too_hard === true })
   if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) throw unchanged() // say so, don't echo the request
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
@@ -1118,7 +1118,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let upgradeLine = ''
     const reply = await editSlide(i, args.instruction, !!args.hard && canAdvanced).catch((e) => {
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
-      if (args.hard && canAdvanced) throw e // the advanced model already had its try
+      if ((args.hard && canAdvanced) || !(e as any).tooHard) throw e // it already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)
       const line = offer()
       throw line ? new NoChange(`${e.message} ${line}`) : e

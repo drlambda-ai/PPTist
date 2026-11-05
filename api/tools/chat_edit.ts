@@ -64,7 +64,7 @@ export default async function handler(req: any, res: any) {
     if (patch) {
       const ok = Array.isArray(parsed.changes) || Array.isArray(parsed.added) || Array.isArray(parsed.removed)
       const arr = (v: any) => (Array.isArray(v) ? v : []) // a malformed field becomes empty, never a crash downstream
-      res.status(200).json({ reply: parsed.reply || 'Done.', patch: ok ? { changes: arr(parsed.changes), added: arr(parsed.added), removed: arr(parsed.removed) } : null })
+      res.status(200).json({ reply: parsed.reply || 'Done.', too_hard: parsed.too_hard === true, patch: ok ? { changes: arr(parsed.changes), added: arr(parsed.added), removed: arr(parsed.removed) } : null })
       return
     }
     res.status(200).json({
