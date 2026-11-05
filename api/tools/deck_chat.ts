@@ -150,9 +150,10 @@ const TOOLS = [
     asked: { type: 'string', description: 'The format the user asked for in their words ("Google Slides", "Keynote", "pdf", ""), so the reply can say what was substituted' },
   }, ['format', 'asked']),
   fn('share_deck', 'Share the deck / get a share link ("share this", "分享", "link to send").', {}, []),
-  fn('open_step', 'Open another ChatSlide step when the user asks to go there or wants what it does: scripts (write/see the narration scripts page) or video (turn the deck into a video, voice-over, avatar).', {
-    step: { type: 'string', enum: ['scripts', 'video'] },
+  fn('open_step', 'Open another ChatSlide page when the user asks to go there or wants what it does: scripts (write/see the narration scripts page), video (turn the deck into a video, voice-over, avatar), outlines (the outline step), dashboard (their projects; where a new project starts).', {
+    step: { type: 'string', enum: ['scripts', 'video', 'outlines', 'dashboard'] },
   }, ['step']),
+  fn('open_design', 'Open the Design panel, where the user picks a theme or template ("change the template", "apply a theme", "other templates").', {}, []),
   fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
@@ -271,6 +272,15 @@ Rules:
    the 📎 icon in the chat box (or dropping a file on it) attaches a company .pptx template or material (xlsx, docx,
    pdf, md...); every change can be undone by saying "undo"/"撤销" or with the toolbar's undo. Say you don't know rather than inventing prices, limits or features.
 7. Never delete every page.
+   Hello/thanks/small talk -> answer_question, briefly. "Help me create a new project" with no topic -> open_step dashboard.
+   A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief. Broad requests
+   ("make this more persuasive for investors", "try a different layout", "add a real-world example", "make it funnier")
+   -> edit_page on the current page, now, without asking; the example or wording goes ON that page, never a new page.
+   "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
+   "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page.
+   Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
+   "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
+   -> add_image: image 0 is changed only when the user says background.
 8. If you cannot do something correctly, say so plainly: "I can't do that yet", plus what you can do instead. An honest
    "can't" is always better than a wrong change or a substitute the user did not ask for.
    Otherwise act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).

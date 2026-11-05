@@ -14,7 +14,7 @@ export interface ChatSlideHost {
   pptx: () => Promise<string> // the project's deck as a .pptx (blob: URL), for the first open
   // chat actions done by ChatSlide itself (absent when the editor runs alone)
   share?: () => Promise<{ url: string, copied: boolean }>
-  goto?: (step: 'scripts' | 'video' | 'refund') => Promise<void>
+  goto?: (step: string) => Promise<void>
   support?: (message: string) => Promise<string>
   outOfCredits?: () => void // ChatSlide opens its plans/paywall
   uploadImage?: (image: Blob) => Promise<string> // a picture as its own file (the deck stores the link, not the bytes)

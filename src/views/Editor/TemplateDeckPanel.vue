@@ -59,6 +59,7 @@ import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
 import { db } from '@/utils/database'
+import { ToolbarStates } from '@/types/toolbar'
 import { saveAs } from 'file-saver'
 import { jpegsToPdf, type JpegPage } from '@/utils/imagesToPdf'
 // @ts-expect-error no declaration for the bundle path (see utils/normalizePptx.ts)
@@ -122,7 +123,7 @@ const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 // eval hook (scripts/deck-eval): a replayed real conversation's earlier messages go straight into the chat history
-;(window as any).__deckPanel = { s }
+;(window as any).__deckPanel = { s, resetUndo: async () => { await db.snapshots.clear(); await snapshotStore.initSnapshotDatabase() } }
 const input = ref('')
 const busy = ref('')
 const messagesRef = ref<HTMLElement>()
@@ -453,13 +454,13 @@ const editSlide = async (index: number, instruction: string) => {
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patch: true, elements, slideSize: slideSize(), instruction: `${instruction}\n(Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
   const unchanged = () => new NoChange(editedThisTurn.has(slide.id)
     ? (zh(userText) ? `第 ${index + 1} 页没有进一步的改动。` : `No further change on page ${index + 1}.`)
-    : (zh(userText) ? `第 ${index + 1} 页没有改动：这个修改我没能做成。` : `Page ${index + 1} was not changed: I could not make that edit.`))
+    : (zh(userText) ? `第 ${index + 1} 页没有改动。` : `Page ${index + 1} was not changed.`) + (ret.reply ? ` ${ret.reply}` : ''))
   if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) throw unchanged() // say so, don't echo the request
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
@@ -839,7 +840,7 @@ const beforeClosing = (at: number) => {
   return closing && at >= slides.value.length ? slides.value.length - 1 : at
 }
 
-const runCall = async (text: string, action: string, args: any, ids: string[]) => {
+const runCall = async (text: string, action: string, args: any, ids: string[]): Promise<string> => {
   const idOf = (p: number) => {
     if (!(p >= 1 && p <= ids.length)) fail(zh(text) ? `没有第 ${p} 页（共 ${ids.length} 页）。` : `There is no page ${p} (the deck has ${ids.length}).`)
     return ids[p - 1]
@@ -948,7 +949,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const b = args.box || { x: 55, y: 20, w: 40, h: 60 }
     const clamp = (v: number) => Math.min(Math.max(v || 0, 0), 100) / 100
     const sl = slides.value[pos(id)]
-    const box = freeBox(sl, { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H })
+    const wanted = { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H }
+    let box = freeBox(sl, wanted)
+    if (!box) { // a full page: make room rather than refuse
+      await editSlide(pos(id), 'Make room for a picture: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.').catch(() => undefined)
+      box = freeBox(slides.value[pos(id)], { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H })
+    }
     if (!box) fail(Z ? `第 ${pos(id) + 1} 页已经排满，没有放图片的空位；可以先删掉或缩小一些内容，或者把图片放到新的一页。` : `Page ${pos(id) + 1} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.`)
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const src = await findPicture(args.query, args.source, box.width >= box.height)
@@ -1029,7 +1035,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   if (action === 'find_papers') {
     busy.value = Z ? '正在查找学术文献…' : 'Finding papers…'
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'scholar', query: args.query }) })).json()
-    if (r.error || !r.papers?.length) fail(Z ? `没有找到关于“${args.query}”的学术文献，所以没有添加引用。` : `I found no papers on "${args.query}", so I added no citations.`)
+    if (r.error || !r.papers?.length) { // no paper on that: real web sources still answer "add citations"
+      const found: string = await runCall(text, 'web_search', { query: args.query }, ids)
+      return Z ? `没有找到相关学术论文，改用了网上来源。${found}` : `No academic papers on that, so I used web sources. ${found}`
+    }
     memo = `<web-results>\n${fence(r.papers.map((p: any, i: number) => `[${i + 1}] ${p.authors} (${p.year}). ${p.title}. ${p.venue}. ${p.url} (cited ${p.cited}x)`).join('\n'))}\n</web-results>`
     return Z ? `已找到 ${r.papers.length} 篇相关文献。` : `Found ${r.papers.length} relevant paper(s).`
   }
@@ -1097,7 +1106,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
-    const reply = await editSlide(i, args.instruction)
+    const reply = await editSlide(i, args.instruction).catch((e) => {
+      if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
+      // the user can see something wrong even when the page's data looks fine: one more try that must look at the layout
+      return editSlide(i, `${args.instruction}\nThe user sees a problem on this page: look again at positions, sizes and text fit, and make the improvement they expect. Change nothing only if the request truly does not apply to this page.`)
+    })
     keepUnaskedSizes(i, was)
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
@@ -1135,6 +1148,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one
     let done = 0, next = 0, stop = false
     const same: number[] = [], failed: number[] = []
+    let noChangeWhy = ''
     const worker = async () => {
       while (next < all.length && !stop) {
         const id = all[next++]
@@ -1142,7 +1156,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
           await editSlide(pos(id), args.instruction)
         }
         catch (e) { // one page never stops the others; an unexpected error stops them all
-          if (e instanceof NoChange) same.push(pos(id) + 1)
+          if (e instanceof NoChange) {
+            same.push(pos(id) + 1)
+            noChangeWhy ||= e.message
+          }
           else if (e instanceof StepFailed) failed.push(pos(id) + 1)
           else {
             stop = true
@@ -1168,6 +1185,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
       + (untouched.length && ok ? (Z ? `第 ${list(untouched)} 页没有可改的内容。` : ` Page(s) ${list(untouched)} had nothing for that.`) : '')
     void earlier
+    if (!ok && !failed.length) return Z ? `没有页面需要改动。${noChangeWhy.replace(/^第 \d+ 页没有改动。\s*/, '')}` : `No page needed that change. ${noChangeWhy.replace(/^Page \d+ was not changed\.\s*/, '')}`
     if (!ok) fail((Z ? `这个修改在任何一页都没做成：“${what}”。` : `I could not make that change on any page: "${what}".`) + why)
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
   }
@@ -1241,8 +1259,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
     const asked = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
-    const targets = args.existing_only ? asked.filter(hasNotes) : asked // revising touches only pages that have notes
-    if (args.existing_only && !targets.length) fail(Z ? '这些页还没有演讲备注，所以没有可以修改的；说“写备注”我就先写出来。' : 'These pages have no speaker notes yet, so there is nothing to revise; say "write notes" and I will write them first.')
+    // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
+    const having = args.existing_only ? asked.filter(hasNotes) : asked
+    const targets = having.length ? having : asked
     const written = await writeNotes(targets, args.instruction || '')
     if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
     return (Z ? `已写好 ${written} 页的演讲备注。` : `Wrote speaker notes for ${written} page(s).`) + (written < targets.length ? (Z ? `（${targets.length - written} 页没写成）` : ` (${targets.length - written} page(s) failed)`) : '')
@@ -1278,20 +1297,24 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
   }
   if (action === 'open_step') {
-    if (!chatslide?.goto && args.step !== 'video') { // no Scripts step outside ChatSlide: the notes here ARE the script
+    if (!chatslide?.goto && args.step === 'scripts') { // no Scripts step outside ChatSlide: the notes here ARE the script
       const targets = slides.value.map(x => x.id)
       const written = await writeNotes(targets, text)
       if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
       return Z ? `已写好 ${written} 页的演讲备注（脚本）。` : `Wrote the speaker notes (the script) for ${written} page(s).`
     }
     if (!chatslide?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
-    await chatslide.goto(args.step === 'video' ? 'video' : 'scripts')
-    return args.step === 'video' ? (Z ? '正在打开视频步骤。' : 'Opening the Video step.') : (Z ? '正在打开脚本步骤。' : 'Opening the Scripts step.')
+    await chatslide.goto(args.step)
+    return Z ? `正在打开：${args.step}。` : `Opening ${({ video: 'the Video step', scripts: 'the Scripts step', outlines: 'the Outlines step', dashboard: 'your Dashboard, where a new project starts' } as Record<string, string>)[args.step] || args.step}.`
   }
   if (action === 'open_refund') {
     if (!chatslide?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
     await chatslide.goto('refund')
     return Z ? '正在打开退款页面。' : 'Opening the refund page.'
+  }
+  if (action === 'open_design') {
+    mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
+    return Z ? '已打开右侧的“设计”面板，可以在那里选主题和模板。' : 'I opened the Design panel on the right: pick a theme or template there.'
   }
   if (action === 'talk_to_human') {
     if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
@@ -1490,8 +1513,6 @@ const deckTurn = async (text: string) => {
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {
-      replies.push(zh(text) ? '这一轮只做一次整体删除/重排/背景/全页修改；如果还要别的改动，请再说一次。' : 'One round of deleting, reordering, background or deck-wide editing per message; if more should change, say which.')
-      terse.push(replies[replies.length - 1])
       break
     }
     for (const c of work) {
@@ -1544,7 +1565,7 @@ const deckTurn = async (text: string) => {
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
   if (slides.value.length !== pagesAtStart) lines.push(zh(text) ? `现在共 ${slides.value.length} 页。` : `The deck now has ${slides.value.length} pages.`)
-  const reply = lines.filter(Boolean).join('\n') || (zh(text) ? '已完成。' : 'Done.') // every step reports: merging repeats hid a doubled page
+  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (zh(text) ? '已完成。' : 'Done.') // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
   say('assistant', await finalize(text, reply, done) + fee)
