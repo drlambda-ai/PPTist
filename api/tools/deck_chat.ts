@@ -287,7 +287,9 @@ Rules:
    A new diagram, tree, chart or table, or new content when the current page is a cover or table of contents -> a new
    page; never overwrite that page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
-   "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page.
+   "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page, a
+   page number from the listed deck. "I want N slides" with no word about cutting, when the deck has more than N
+   -> ask_user: keep the N most important pages, or make a new N-slide deck. Never delete on that guess.
    Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
    "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
    -> add_image: image 0 is changed only when the user says background.
