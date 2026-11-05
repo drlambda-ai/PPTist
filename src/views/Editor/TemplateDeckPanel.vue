@@ -59,6 +59,10 @@ import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
 import { db } from '@/utils/database'
+import { saveAs } from 'file-saver'
+import { jpegsToPdf, type JpegPage } from '@/utils/imagesToPdf'
+// @ts-expect-error no declaration for the bundle path (see utils/normalizePptx.ts)
+import JSZip from 'jszip/dist/jszip.min.js'
 import useExport from '@/hooks/useExport'
 import useImport from '@/hooks/useImport'
 import useAIPPT from '@/hooks/useAIPPT'
@@ -73,7 +77,7 @@ import Button from '@/components/Button.vue'
 import TextArea from '@/components/TextArea.vue'
 import FileInput from '@/components/FileInput.vue'
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
-import { toJpeg } from 'html-to-image'
+import { getFontEmbedCSS, toJpeg } from 'html-to-image'
 import MoveablePanel from '@/components/MoveablePanel.vue'
 
 // One AI panel for both paths:
@@ -1252,9 +1256,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
       a.click()
       return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
     }
-    if (args.format === 'pdf' || args.format === 'images') { // these need the print/render dialogs
-      mainStore.setDialogForExport(args.format === 'pdf' ? 'pdf' : 'image')
-      return Z ? '已打开导出窗口，点“导出”即可下载。' : 'I opened the Export window; click Export to download.'
+    if (args.format === 'pdf' || args.format === 'images') {
+      const n = await downloadRendered(args.format, (i, all) => { busy.value = Z ? `正在导出第 ${i} / ${all} 页…` : `Exporting page ${i} of ${all}…` })
+        .catch(() => fail(Z ? '这次没能导出文件；可以先下载 PowerPoint。' : 'I could not create that file this time; the PowerPoint download still works.'))
+      return args.format === 'pdf'
+        ? (Z ? `正在下载 PDF（${n} 页）。` : `Downloading the PDF (${n} pages).`)
+        : (Z ? `正在下载 ${n} 张图片（zip）。` : `Downloading ${n} images (zip).`)
     }
     busy.value = Z ? '正在导出 .pptx…' : 'Exporting the .pptx…'
     exportPPTX(slides.value, true, false) // the browser saves the file; no dialog
@@ -1280,6 +1287,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]) =
     if (!chatslide?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
     await chatslide.goto(args.step === 'video' ? 'video' : 'scripts')
     return args.step === 'video' ? (Z ? '正在打开视频步骤。' : 'Opening the Video step.') : (Z ? '正在打开脚本步骤。' : 'Opening the Scripts step.')
+  }
+  if (action === 'open_refund') {
+    if (!chatslide?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
+    await chatslide.goto('refund')
+    return Z ? '正在打开退款页面。' : 'Opening the refund page.'
   }
   if (action === 'talk_to_human') {
     if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
@@ -1623,6 +1635,40 @@ const plainText = (sl: Slide) => sl.elements
   .map((el: any) => el.type === 'text' ? plain(el.content) : el.type === 'shape' ? plain(el.text?.content) : '')
   .filter(Boolean).join('\n')
 const pageKeys = (deck: Slide[]) => deck.map(sl => `${sl.id}-${hashOf(JSON.stringify(sl))}`)
+// PDF / images straight from the chat, using the same off-screen pages: a real file (the Export window's PDF is the
+// browser's print dialog, which gives no file). A page that cannot be drawn fails the export, it never goes missing.
+const downloadRendered = async (format: 'pdf' | 'images', progress: (i: number, n: number) => void) => {
+  await syncing // ponytail: one off-screen renderer, shared with the sync
+  toRender.value = JSON.parse(JSON.stringify(slides.value))
+  try {
+    await nextTick()
+    await new Promise(r => setTimeout(r, 800)) // images inside the pages load
+    const nodes = [...(renderRef.value?.children || [])] as HTMLElement[]
+    const fontEmbedCSS = await getFontEmbedCSS(nodes[0]).catch(() => '')
+    const shots: JpegPage[] = []
+    for (const [i, node] of nodes.entries()) {
+      progress(i + 1, nodes.length)
+      node.querySelectorAll('foreignObject [xmlns]').forEach(e => e.removeAttribute('xmlns'))
+      const url = await toJpeg(node, { quality: 0.92, width: 1600, fontEmbedCSS, backgroundColor: '#ffffff' })
+      const img = new Image()
+      img.src = url
+      await img.decode()
+      shots.push({ bytes: new Uint8Array(await (await fetch(url)).arrayBuffer()), width: img.naturalWidth, height: img.naturalHeight })
+    }
+    const name = slidesStore.title || 'deck'
+    if (format === 'pdf') saveAs(jpegsToPdf(shots), `${name}.pdf`)
+    else {
+      const zip = new JSZip()
+      shots.forEach((p, i) => zip.file(`${name}-${String(i + 1).padStart(2, '0')}.jpg`, p.bytes))
+      saveAs(await zip.generateAsync({ type: 'blob' }), `${name}-images.zip`)
+    }
+    return shots.length
+  }
+  finally {
+    toRender.value = []
+  }
+}
+
 let syncing: Promise<void> | null = null
 const syncOnce = async () => {
   const deck: Slide[] = JSON.parse(JSON.stringify(slides.value)) // what is sent is what was rendered

@@ -145,7 +145,7 @@ const TOOLS = [
   fn('web_search', 'Search the web for facts, statistics, recent information, examples, evidence, citations or sources. Returns an answer with real source links under "Done so far"; then put them on the slide(s) with edit_page/add_page, citing only those links.', {
     query: { type: 'string', description: 'What to search for, specific to the slide topic' },
   }, ['query']),
-  fn('download_deck', 'Download the deck as a file ("下载", "download", "export"). Google Slides / Keynote / other formats are not direct exports: use pptx and the reply says so.', {
+  fn('download_deck', 'Download the deck as a file ("下载", "download", "export"): PowerPoint, PDF or images (a zip) really download. Google Slides / Keynote / other formats are not direct exports: use pptx and the reply says so.', {
     format: { type: 'string', enum: ['pptx', 'pdf', 'images'], description: 'pptx unless the user names PDF or images' },
     asked: { type: 'string', description: 'The format the user asked for in their words ("Google Slides", "Keynote", "pdf", ""), so the reply can say what was substituted' },
   }, ['format', 'asked']),
@@ -153,7 +153,8 @@ const TOOLS = [
   fn('open_step', 'Open another ChatSlide step when the user asks to go there or wants what it does: scripts (write/see the narration scripts page) or video (turn the deck into a video, voice-over, avatar).', {
     step: { type: 'string', enum: ['scripts', 'video'] },
   }, ['step']),
-  fn('talk_to_human', 'The user asks for a human / real person / support, or asks about refunds, cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
+  fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
+  fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
   fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it.', {
@@ -235,7 +236,7 @@ Rules:
    Anything about the CONTENT of the script / speaker notes (write, expand, shorten, more detail, "here is my oral
    text", role-play a speaker) -> write_notes, which edits the notes right here. open_step scripts ONLY when the user
    asks to open/go to the Scripts page itself.
-   Sharing, a share link -> share_deck. A human, support, refunds, cancelling, payments, plans/pricing, account,
+   Sharing, a share link -> share_deck. A refund or money back -> open_refund. A human, support, cancelling, payments, plans/pricing, account,
    app settings -> talk_to_human, NEVER answer_question: policy must come from ChatSlide, not from you.
    When a message ANSWERS the question under "You asked", continue the original request with that answer; never re-ask.
    Earlier messages are context only: act on the CURRENT request, never redo a request from an earlier message.
