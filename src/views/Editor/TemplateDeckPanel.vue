@@ -436,7 +436,7 @@ let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: wh
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
   .filter(([k]) => !['query', 'instruction', 'photo_query', 'answer', 'source'].includes(k)).sort()))}`
-const editSlide = async (index: number, instruction: string) => {
+const editSlide = async (index: number, instruction: string, advanced = false) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
   // a shape's words (every text box of an imported ChatSlide/PowerPoint deck) are shown like a text box's: the model
@@ -454,7 +454,7 @@ const editSlide = async (index: number, instruction: string) => {
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patch: true, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
@@ -484,6 +484,7 @@ const editSlide = async (index: number, instruction: string) => {
   // a reply that describes changes the merge did not make is never shown as done
   if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
+  if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
   slidesStore.updateSlide({ elements: merged }, slide.id)
   await fitText(slide.id, Object.keys(changes).filter(id => before[id]), before)
   // what actually landed: elements that differ, plus those removed (not the raw patch, which may name ids the merge ignored)
@@ -983,7 +984,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // no numbers, "delete the pictures" removes content pictures, never the background or a logo
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e)))
+      const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
@@ -1106,11 +1108,22 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
-    const reply = await editSlide(i, args.instruction).catch((e) => {
+    // the advanced model: a hard request (the router says), or an edit the standard model could not do. It costs
+    // credits and is on paid plans; anyone else gets the standard result and, when it mattered, the upgrade offer
+    const canAdvanced = !!chatslide?.canUseAdvanced?.()
+    const offer = () => {
+      chatslide?.offerAdvanced?.()
+      return chatslide?.offerAdvanced ? (Z ? '这类请求用高级模型效果更好，付费方案可用。' : 'Requests like this work better on our advanced model, on paid plans.') : ''
+    }
+    let upgradeLine = ''
+    const reply = await editSlide(i, args.instruction, !!args.hard && canAdvanced).catch((e) => {
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
-      // the user can see something wrong even when the page's data looks fine: one more try that must look at the layout
-      return editSlide(i, `${args.instruction}\nThe user sees a problem on this page: look again at positions, sizes and text fit, and make the improvement they expect. Change nothing only if the request truly does not apply to this page.`)
+      if (args.hard && canAdvanced) throw e // the advanced model already had its try
+      if (canAdvanced) return editSlide(i, args.instruction, true)
+      const line = offer()
+      throw line ? new NoChange(`${e.message} ${line}`) : e
     })
+    if (args.hard && !canAdvanced) upgradeLine = offer()
     keepUnaskedSizes(i, was)
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
@@ -1121,12 +1134,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return lastEditTerse
     }
     slidesStore.updateSlideIndex(i)
-    return reply
+    if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
+    return upgradeLine ? `${reply} ${upgradeLine}` : reply
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     touched(targets)
-    const font = String(args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
+    const sample: any = args.same_as_page > 0 ? readingOrder(slides.value[args.same_as_page - 1]).find((e: any) => elText(e)) : null
+    const sampleHtml = String(sample?.content || sample?.text?.content || '')
+    const sampleFont = sampleHtml.match(/font-family:\s*([^;"]+)/)?.[1] || sample?.defaultFontName || sample?.text?.defaultFontName
+    const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
     if (!font) fail(Z ? '请说明要换成哪种字体。' : 'Which font?')
     const setIn = (html: string) => html.replace(/font-family:\s*[^;"]*/g, `font-family: ${font}`)
     let n = 0
@@ -1190,6 +1207,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
   }
   if (action === 'change_image') {
+    if (args.image === 0 && !args.said_background) return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: args.page_named }, ids)
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
@@ -1235,6 +1253,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         }
       }
     }
+    // same for a colour: the picture has to go, or "make it royal blue" changes nothing anyone can see
+    if (!args.photo_query) for (const id of targets) slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter((x: any) => !(x.type === 'image' && isBackdrop(x))) }, id)
     touched(targets)
     const missed: number[] = []
     // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too

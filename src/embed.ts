@@ -16,6 +16,8 @@ export interface ChatSlideHost {
   share?: () => Promise<{ url: string, copied: boolean }>
   goto?: (step: string) => Promise<void>
   support?: (message: string) => Promise<string>
+  canUseAdvanced?: () => boolean // the advanced model is on paid plans
+  offerAdvanced?: () => void // ChatSlide opens its paywall for it
   outOfCredits?: () => void // ChatSlide opens its plans/paywall
   uploadImage?: (image: Blob) => Promise<string> // a picture as its own file (the deck stores the link, not the bytes)
   classic?: () => void // back to ChatSlide's classic editor

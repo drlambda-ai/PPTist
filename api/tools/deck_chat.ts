@@ -66,12 +66,14 @@ const TOOLS = [
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
-  }, ['index', 'instruction', 'page_named', 'translate_to']),
+    hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
-    font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"' },
+    font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
+    same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
-  }, ['pages', 'font', 'scope']),
+  }, ['pages', 'font', 'same_as_page', 'scope']),
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
     instruction: { type: 'string' },
   }, ['instruction']),
@@ -81,7 +83,8 @@ const TOOLS = [
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
-  }, ['index', 'image', 'query', 'source', 'page_named']),
+    said_background: { type: 'boolean', description: 'true ONLY if the user\'s words ask for the background picture' },
+  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -281,6 +284,8 @@ Rules:
    Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
    "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
    -> add_image: image 0 is changed only when the user says background.
+   Fonts, colours, backgrounds and other changes apply to the current page unless the user says all/every/the deck: pass
+   that page in pages. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
 8. If you cannot do something correctly, say so plainly: "I can't do that yet", plus what you can do instead. An honest
    "can't" is always better than a wrong change or a substitute the user did not ask for.
    Otherwise act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).
