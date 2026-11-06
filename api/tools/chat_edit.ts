@@ -23,6 +23,8 @@ To MOVE an element, change its left/top; never add a copy of it.
 An image may also take: "opacity" (0-1, to fade it), "filters" ({"blur":"2px","brightness":"80%","contrast":"110%","grayscale":"100%","saturate":"120%","sepia":"50%","opacity":"50%"}), "flipH", "flipV", "radius" (rounded corners), and rotate.
 Flowcharts, timelines, family trees, org charts, Gantt charts and other diagrams are made here: rectangles from shapes
 with words inside, thin rectangles as connecting lines or as Gantt bars, laid out on a clear grid with no overlaps.
+When asked for more or less text, or a different layout or design, the result must be clearly visible at a glance: add
+or cut at least a third of the words, or actually move and restructure the elements. A token change is a failed edit.
 You see one page only: never tell the user what the editor as a whole cannot do; say only what you found on this page.
 
 Rules:

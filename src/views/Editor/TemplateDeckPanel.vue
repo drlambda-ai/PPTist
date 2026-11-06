@@ -1030,7 +1030,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
       const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? [...content, backdrop] : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? [...imgs, backdrop] : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size

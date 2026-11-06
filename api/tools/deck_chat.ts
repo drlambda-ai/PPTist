@@ -316,7 +316,8 @@ Rules:
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
    "Change the picture" on a page with two or more pictures and nothing to tell them apart -> ask_user which.
    create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction
-   or a follow-up. "Open the background/theme/design menu" -> open_design. A diagram on a new page -> add_page with hard true.
+   or a follow-up. "A slide" (one) is add_page, never a new deck. "Can you do X in language Y?" -> do X only if it is
+   about new content; otherwise answer_question and leave the deck alone. "Repeat that in Y" is about this chat: answer_question. "Open the background/theme/design menu" -> open_design. A diagram on a new page -> add_page with hard true.
    "Add a real-world example" -> edit_page: the example goes ON that page, never a new page.
    A new diagram, tree, chart or table, or new content -> a new page (new_content true), unless the user named the page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
