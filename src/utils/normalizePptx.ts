@@ -18,13 +18,27 @@ const relative = (fromDir: string, abs: string) => {
 export const normalizePptx = async (buf: ArrayBuffer): Promise<ArrayBuffer> => {
   const zip = await JSZip.loadAsync(buf)
   let changed = false
+  // 3. a media name with & < > " ' (images named after a signed URL: "...&sig=..."): pptxtojson 2.2 HTML-escapes the
+  // path before looking it up, finds nothing, and the whole import fails. Renamed, with the links to it.
+  const renamed: [string, string][] = []
+  for (const name of Object.keys(zip.files)) {
+    if (!name.startsWith('ppt/media/') || !/[&<>"']/.test(name)) continue
+    const safe = name.replace(/[&<>"']/g, '_')
+    const z = zip as any
+    z.file(safe, await z.file(name).async('arraybuffer'))
+    z.remove(name)
+    renamed.push([name.split('/').pop()!, safe.split('/').pop()!])
+    changed = true
+  }
+  const xmlEscape = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
   for (const name of Object.keys(zip.files)) {
     const file = zip.file(name)
     if (!file) continue
     if (name.endsWith('.rels')) {
       const xml = await file.async('string')
       const dir = name.replace(/_rels\/[^/]+$/, '') // ppt/slides/_rels/slide9.xml.rels -> ppt/slides/
-      const fixed = xml.replace(/Target="\/([^"]+)"/g, (_, abs) => `Target="${relative(dir, abs)}"`)
+      let fixed = xml.replace(/Target="\/([^"]+)"/g, (_, abs) => `Target="${relative(dir, abs)}"`)
+      for (const [from, to] of renamed) fixed = fixed.split(xmlEscape(from)).join(to).split(from).join(to) // written escaped or, by pptxgenjs, raw
       if (fixed !== xml) {
         zip.file(name, fixed)
         changed = true
