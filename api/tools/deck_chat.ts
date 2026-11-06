@@ -132,7 +132,8 @@ const TOOLS = [
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
     existing_only: { type: 'boolean', description: 'true when the user wants EXISTING notes changed (shorten, expand, translate, fix); false when they want notes written' },
     said_all: { type: 'boolean', description: 'true ONLY if the user\'s words say all slides or the whole deck' },
-  }, ['pages', 'instruction', 'existing_only', 'said_all']),
+    clear: { type: 'boolean', description: 'true when the user wants the notes deleted' },
+  }, ['pages', 'instruction', 'existing_only', 'said_all', 'clear']),
   fn('go_to_page', 'Show a page ("go to slide 3", "next slide", "back to the first one").', { page }, ['page']),
   fn('set_transition', 'Set the page transition effect.', {
     pages: { ...pages, description: 'Pages; empty = every page' },

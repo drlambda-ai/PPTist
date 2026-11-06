@@ -1343,6 +1343,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
     const asked = args.pages?.length ? nums(args.pages) : args.said_all ? slides.value.map(x => x.id) : [slides.value[slideIndex.value].id]
+    if (args.clear) {
+      for (const id of asked) slidesStore.updateSlide({ remark: '' }, id)
+      touched(asked)
+      return Z ? `已清空 ${asked.length} 页的演讲备注。` : `Cleared the speaker notes on ${asked.length} page(s).`
+    }
     // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
     const having = args.existing_only ? asked.filter(hasNotes) : asked
     const targets = having.length ? having : asked
