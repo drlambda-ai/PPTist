@@ -120,7 +120,8 @@ const TOOLS = [
       properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } },
     },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
-  }, ['index', 'query', 'source', 'box', 'page_named']),
+    replaces_existing: { type: 'boolean', description: 'true when the user asks to change or replace a picture rather than add one' },
+  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo").', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
@@ -177,7 +178,7 @@ const TOOLS = [
     width: { type: 'number', description: 'Relative width, e.g. 16, 4, 3 (feet) or 210 (mm)' },
     height: { type: 'number', description: 'Relative height, e.g. 9, 3, 4 (feet) or 297 (mm)' },
   }, ['width', 'height']),
-  fn('copy_page_style', 'Apply one page\'s background and text colour to other pages ("use this slide\'s colours on all slides").', {
+  fn('copy_page_style', 'Apply one page\'s background and text colour to other pages, only when the user names that source ("use this slide\'s colours on all slides"). "Keep it consistent" alone is set_background on every page.', {
     from: page,
     page_named: { type: 'boolean', description: 'true ONLY if the user named the source page; false for "this slide"' },
     pages: { ...pages, description: 'Pages to change; empty = every other page' },

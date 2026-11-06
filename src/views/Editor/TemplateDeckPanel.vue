@@ -984,6 +984,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!placed) fail(Z ? `第 ${pos(id) + 1} 页没有空位放图片。` : `Page ${pos(id) + 1} has no free space for the pictures.`)
     return (Z ? `已把「${file.name}」中的 ${placed} 张图片放到第 ${pos(id) + 1} 页。` : `Placed ${placed} picture(s) from ${file.name} on page ${pos(id) + 1}.`) + (placed < chosen.length ? (Z ? `（其余 ${chosen.length - placed} 张没有空位）` : ` (no room for the other ${chosen.length - placed})`) : '')
   }
+  if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
+    const sl = slides.value[pos(idOf(args.page_named === false ? slideIndex.value + 1 : args.index))]
+    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: false }, ids)
+  }
   if (action === 'add_image') {
     const id = idOf(args.index)
     const { width: W, height: H } = slideSize()
@@ -1371,9 +1375,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       : (Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.')
   }
   if (action === 'share_deck') {
-    if (!chatslide?.share) fail(Z ? '这里不能分享：请在 ChatSlide 里打开这个项目再分享。' : 'Sharing is not available here: open this project in ChatSlide to share it.')
-    if (!chatslide.canExport()) return Z ? '分享需要付费方案，已为你打开方案页面。' : 'Sharing needs a paid plan; I opened the plans for you.'
-    const { url, copied } = await chatslide.share()
+    if (!hostSteps()?.share) fail(Z ? '这里不能分享：请在 ChatSlide 里打开这个项目再分享。' : 'Sharing is not available here: open this project in ChatSlide to share it.')
+    if (chatslide && !chatslide.canExport()) return Z ? '分享需要付费方案，已为你打开方案页面。' : 'Sharing needs a paid plan; I opened the plans for you.'
+    const { url, copied } = await hostSteps()!.share!()
     return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
   }
   if (action === 'open_step') {
