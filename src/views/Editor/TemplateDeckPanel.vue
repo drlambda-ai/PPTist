@@ -1394,7 +1394,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'say_unable') {
     // only says "recorded" when it was: outside ChatSlide nothing records it
     const saved = await (hostSteps()?.featureRequest?.(String(args.what || ''), text) ?? Promise.resolve(false)).catch(() => false)
-    return [args.message, saved ? args.recorded_note : ''].filter(Boolean).join(' ')
+    return [args.message, saved ? (Z ? '我已把它记录为功能需求。' : 'I have recorded this as a feature request.') : ''].filter(Boolean).join(' ')
   }
   if (action === 'set_page_size') {
     if (!(args.width > 0) || !(args.height > 0)) fail(Z ? '请说明页面尺寸。' : 'Which page size?')

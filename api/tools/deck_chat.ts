@@ -183,8 +183,7 @@ const TOOLS = [
   fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else.', {
     what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
     message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
-    recorded_note: { type: 'string', description: 'One sentence in their language: "I have recorded this as a feature request." Shown only if it was recorded' },
-  }, ['what', 'message', 'recorded_note']),
+  }, ['what', 'message']),
   fn('open_design', 'Open the Design panel, where the user picks a theme or template ("change the template", "apply a theme", "other templates").', {}, []),
   fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
