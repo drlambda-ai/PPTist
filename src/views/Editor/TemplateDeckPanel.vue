@@ -224,6 +224,13 @@ const say = (role: 'user' | 'assistant', text: string) => {
   })
 }
 const { applyPresetTheme } = useSlideTheme()
+// a new background colour shows through the page's full-slide picture; the picture stays, faded, and undo brings it back
+const fadeBackdrop = (id: string) => {
+  const sl = slides.value.find(x => x.id === id)
+  for (const e of (sl?.elements || []) as any[]) {
+    if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity: '12%' } }, slideId: id })
+  }
+}
 const hostSteps = () => chatslide || (window as any).__evalHost as typeof chatslide // the eval stands in for ChatSlide's own steps
 // a dropped connection on an AI call is retried once: it showed the user "Failed to fetch" for nothing else
 if (!(window as any).__deckFetchRetry) {
@@ -881,6 +888,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   const nums = (ps: number[]) => [...new Set((ps || []).map(idOf))].filter(id => pos(id) >= 0)
   const n = slides.value.length
   const Z = zh(text)
+  if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.after) > slides.value.length) args.after = slides.value.length
   if (action === 'add_page') {
     // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
     if (args.after_named === false && currentAtSend) {
@@ -1022,7 +1030,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
       const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? [...content, backdrop] : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
@@ -1305,7 +1313,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
     }
     // same for a colour: the picture has to go, or "make it royal blue" changes nothing anyone can see
-    if (!args.photo_query) for (const id of targets) slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter((x: any) => !(x.type === 'image' && isBackdrop(x))) }, id)
+    if (!args.photo_query) for (const id of targets) fadeBackdrop(id)
     touched(targets)
     const missed: number[] = []
     // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too
@@ -1386,7 +1394,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'apply_theme') {
     const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
     if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(Z ? '这个主题的颜色无效。' : 'That theme has invalid colours.')
-    for (const sl of slides.value) slidesStore.updateSlide({ elements: sl.elements.filter((x: any) => !(x.type === 'image' && isBackdrop(x))) }, sl.id) // a full-slide picture would hide it
+    for (const sl of slides.value) fadeBackdrop(sl.id) // a full-slide picture would hide it
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true)
     touched(slides.value.map(x => x.id))
     return Z ? '已给整份演示文稿换了新主题。' : 'Applied a new theme to the whole deck.'
