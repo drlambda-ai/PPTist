@@ -1544,7 +1544,13 @@ const deckTurn = async (text: string) => {
       headers: { 'Content-Type': 'application/json' },
     })).json()
     if (error) throw new Error(error)
-    if (calls.some((c: any) => c.action === 'create_deck') && !done.length) {
+    // replacing the deck needs a topic in this very message: a complaint ("same problem") rebuilt a deck on a guess
+    const newDeck = calls.find((c: any) => c.action === 'create_deck')
+    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim()) {
+      done.push('create_deck -> skipped: the latest message names no topic for a new deck. Do not replace the deck: edit it or ask_user')
+      continue
+    }
+    if (newDeck && !done.length) {
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
       busy.value = s.template ? 'Building the deck (about a minute)…' : 'Writing the deck…'
       await (s.template ? templateTurn(text) : generateNative(text))

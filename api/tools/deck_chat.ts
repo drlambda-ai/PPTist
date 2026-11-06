@@ -23,7 +23,8 @@ const SOURCE = 'attached: the user\'s own picture listed under "Attached picture
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
-  }, ['instruction']),
+    topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message; "" if that message names none' },
+  }, ['instruction', 'topic_in_this_message']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
     instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete' },
     count: { type: 'integer', description: 'How many new pages, usually 1' },
@@ -125,7 +126,7 @@ const TOOLS = [
     photo_query: { type: 'string', description: 'Stock photo search words (English) for a background photo, or ""' },
   }, ['pages', 'color', 'photo_query']),
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
-    pages: { ...pages, description: 'Pages; empty = every page' },
+    pages: { ...pages, description: 'The current page unless the user names pages or says all; empty = every page, only when they say all' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
     existing_only: { type: 'boolean', description: 'true when the user wants EXISTING notes changed (shorten, expand, translate, fix); false when they want notes written' },
   }, ['pages', 'instruction', 'existing_only']),
@@ -324,8 +325,8 @@ Rules:
    Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
    "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
    -> add_image: image 0 is changed only when the user says background.
-   Fonts, colours, backgrounds and other changes apply to the current page unless the user says all/every/the deck: pass
-   that page in pages. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
+   Fonts, colours, backgrounds, speaker notes and other changes apply to the current page unless the user says
+   all/every/the deck: pass that page in pages. "The cover", "first page", "last slide" name a page: page_named true. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
    What this editor can do, by any wording: rewrite, shorten, expand, translate any text; fonts, sizes, colours, bold,
    alignment; move, resize, rotate, flip, crop, round, fade, blur or recolour pictures (edit_page); new, stock, AI, Wikimedia or
    attached pictures; logos and footers on every page (edit_all_pages or add_image); backgrounds, themes, slide size;
