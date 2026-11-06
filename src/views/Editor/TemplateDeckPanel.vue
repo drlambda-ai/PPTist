@@ -1126,7 +1126,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
     // the advanced model: a hard request (the router says), or an edit the standard model could not do. It costs
     // credits and is on paid plans; anyone else gets the standard result and, when it mattered, the upgrade offer
-    const canAdvanced = !!chatslide?.canUseAdvanced?.()
+    const canAdvanced = !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced) // the eval's paid user
     const offer = () => {
       chatslide?.offerAdvanced?.()
       return chatslide?.offerAdvanced ? (Z ? '这类请求用高级模型效果更好，付费方案可用。' : 'Requests like this work better on our advanced model, on paid plans.') : ''
@@ -1367,6 +1367,32 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true)
     touched(slides.value.map(x => x.id))
     return Z ? '已给整份演示文稿换了新主题。' : 'Applied a new theme to the whole deck.'
+  }
+  if (action === 'say_unable') return String(args.message || '')
+  if (action === 'set_page_size') {
+    if (!(args.width > 0) || !(args.height > 0)) fail(Z ? '请说明页面尺寸。' : 'Which page size?')
+    slidesStore.setViewportRatio(args.height / args.width)
+    touched(slides.value.map(x => x.id))
+    return Z ? `页面比例已改为 ${args.width}:${args.height}。` : `Slide shape set to ${args.width}:${args.height}.`
+  }
+  if (action === 'copy_page_style') {
+    const src = slides.value[pos(idOf(args.from))]
+    const html = (e: any) => String(e.content ?? e.text?.content ?? '')
+    const first: any = readingOrder(src).find((e: any) => elText(e))
+    const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
+    const backdrop: any = src.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
+    const targets = (args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)).filter((id: string) => id !== src.id)
+    const setIn = (h: string) => h.replace(/(?<![-\w])color:\s*[^;"]+/g, `color: ${color}`)
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      const elements = sl.elements.filter((e: any) => !(e.type === 'image' && isBackdrop(e))).map((e: any) => {
+        if (!color || !elText(e)) return e
+        return e.type === 'text' ? { ...e, defaultColor: color, content: setIn(e.content) } : { ...e, text: { ...e.text, defaultColor: color, content: setIn(e.text.content) } }
+      })
+      slidesStore.updateSlide({ background: JSON.parse(JSON.stringify(src.background || {})), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
+    }
+    touched(targets)
+    return Z ? `已把第 ${pos(src.id) + 1} 页的背景和文字颜色用到 ${targets.length} 页。` : `Applied page ${pos(src.id) + 1}'s background and text colour to ${targets.length} page(s).`
   }
   if (action === 'open_design') {
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
@@ -1610,9 +1636,9 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => ['answer_question', 'ask_user', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
+    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null

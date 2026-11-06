@@ -165,6 +165,18 @@ const TOOLS = [
   fn('open_step', 'Open another ChatSlide page when the user asks to go there or wants what it does: scripts (write/see the narration scripts page), video (turn the deck into a video, voice-over, avatar), outlines (the outline step), dashboard (their projects; where a new project starts).', {
     step: { type: 'string', enum: ['scripts', 'video', 'outlines', 'dashboard'] },
   }, ['step']),
+  fn('set_page_size', 'Change the slide shape of the whole deck: poster, portrait, A4, 4:3, 16:9, or exact dimensions.', {
+    width: { type: 'number', description: 'Relative width, e.g. 16, 4, 3 (feet) or 210 (mm)' },
+    height: { type: 'number', description: 'Relative height, e.g. 9, 3, 4 (feet) or 297 (mm)' },
+  }, ['width', 'height']),
+  fn('copy_page_style', 'Apply one page\'s background and text colour to other pages ("use this slide\'s colours on all slides").', {
+    from: page,
+    pages: { ...pages, description: 'Pages to change; empty = every other page' },
+  }, ['from', 'pages']),
+  fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else.', {
+    what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
+    message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
+  }, ['what', 'message']),
   fn('open_design', 'Open the Design panel, where the user picks a theme or template ("change the template", "apply a theme", "other templates").', {}, []),
   fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
@@ -305,8 +317,16 @@ Rules:
    -> add_image: image 0 is changed only when the user says background.
    Fonts, colours, backgrounds and other changes apply to the current page unless the user says all/every/the deck: pass
    that page in pages. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
-8. If you cannot do something correctly, say so plainly: "I can't do that yet", plus what you can do instead. An honest
-   "can't" is always better than a wrong change or a substitute the user did not ask for.
+   What this editor can do, by any wording: rewrite, shorten, expand, translate any text; fonts, sizes, colours, bold,
+   alignment; move, resize, rotate, flip, crop, round, fade, blur or recolour pictures (edit_page); new, stock, AI, Wikimedia or
+   attached pictures; logos and footers on every page (edit_all_pages or add_image); backgrounds, themes, slide size;
+   flowcharts, trees, timelines, Gantt charts and other diagrams from shapes (edit_page or add_page with hard true);
+   charts and tables with sourced data; handouts, summaries and cheat sheets as new pages; citations from web or papers;
+   speaker notes; transitions and animations; add, delete, copy, move, merge, split pages; attached PDF, Word, Excel and
+   images; links and YouTube; download PPTX, PDF, images; share; video and voice (open_step video).
+   Never reply that one of these is impossible, and never tell the user to do by hand what a tool here does.
+8. If no tool can do it -> say_unable. Before that, check the tools: most things are possible by combining them. An
+   honest "can't" is always better than a wrong change or a substitute the user did not ask for, and worse than doing it.
    Otherwise act, don't ask (the specific rules in 5 for vague dislikes and vague parts of a multi-wish message still win).
    When one reading is clearly the most likely, do it on the page the user is looking at (or the whole deck when they
    say all slides) and say what you did; the user can undo. When two readings would change different things, ask_user
