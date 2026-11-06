@@ -23,7 +23,7 @@ export const normalizePptx = async (buf: ArrayBuffer): Promise<ArrayBuffer> => {
   const renamed: [string, string][] = []
   for (const name of Object.keys(zip.files)) {
     if (!name.startsWith('ppt/media/') || !/[&<>"']/.test(name)) continue
-    const safe = name.replace(/[&<>"']/g, '_')
+    const safe = name.replace(/[&<>"']/g, '_').replace(/([^/]+)$/, `renamed-${renamed.length}-$1`) // never collides with a real name
     const z = zip as any
     z.file(safe, await z.file(name).async('arraybuffer'))
     z.remove(name)
@@ -38,7 +38,16 @@ export const normalizePptx = async (buf: ArrayBuffer): Promise<ArrayBuffer> => {
       const xml = await file.async('string')
       const dir = name.replace(/_rels\/[^/]+$/, '') // ppt/slides/_rels/slide9.xml.rels -> ppt/slides/
       let fixed = xml.replace(/Target="\/([^"]+)"/g, (_, abs) => `Target="${relative(dir, abs)}"`)
-      for (const [from, to] of renamed) fixed = fixed.split(xmlEscape(from)).join(to).split(from).join(to) // written escaped or, by pptxgenjs, raw
+      // only internal links to the renamed file, whether written escaped or, by pptxgenjs, raw; never an external link
+      fixed = fixed.replace(/<Relationship\b[^>]*>/g, (rel) => {
+        if (/TargetMode="External"/.test(rel)) return rel
+        for (const [from, to] of renamed) {
+          for (const form of [xmlEscape(from), from]) {
+            if (rel.includes(`/${form}"`)) return rel.replace(`/${form}"`, `/${to}"`)
+          }
+        }
+        return rel
+      })
       if (fixed !== xml) {
         zip.file(name, fixed)
         changed = true

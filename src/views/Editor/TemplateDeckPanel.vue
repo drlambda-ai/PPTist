@@ -141,7 +141,7 @@ const save = () => {
     syncTimer = window.setTimeout(() => syncToChatSlide().catch(() => undefined), 15000)
     saveTimer = window.setTimeout(async () => {
       await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
-      chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value })
+      chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
         .then(() => saveFailed = false)
         .catch(() => { // said once (saying saves again): the next edit retries
           if (!saveFailed) say('assistant', 'Saving failed; your last edits may not be kept. Check your connection.')
@@ -1248,11 +1248,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.every_page) {
       const again = same.splice(0).map(p => all[p - 1])
       for (let k = 0; k < again.length; k += 5) {
-        await Promise.all(again.slice(k, k + 5).map(id => editSlide(pos(id), `${args.instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
+        // every edit in flight lands before an error is reported: a rollback must not race a page still being written
+        const retried = await Promise.allSettled(again.slice(k, k + 5).map(id => editSlide(pos(id), `${args.instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
           if (e instanceof NoChange) same.push(pos(id) + 1)
           else if (e instanceof StepFailed) failed.push(pos(id) + 1)
           else throw e
         })))
+        const lost = retried.find((x): x is PromiseRejectedResult => x.status === 'rejected')
+        if (lost) throw lost.reason
       }
     }
     await fitQueue
@@ -1422,7 +1425,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'copy_page_style') {
     const src = args.page_named === false ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
-    const html = (e: any) => String(e.content ?? e.text?.content ?? '')
+    const html = (e: any) => String(e?.content ?? e?.text?.content ?? '')
     const first: any = readingOrder(src).find((e: any) => elText(e))
     const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
     const backdrop: any = src.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
@@ -1878,6 +1881,7 @@ onMounted(() => {
       if (saved?.slides?.length) {
         Object.assign(s, blank(), saved.session || {})
         if (saved.theme) slidesStore.setTheme(saved.theme)
+        if (saved.viewportRatio) slidesStore.setViewportRatio(saved.viewportRatio)
         slidesStore.setSlides(saved.slides)
         slidesStore.updateSlideIndex(0)
       }

@@ -772,11 +772,12 @@ export default () => {
             if (el.type === 'text') {
               el.content = el.content.replace(/‹#›/g, String(slideNo)) // slide-number field
               const gradient = toGradient(el.fill)
+              const gradientGroup = gradient ? nanoid(10) : undefined // moved, resized and deleted with its text
               if (gradient) { // text boxes only take a solid fill: put the gradient box behind the text
                 slide.elements.push({
                   type: 'shape', id: nanoid(10), width: el.width, height: el.height, left: el.left, top: el.top,
                   rotate: el.rotate, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
-                  fill: '', gradient, fixedRatio: false,
+                  fill: '', gradient, fixedRatio: false, groupId: gradientGroup,
                 })
               }
               const autoFitType = el.autoFit?.type
@@ -803,6 +804,7 @@ export default () => {
                 },
                 fill: el.fill?.type === 'color' ? el.fill.value : '',
                 vertical: el.isVertical,
+                ...(gradientGroup ? { groupId: gradientGroup } : {}),
               }
               if (!isSelfAdaptive) {
                 textEl.fixedHeight = true
