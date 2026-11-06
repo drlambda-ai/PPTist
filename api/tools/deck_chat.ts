@@ -50,7 +50,9 @@ const TOOLS = [
     after: page,
   }, ['instruction', 'after']),
   fn('delete_pages', 'Delete one or more pages.', { pages }, ['pages']),
-  fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', { pages }, ['pages']),
+  fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', {
+    pages, copies: { type: 'integer', description: 'How many copies of each page, usually 1' },
+  }, ['pages', 'copies']),
   fn('move_pages', 'Move one or more pages (kept in their order) so the first of them becomes page `to`. Use it for "move forward/back", "put X at the end/front" (a swap is swap_pages).', {
     pages, to: { type: 'integer', description: 'The page number the (first) moved page has AFTER the move: 1 = front, the deck length = end. "Move page 5 forward one" -> to 4; "move the last page to page 2" -> to 2.' },
   }, ['pages', 'to']),
@@ -67,7 +69,7 @@ const TOOLS = [
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
-    new_content: { type: 'boolean', description: 'true when this brings in a new topic or pasted material the page does not cover (it then becomes a new page, unless the user named this page). false for changing what is already there, or adding an example or detail to it' },
+    new_content: { type: 'boolean', description: 'true when this brings in a new topic or pasted material the page does not cover (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: 'When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'new_content', 'whole_deck_option']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
@@ -176,7 +178,8 @@ const TOOLS = [
   fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else.', {
     what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
     message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
-  }, ['what', 'message']),
+    recorded_note: { type: 'string', description: 'One sentence in their language: "I have recorded this as a feature request." Shown only if it was recorded' },
+  }, ['what', 'message', 'recorded_note']),
   fn('open_design', 'Open the Design panel, where the user picks a theme or template ("change the template", "apply a theme", "other templates").', {}, []),
   fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {

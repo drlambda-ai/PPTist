@@ -224,6 +224,22 @@ const say = (role: 'user' | 'assistant', text: string) => {
   })
 }
 const { applyPresetTheme } = useSlideTheme()
+const hostSteps = () => chatslide || (window as any).__evalHost as typeof chatslide // the eval stands in for ChatSlide's own steps
+// a dropped connection on an AI call is retried once: it showed the user "Failed to fetch" for nothing else
+if (!(window as any).__deckFetchRetry) {
+  (window as any).__deckFetchRetry = true
+  const fetch0 = window.fetch.bind(window)
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      return await fetch0(input, init)
+    }
+    catch (e) {
+      if (!(e instanceof TypeError) || !String((input as any).url || input).includes('/api/tools/')) throw e
+      await new Promise(r => setTimeout(r, 1500))
+      return fetch0(input, init)
+    }
+  }
+}
 const close = () => mainStore.setTemplateDeckPanelState(false)
 
 const run = async (label: string, fn: () => Promise<void>) => {
@@ -969,7 +985,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let box = freeBox(sl, wanted)
     if (!box) { // a full page: make room rather than refuse
       await editSlide(pos(id), 'Make room for a picture: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.').catch(() => undefined)
-      box = freeBox(slides.value[pos(id)], { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H })
+      const room = { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H }
+      box = freeBox(slides.value[pos(id)], room)
+      if (!box) { // the edit did not free it: the page's content moves into the left part, scaled by position and width
+        const page = slides.value[pos(id)]
+        slidesStore.updateSlide({ elements: page.elements.map((e: any) => (e.type === 'image' && isBackdrop(e) ? e : { ...e, left: e.left * 0.56, width: e.width * 0.56 })) }, id)
+        box = freeBox(slides.value[pos(id)], room)
+      }
     }
     if (!box) fail(Z ? `第 ${pos(id) + 1} 页已经排满，没有放图片的空位；可以先删掉或缩小一些内容，或者把图片放到新的一页。` : `Page ${pos(id) + 1} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.`)
     busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
@@ -1087,7 +1109,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const list = [...slides.value]
     for (const id of nums(args.pages)) {
       const i = list.findIndex(x => x.id === id)
-      list.splice(i + 1, 0, cloneSlide(list[i]))
+      for (let k = 0; k < Math.min(Math.max(args.copies || 1, 1), 50); k++) list.splice(i + 1, 0, cloneSlide(list[i]))
     }
     slidesStore.setSlides(list)
     return Z ? '已复制。' : 'Duplicated.'
@@ -1345,19 +1367,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
   }
   if (action === 'open_step') {
-    if (!chatslide?.goto && args.step === 'scripts') { // no Scripts step outside ChatSlide: the notes here ARE the script
+    if (!hostSteps()?.goto && args.step === 'scripts') { // no Scripts step outside ChatSlide: the notes here ARE the script
       const targets = slides.value.map(x => x.id)
       const written = await writeNotes(targets, text)
       if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
       return Z ? `已写好 ${written} 页的演讲备注（脚本）。` : `Wrote the speaker notes (the script) for ${written} page(s).`
     }
-    if (!chatslide?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
-    await chatslide.goto(args.step)
+    if (!hostSteps()?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
+    await hostSteps()!.goto!(args.step)
     return Z ? `正在打开：${args.step}。` : `Opening ${({ video: 'the Video step', scripts: 'the Scripts step', outlines: 'the Outlines step', dashboard: 'your Dashboard, where a new project starts' } as Record<string, string>)[args.step] || args.step}.`
   }
   if (action === 'open_refund') {
-    if (!chatslide?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
-    await chatslide.goto('refund')
+    if (!hostSteps()?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
+    await hostSteps()!.goto!('refund')
     return Z ? '正在打开退款页面。' : 'Opening the refund page.'
   }
   if (action === 'apply_theme') {
@@ -1368,7 +1390,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched(slides.value.map(x => x.id))
     return Z ? '已给整份演示文稿换了新主题。' : 'Applied a new theme to the whole deck.'
   }
-  if (action === 'say_unable') return String(args.message || '')
+  if (action === 'say_unable') {
+    // only says "recorded" when it was: outside ChatSlide nothing records it
+    const saved = await (hostSteps()?.featureRequest?.(String(args.what || ''), text) ?? Promise.resolve(false)).catch(() => false)
+    return [args.message, saved ? args.recorded_note : ''].filter(Boolean).join(' ')
+  }
   if (action === 'set_page_size') {
     if (!(args.width > 0) || !(args.height > 0)) fail(Z ? '请说明页面尺寸。' : 'Which page size?')
     slidesStore.setViewportRatio(args.height / args.width)
@@ -1399,9 +1425,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return Z ? '已打开右侧的“设计”面板，可以在那里换主题。模板页面在左上角“添加幻灯片”旁的下拉箭头里，会作为新页插入。' : 'I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.'
   }
   if (action === 'talk_to_human') {
-    if (!chatslide?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
+    if (!hostSteps()?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
     busy.value = Z ? '正在联系支持…' : 'Contacting support…'
-    return (await chatslide.support(args.message || userText)) || (Z ? '已转给支持团队。' : 'Sent to the support team.')
+    return (await hostSteps()!.support!(args.message || userText)) || (Z ? '已转给支持团队。' : 'Sent to the support team.')
   }
   if (action === 'go_to_page') {
     const id = idOf(args.page)
@@ -1554,6 +1580,7 @@ const deckTurn = async (text: string) => {
       return c.action === 'change_image' && !c.args?.said_background && !!sl && (c.args?.image === 0 || !sl.elements.some((e: any) => e.type === 'image' && !isBackdrop(e)))
     }
     const extra = work.find(onlyBackground)
+      || work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
@@ -1588,7 +1615,8 @@ const deckTurn = async (text: string) => {
       break
     }
     if (extra) {
-      const why = onlyBackground(extra) ? 'that page has no picture except its background. Do not change it: ask_user whether to replace the background picture or add a new picture'
+      const why = extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
+        : onlyBackground(extra) ? 'that page has no picture except its background. Do not change it: ask_user whether to replace the background picture or add a new picture'
         : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
         ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
         : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
