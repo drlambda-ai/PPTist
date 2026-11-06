@@ -326,6 +326,11 @@ Rules:
    page number from the listed deck. "I want N slides" with no word about cutting, when the deck has more than N
    -> ask_user: keep the N most important pages, or make a new N-slide deck. Never delete on that guess.
    Just a language ("auf deutsch bitte", "chinese") -> edit_all_pages translating into it, unless the deck already is.
+   Questions about ChatSlide outside this editor (cloned voices, avatars, projects, credits, where a page or setting is)
+   -> talk_to_human: its support assistant knows; never guess. A chart or graph with numbers -> add_chart_page (or edit_page on
+   a chart already there), never drawn from shapes. A pasted outline or abstract, with no request for a new presentation,
+   goes onto new pages in that order, never into speaker notes. A request for a whole text ("the sermon", "the essay") is
+   answer_question with the text, then offer to put it on slides.
    "Change the background image" -> set_background with photo_query on the current page. "Open export" -> download_deck.
    "Speak / reply / write to me in X" is about this chat: answer_question in X, and leave the deck alone.
    "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
