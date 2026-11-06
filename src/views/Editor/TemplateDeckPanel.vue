@@ -905,7 +905,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.setSlides(list)
       // each new page from its own topic: with one shared instruction "TikTok and Reddit" became two TikTok pages
       const topic = Array.isArray(args.topics) && args.topics.length === count ? `${args.topics[k]} (part of: ${args.instruction})` : args.instruction
-      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`)
+      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`, !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced))
       // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
       // on a new TikTok page): one more pass names those lines
       const copied = new Set(source.elements.map(elText).filter(Boolean))
@@ -1106,6 +1106,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return Z ? `已把 ${ids.length} 页合并为第 ${pos(keep) + 1} 页，现在共 ${slides.value.length} 页。` : `Combined ${ids.length} pages into page ${pos(keep) + 1}; ${slides.value.length} remain.`
   }
   if (action === 'duplicate_pages') {
+    args.pages = (args.pages || []).map((p: number) => (p >= 1 && p <= slides.value.length ? p : slideIndex.value + 1))
     const list = [...slides.value]
     for (const id of nums(args.pages)) {
       const i = list.findIndex(x => x.id === id)
@@ -1140,7 +1141,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return Z ? `已对调第 ${i + 1} 页和第 ${j + 1} 页。` : `Swapped pages ${i + 1} and ${j + 1}.`
   }
   if (action === 'edit_page') {
-    if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [] }, ids)
+    if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
     const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
@@ -1402,7 +1403,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return Z ? `页面比例已改为 ${args.width}:${args.height}。` : `Slide shape set to ${args.width}:${args.height}.`
   }
   if (action === 'copy_page_style') {
-    const src = slides.value[pos(idOf(args.from))]
+    const src = args.page_named === false ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
     const html = (e: any) => String(e.content ?? e.text?.content ?? '')
     const first: any = readingOrder(src).find((e: any) => elText(e))
     const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
@@ -1581,6 +1582,7 @@ const deckTurn = async (text: string) => {
     }
     const extra = work.find(onlyBackground)
       || work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
+      || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
@@ -1615,7 +1617,8 @@ const deckTurn = async (text: string) => {
       break
     }
     if (extra) {
-      const why = extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
+      const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
+        : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
         : onlyBackground(extra) ? 'that page has no picture except its background. Do not change it: ask_user whether to replace the background picture or add a new picture'
         : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
         ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`

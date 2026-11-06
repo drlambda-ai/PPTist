@@ -32,7 +32,8 @@ const TOOLS = [
     after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
     topics: { type: 'array', items: { type: 'string' }, description: 'One topic per new page, in order (["TikTok", "Reddit"] for "one about TikTok and one about Reddit"); [] when the pages share one topic' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics']),
+    hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
@@ -49,7 +50,9 @@ const TOOLS = [
     instruction: { type: 'string', description: 'What the table shows (rows, columns, values) as the user or deck gives it' },
     after: page,
   }, ['instruction', 'after']),
-  fn('delete_pages', 'Delete one or more pages.', { pages }, ['pages']),
+  fn('delete_pages', 'Delete one or more pages.', {
+    pages, user_asked_to_cut: { type: 'boolean', description: 'true ONLY if the user\'s words ask to delete, remove or cut pages, or to reduce the deck' },
+  }, ['pages', 'user_asked_to_cut']),
   fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', {
     pages, copies: { type: 'integer', description: 'How many copies of each page, usually 1' },
   }, ['pages', 'copies']),
@@ -173,8 +176,9 @@ const TOOLS = [
   }, ['width', 'height']),
   fn('copy_page_style', 'Apply one page\'s background and text colour to other pages ("use this slide\'s colours on all slides").', {
     from: page,
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the source page; false for "this slide"' },
     pages: { ...pages, description: 'Pages to change; empty = every other page' },
-  }, ['from', 'pages']),
+  }, ['from', 'page_named', 'pages']),
   fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else.', {
     what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
     message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
@@ -309,6 +313,8 @@ Rules:
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
    "Change the picture" on a page with two or more pictures and nothing to tell them apart -> ask_user which.
+   create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction
+   or a follow-up. "Open the background/theme/design menu" -> open_design. A diagram on a new page -> add_page with hard true.
    "Add a real-world example" -> edit_page: the example goes ON that page, never a new page.
    A new diagram, tree, chart or table, or new content -> a new page (new_content true), unless the user named the page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
