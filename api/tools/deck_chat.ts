@@ -67,7 +67,9 @@ const TOOLS = [
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
-  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard']),
+    new_content: { type: 'boolean', description: 'true when this brings in a new topic or pasted material the page does not cover (it then becomes a new page, unless the user named this page). false for changing what is already there, or adding an example or detail to it' },
+    whole_deck_option: { type: 'string', description: 'When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'new_content', 'whole_deck_option']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
@@ -76,7 +78,14 @@ const TOOLS = [
   }, ['pages', 'font', 'same_as_page', 'scope']),
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
     instruction: { type: 'string' },
-  }, ['instruction']),
+    every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
+  }, ['instruction', 'every_page']),
+  fn('apply_theme', 'Give the whole deck a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look"). Done directly, keeps the wording.', {
+    background: { type: 'string', description: 'Slide background #RRGGBB' },
+    font_color: { type: 'string', description: 'Text #RRGGBB, readable on that background' },
+    colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
+    font: { type: 'string', description: 'A common font family, or ""' },
+  }, ['background', 'font_color', 'colors', 'font']),
   fn('change_image', 'Replace a picture on a page with a new one: a stock photo search, or an AI-generated image.', {
     index: page,
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
@@ -279,13 +288,14 @@ Rules:
    Hello/thanks/small talk -> answer_question, briefly. "Help me create a new project" with no topic -> open_step dashboard.
    A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief.
    A change that does not say where and could mean this slide or the whole deck ("make this more persuasive", "make it
-   shorter", "make the font bigger", "fix it", "try a different layout") -> ask_user with options for this slide and the
-   whole deck. When they answer, do it. A wrong guess costs real work; a click costs nothing.
+   shorter", "make the font bigger", "fix it", "try a different layout") -> edit_page on the current page with
+   whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
+   expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
+   A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
    "Change the picture" on a page with two or more pictures and nothing to tell them apart -> ask_user which.
    "Add a real-world example" -> edit_page: the example goes ON that page, never a new page.
-   A new diagram, tree, chart or table, or new content when the current page is a cover or table of contents -> a new
-   page; never overwrite that page. "I can't download / export fails" -> download_deck, try it now.
+   A new diagram, tree, chart or table, or new content -> a new page (new_content true), unless the user named the page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
    "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page, a
    page number from the listed deck. "I want N slides" with no word about cutting, when the deck has more than N

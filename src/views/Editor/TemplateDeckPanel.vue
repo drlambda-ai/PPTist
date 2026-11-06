@@ -69,6 +69,7 @@ import useImport from '@/hooks/useImport'
 import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
+import useSlideTheme from '@/hooks/useSlideTheme'
 import api from '@/services'
 import type { Slide, PPTImageElement, PPTElement } from '@/types/slides'
 import type { AIPPTSlide } from '@/types/AIPPT'
@@ -222,6 +223,7 @@ const say = (role: 'user' | 'assistant', text: string) => {
     if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight 
   })
 }
+const { applyPresetTheme } = useSlideTheme()
 const close = () => mainStore.setTemplateDeckPanelState(false)
 
 const run = async (label: string, fn: () => Promise<void>) => {
@@ -436,6 +438,19 @@ let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: wh
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
   .filter(([k]) => !['query', 'instruction', 'photo_query', 'answer', 'source'].includes(k)).sort()))}`
+// what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
+const overlapNote = (sl: Slide) => {
+  const els = readingOrder(sl).filter((e: any) => (e.type === 'image' && !isBackdrop(e)) || elText(e))
+  const pairs: string[] = []
+  els.forEach((a: any, i) => els.slice(i + 1).forEach((b: any) => {
+    const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+    const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+    const small = Math.min(a.width * a.height, b.width * b.height)
+    if (w > 0 && h > 0 && small > 0 && w * h > 0.1 * small) pairs.push(`${a.id} and ${b.id}`)
+  }))
+  return pairs.length ? `\n(Measured on this page, these elements overlap: ${pairs.slice(0, 8).join('; ')}. Fix them when the request is about layout, overlap, or text that is covered or cut off.)` : ''
+}
+
 const editSlide = async (index: number, instruction: string, advanced = false) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -454,7 +469,7 @@ const editSlide = async (index: number, instruction: string, advanced = false) =
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
@@ -1103,6 +1118,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return Z ? `已对调第 ${i + 1} 页和第 ${j + 1} 页。` : `Swapped pages ${i + 1} and ${j + 1}.`
   }
   if (action === 'edit_page') {
+    if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [] }, ids)
     // no page named: the page the user is looking at, like the classic assistant
     const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
@@ -1136,6 +1152,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     slidesStore.updateSlideIndex(i)
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
+    if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option] }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
@@ -1191,6 +1208,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const settled = await Promise.allSettled(Array.from({ length: Math.min(5, all.length) }, worker))
     const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
     if (err) throw err.reason
+    // the request applies to every page, and some came back unchanged: one more try for those, naming that
+    if (args.every_page) {
+      const again = same.splice(0).map(p => all[p - 1])
+      for (let k = 0; k < again.length; k += 5) {
+        await Promise.all(again.slice(k, k + 5).map(id => editSlide(pos(id), `${args.instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
+          if (e instanceof NoChange) same.push(pos(id) + 1)
+          else if (e instanceof StepFailed) failed.push(pos(id) + 1)
+          else throw e
+        })))
+      }
+    }
     await fitQueue
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     const earlier = same.filter(p => editedThisTurn.has(all[p - 1])) // done by an earlier step of this turn
@@ -1331,6 +1359,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!chatslide?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
     await chatslide.goto('refund')
     return Z ? '正在打开退款页面。' : 'Opening the refund page.'
+  }
+  if (action === 'apply_theme') {
+    const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
+    if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(Z ? '这个主题的颜色无效。' : 'That theme has invalid colours.')
+    for (const sl of slides.value) slidesStore.updateSlide({ elements: sl.elements.filter((x: any) => !(x.type === 'image' && isBackdrop(x))) }, sl.id) // a full-slide picture would hide it
+    applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true)
+    touched(slides.value.map(x => x.id))
+    return Z ? '已给整份演示文稿换了新主题。' : 'Applied a new theme to the whole deck.'
   }
   if (action === 'open_design') {
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
