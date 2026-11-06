@@ -1337,7 +1337,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
-    const asked = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const asked = args.pages?.length ? nums(args.pages) : args.said_all ? slides.value.map(x => x.id) : [slides.value[slideIndex.value].id]
     // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
     const having = args.existing_only ? asked.filter(hasNotes) : asked
     const targets = having.length ? having : asked
@@ -1683,7 +1683,7 @@ const deckTurn = async (text: string) => {
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
+    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
