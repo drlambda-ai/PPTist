@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI
+Reviewed-At: 2026-11-06T15:29:17Z
+Fixed: media rename collision and external-link rewrite; deck-wide retry racing a rollback; copy style crash on a textless page; slide size not saved; gradient box not grouped with its text
+Declined-By: Claude Code
+Declined: slide size change is not undoable (snapshots hold slides only). Cost if wrong: a user says the size again; behind the staging flag.
