@@ -1594,13 +1594,7 @@ const deckTurn = async (text: string) => {
     // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
-    // "change the image" on a page whose only picture is the background: two readings, so the user chooses (the router asks)
-    const onlyBackground = (c: any) => {
-      const sl = slides.value.find(x => x.id === landsOn(c))
-      return c.action === 'change_image' && !c.args?.said_background && !!sl && (c.args?.image === 0 || !sl.elements.some((e: any) => e.type === 'image' && !isBackdrop(e)))
-    }
-    const extra = work.find(onlyBackground)
-      || work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
+    const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
@@ -1638,7 +1632,6 @@ const deckTurn = async (text: string) => {
     if (extra) {
       const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
-        : onlyBackground(extra) ? 'that page has no picture except its background. Do not change it: ask_user whether to replace the background picture or add a new picture'
         : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
         ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
         : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)

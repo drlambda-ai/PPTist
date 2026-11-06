@@ -73,7 +73,7 @@ const TOOLS = [
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
-    new_content: { type: 'boolean', description: 'true when this brings in a new topic or pasted material the page does not cover (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
+    new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: 'When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'new_content', 'whole_deck_option']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
@@ -333,8 +333,11 @@ Rules:
    answer_question with the text, then offer to put it on slides.
    "Change the background image" -> set_background with photo_query on the current page. "Open export" -> download_deck.
    "Speak / reply / write to me in X" is about this chat: answer_question in X, and leave the deck alone.
-   "Change the picture" on a page whose only picture is image 0 (the background) and the user did not say background
-   -> add_image: image 0 is changed only when the user says background.
+   "Change the picture" on a page whose only picture is the background: that is the picture they mean, change_image image 0.
+   With a content picture on the page, image 0 changes only when the user says background.
+   "Add" a point, subtopic, message or example with no word for a slide or page -> edit_page on the current page; a new
+   page only when they say slide or page, or paste a lot. "Slides 2, 3 and 4" -> one edit_page per named page.
+   A message written to support or asking for a refund -> talk_to_human or open_refund, never onto a slide.
    Fonts, colours, backgrounds, speaker notes and other changes apply to the current page unless the user says
    all/every/the deck: pass that page in pages. "The cover", "first page", "last slide" name a page: page_named true. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
    What this editor can do, by any wording: rewrite, shorten, expand, translate any text; fonts, sizes, colours, bold,
