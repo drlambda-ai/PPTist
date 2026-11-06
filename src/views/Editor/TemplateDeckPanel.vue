@@ -889,6 +889,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   const n = slides.value.length
   const Z = zh(text)
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.after) > slides.value.length) args.after = slides.value.length
+  if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.layout_from) > slides.value.length) args.layout_from = slides.value.length
   if (action === 'add_page') {
     // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
     if (args.after_named === false && currentAtSend) {
