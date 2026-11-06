@@ -20,6 +20,25 @@ export const enum ShapePathFormulasKeys {
   INDICATOR = 'indicator',
   DONUT = 'donut',
   DIAGSTRIPE = 'diagStripe',
+  ARROW_UP = 'arrowUp',
+  ARROW_DOWN = 'arrowDown',
+  ARROW_LEFT = 'arrowLeft',
+  ARROW_RIGHT = 'arrowRight',
+  ARROW_UP_DOWN = 'arrowUpDown',
+  ARROW_LEFT_RIGHT = 'arrowLeftRight',
+  CHEVRON_RIGHT = 'chevronRight',
+  CHEVRON_LEFT = 'chevronLeft',
+  PENTAGON_RIGHT = 'pentagonRight',
+  PENTAGON_LEFT = 'pentagonLeft',
+  DART_RIGHT = 'dartRight',
+  DART_LEFT = 'dartLeft',
+  STAR_4 = 'star4',
+  STAR_5 = 'star5',
+  STAR_6 = 'star6',
+  STAR_8 = 'star8',
+  HEXAGON = 'hexagon',
+  HEXAGON_VERTICAL = 'hexagonVertical',
+  OCTAGON = 'octagon',
 }
 
 export const enum ElementTypes {
@@ -178,6 +197,10 @@ export type TextInset = [number, number, number, number]
  * textType?: 文本类型
  * 
  * inset?: 内边距（上、右、下、左），默认[10, 10, 10, 10]
+ *
+ * fixedHeight?: 固定文本框自适应轴尺寸，横排文本固定高度，竖排文本固定宽度
+ *
+ * vAlign?: 文本框内垂直对齐方向，仅fixedHeight为真时有效，默认top
  */
 export interface PPTTextElement extends PPTBaseElement {
   type: 'text'
@@ -194,6 +217,8 @@ export interface PPTTextElement extends PPTBaseElement {
   vertical?: boolean
   textType?: TextType
   inset?: TextInset
+  fixedHeight?: boolean
+  vAlign?: TextAlignVertical
 }
 
 
@@ -392,6 +417,13 @@ export interface PPTShapeElement extends PPTBaseElement {
 export type LinePoint = '' | 'arrow' | 'dot' 
 export type Broken2LineDirection = 'horizontal' | 'vertical'
 
+export type LineConnectionAnchor = 'top' | 'right' | 'bottom' | 'left'
+
+export interface LineBinding {
+  elementId: string
+  anchor: LineConnectionAnchor
+}
+
 /**
  * 线条元素
  * 
@@ -423,6 +455,8 @@ export interface PPTLineElement extends Omit<PPTBaseElement, 'height' | 'rotate'
   type: 'line'
   start: [number, number]
   end: [number, number]
+  startBinding?: LineBinding
+  endBinding?: LineBinding
   style: LineStyleType
   color: string
   points: [LinePoint, LinePoint]
@@ -571,6 +605,8 @@ export interface TableTheme {
  * colWidths: 列宽数组，如[0.3, 0.5, 0.2]表示三列宽度分别占总宽度的30%, 50%, 20%
  * 
  * cellMinHeight: 单元格最小高度
+ *
+ * rowHeights?: 各行最小高度
  * 
  * data: 表格数据
  */
@@ -580,6 +616,7 @@ export interface PPTTableElement extends PPTBaseElement {
   theme?: TableTheme
   colWidths: number[]
   cellMinHeight: number
+  rowHeights?: number[]
   data: TableCell[][]
 }
 
@@ -716,6 +753,7 @@ export interface SlideBackground {
 
 
 export type TurningMode = 'no' | 'fade' | 'slideX' | 'slideY' | 'random' | 'slideX3D' | 'slideY3D' | 'rotate' | 'scaleY' | 'scaleX' | 'scale' | 'scaleReverse'
+  | 'wipeX' | 'wipeY' | 'circle' | 'diamond' | 'slideDiagonal' | 'slideDiagonalReverse' | 'revealX' | 'revealY' | 'flipY' | 'flipX'
 
 export interface NoteReply {
   id: string

@@ -37,14 +37,25 @@
             </div>
           </div>
           <div class="formula" v-else>
-            <div class="formula-item" v-for="item in formulaList" :key="item.label">
-              <div class="formula-title">{{item.label}}</div>
-              <div class="formula-item-content" @click="latex = item.latex">
-                <FormulaContent
-                  :width="236"
-                  :height="60"
-                  :latex="item.latex"
-                />
+            <Tabs
+              :tabs="formulaTabs"
+              v-model:value="selectedFormulaKey"
+              spaceBetween
+              :tabsStyle="{ margin: '10px 10px 0' }"
+            />
+            <div class="formula-pool" :key="selectedFormulaKey">
+              <div class="formula-section" v-for="section in formulaSections" :key="section.label">
+                <div class="formula-section-title" v-if="section.label">{{section.label}}</div>
+                <div class="formula-item" v-for="item in section.children" :key="item.label">
+                  <div class="formula-title">{{item.label}}</div>
+                  <div class="formula-item-content" @click="latex = item.latex">
+                    <FormulaContent
+                      :width="236"
+                      :height="60"
+                      :latex="item.latex"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -63,7 +74,7 @@ import { t } from '@/i18n'
 
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { hfmath } from './hfmath'
-import { FORMULA_LIST, SYMBOL_LIST } from '@/configs/latex'
+import { FORMULA_LIST, SYMBOL_LIST, type FormulaPreset } from '@/configs/latex'
 import message from '@/utils/message'
 
 import FormulaContent from './FormulaContent.vue'
@@ -100,7 +111,10 @@ const emit = defineEmits<{
   (event: 'close'): void
 }>()
 
-const formulaList = FORMULA_LIST
+const formulaTabs = FORMULA_LIST.map(item => ({
+  label: item.label,
+  key: item.type,
+}))
 
 const symbolTabs = SYMBOL_LIST.map(item => ({
   label: item.label,
@@ -110,6 +124,22 @@ const symbolTabs = SYMBOL_LIST.map(item => ({
 const latex = ref('')
 const toolbarState = ref<'symbol' | 'formula'>('symbol')
 const textAreaRef = useTemplateRef<InstanceType<typeof TextArea>>('textAreaRef')
+
+const selectedFormulaKey = ref(FORMULA_LIST[0].type)
+const formulaSections = computed(() => {
+  const selectedFormula = FORMULA_LIST.find(item => item.type === selectedFormulaKey.value)
+  const sections: {label: string; children: FormulaPreset[]}[] = []
+  for (const formula of selectedFormula?.children || []) {
+    const label = formula.category || ''
+    let section = sections[sections.length - 1]
+    if (!section || section.label !== label) {
+      section = {label, children: []}
+      sections.push(section)
+    }
+    section.children.push(formula)
+  }
+  return sections
+})
 
 const selectedSymbolKey = ref(SYMBOL_LIST[0].type)
 const symbolPool = computed(() => {
@@ -216,9 +246,26 @@ const insertSymbol = (latex: string) => {
 }
 .formula {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.formula-pool {
+  flex: 1;
+  min-height: 0;
   padding: 12px;
 
   @include overflow-overlay();
+}
+.formula-section {
+  & + .formula-section {
+    margin-top: 20px;
+  }
+}
+.formula-section-title {
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid $borderColor;
+  font-weight: 600;
 }
 .formula-item {
   & + .formula-item {

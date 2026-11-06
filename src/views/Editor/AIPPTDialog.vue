@@ -59,9 +59,10 @@
             style="width: 190px;"
             v-model:value="model"
             :options="[
-              { label: 'GLM-4.7-Flash', value: 'glm-4.7-flash' },
-              { label: 'Doubao-Seed-1.6-Flash', value: 'doubao-seed-1.6-flash' },
-              { label: 'DeepSeek-v4-Flash', value: 'deepseek-v4-flash' },
+              { label: 'Qwen3.7-Flash', value: 'qwen:qwen3.7-flash' },
+              { label: 'Qwen3.8-Flash', value: 'qwen:qwen3.8-flash' },
+              { label: 'Doubao-Seed-2.0-mini', value: 'doubao:doubao-seed-2.0-mini' },
+              { label: 'DeepSeek-v4.1-Flash', value: 'qwen:deepseek-v4.1-flash' },
             ]"
           />
         </div>
@@ -156,7 +157,7 @@ const loading = ref(false)
 const outlineCreating = ref(false)
 const overwrite = ref(true)
 const step = ref<'setup' | 'outline' | 'template'>('setup')
-const model = ref('glm-4.7-flash')
+const model = ref('qwen:qwen3.7-flash')
 const outlineRef = useTemplateRef<HTMLElement>('outlineRef')
 const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
 
@@ -189,6 +190,7 @@ const createOutline = async () => {
 
   loading.value = true
   outlineCreating.value = true
+
   
   let stream: any
   try {

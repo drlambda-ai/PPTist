@@ -14,7 +14,8 @@ import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from './useHistorySnapshot'
 import message from '@/utils/message'
 import { cleanHtml } from '@/utils/sanitizeSlides'
-import { getSvgPathRange } from '@/utils/svgPathParser'
+import { getSvgPathRange, toPoints } from '@/utils/svgPathParser'
+import { loadGoogleFonts } from '@/utils/font'
 import type {
   Slide,
   TableCellStyle,
@@ -23,6 +24,7 @@ import type {
   SlideBackground,
   PPTShapeElement,
   PPTLineElement,
+  LinePoint,
   PPTImageElement,
   TextAlignVertical,
   PPTTextElement,
@@ -444,10 +446,17 @@ export default () => {
     }
   }
 
+  const parseLineEnd = (lineEnd?: { type?: string }): LinePoint => {
+    if (!lineEnd || !lineEnd.type || lineEnd.type === 'none') return ''
+    if (['triangle', 'stealth', 'arrow'].includes(lineEnd.type)) return 'arrow'
+    if (['diamond', 'oval'].includes(lineEnd.type)) return 'dot'
+    return ''
+  }
+
   const parseLineElement = (el: Shape, ratio: number) => {
     let start: [number, number] = [0, 0]
     let end: [number, number] = [0, 0]
-
+    let rotateOffset: [number, number] = [0, 0]
     if (!el.isFlipV && !el.isFlipH) { // 右下
       start = [0, 0]
       end = [el.width, el.height]
@@ -475,7 +484,7 @@ export default () => {
       end,
       style: el.borderType,
       color: el.borderColor,
-      points: ['', /straightConnector/.test(el.shapType) ? 'arrow' : '']
+      points: [parseLineEnd(el.headEnd), parseLineEnd(el.tailEnd)]
     }
     if (el.rotate) {
       const { start, end, offset } = rotateLine(data, el.rotate)
@@ -484,12 +493,81 @@ export default () => {
       data.end = end
       data.left = data.left + offset[0]
       data.top = data.top + offset[1]
+      rotateOffset = [offset[0], offset[1]]
     }
     if (/bentConnector/.test(el.shapType)) {
-      data.broken2 = [
-        Math.abs(data.start[0] - data.end[0]) / 2,
-        Math.abs(data.start[1] - data.end[1]) / 2,
-      ]
+      const setDefaultBroken2 = () => {
+        data.broken2 = [
+          Math.abs(data.start[0] - data.end[0]) / 2,
+          Math.abs(data.start[1] - data.end[1]) / 2,
+        ]
+      }
+
+      const getPathPoints = (maxLength: number) => {
+        if (!el.path) return []
+
+        return toPoints(el.path).map(point => {
+          if (!('x' in point) || !('y' in point)) return null
+          if (typeof point.x !== 'number' || typeof point.y !== 'number') return null
+
+          let x = el.pathViewBox?.width ? point.x / el.pathViewBox.width * el.width : point.x * ratio
+          let y = el.pathViewBox?.height ? point.y / el.pathViewBox.height * el.height : point.y * ratio
+
+          if (el.isFlipH) x = el.width - x
+          if (el.isFlipV) y = el.height - y
+
+          if (el.rotate) {
+            const angleRad = el.rotate * Math.PI / 180
+            const midX = (start[0] + end[0]) / 2
+            const midY = (start[1] + end[1]) / 2
+            const xTrans = x - midX
+            const yTrans = y - midY
+            const xRot = xTrans * Math.cos(angleRad) - yTrans * Math.sin(angleRad) + midX
+            const yRot = xTrans * Math.sin(angleRad) + yTrans * Math.cos(angleRad) + midY
+            const beforeMinX = Math.min(start[0], end[0])
+            const beforeMinY = Math.min(start[1], end[1])
+            x = xRot - beforeMinX - rotateOffset[0]
+            y = yRot - beforeMinY - rotateOffset[1]
+          }
+
+          return [x, y]
+        }).filter((point): point is [number, number] => !!point).slice(0, maxLength)
+      }
+
+      if (el.shapType === 'bentConnector2') {
+        const pathPoints = getPathPoints(3)
+
+        if (
+          pathPoints.length >= 3 &&
+          pathPoints.every(point => Number.isFinite(point[0]) && Number.isFinite(point[1]))
+        ) {
+          const deltaX = Math.abs(pathPoints[1][0] - pathPoints[0][0])
+          const deltaY = Math.abs(pathPoints[1][1] - pathPoints[0][1])
+          data.broken = deltaX >= deltaY ? [data.start[0], data.end[1]] : [data.end[0], data.start[1]]
+        }
+        else data.broken = [data.start[0], data.end[1]]
+      }
+      else if (el.shapType === 'bentConnector3') {
+        const pathPoints = getPathPoints(4)
+
+        if (
+          pathPoints.length >= 4 &&
+          pathPoints.every(point => Number.isFinite(point[0]) && Number.isFinite(point[1]))
+        ) {
+          const mid1 = pathPoints[1]
+          const mid2 = pathPoints[2]
+          const deltaX = Math.abs(pathPoints[1][0] - pathPoints[0][0])
+          const deltaY = Math.abs(pathPoints[1][1] - pathPoints[0][1])
+
+          data.broken2 = [
+            (mid1[0] + mid2[0]) / 2,
+            (mid1[1] + mid2[1]) / 2,
+          ]
+          data.broken2Direction = deltaX >= deltaY ? 'horizontal' : 'vertical'
+        }
+        else setDefaultBroken2()
+      }
+      else setDefaultBroken2()
     }
     if (/curvedConnector/.test(el.shapType)) {
       const cubic: [number, number] = [
@@ -595,6 +673,7 @@ export default () => {
           imageMode: 'base64',
           videoMode: 'blob',
           audioMode: 'blob',
+          singleLineSpacingFactor: 1.15,
         })
       }
       catch {
@@ -602,6 +681,8 @@ export default () => {
         message.error(t('无法正确读取 / 解析该文件'))
         return
       }
+
+      if (json.usedFonts && json.usedFonts.length) loadGoogleFonts(json.usedFonts)
 
       let ratio = 96 / 72
       const width = json.size.width
@@ -670,97 +751,76 @@ export default () => {
           const sortedElements = elements.sort((a, b) => a.order - b.order)
 
           for (const el of sortedElements) {
-            const originWidth = el.width || 1
-            const originHeight = el.height || 1
-            const originLeft = el.left
-            const originTop = el.top
+            let backstopSize = 1
 
-            el.width = el.width * ratio
-            el.height = el.height * ratio
-            el.left = el.left * ratio
-            el.top = el.top * ratio
+            if (el.type === 'shape') {
+              if (el.shapType === 'line' || /straightConnector/.test(el.shapType) || /bentConnector/.test(el.shapType) || /curvedConnector/.test(el.shapType)) {
+                backstopSize = 0
+              }
+            }
+
+            const originWidth = el.width || backstopSize
+            const originHeight = el.height || backstopSize
+            const originLeft = el.left || 0
+            const originTop = el.top || 0
+
+            el.width = originWidth * ratio
+            el.height = originHeight * ratio
+            el.left = originLeft * ratio
+            el.top = originTop * ratio
   
             if (el.type === 'text') {
               el.content = el.content.replace(/‹#›/g, String(slideNo)) // slide-number field
-              if (el.autoFit && el.autoFit.type === 'text') {
-                const fontScale = ratio * (el.autoFit.fontScale || 100) / 100
-                const metrics = getParagraphMetrics(el.content, fontScale)
-                const shapeEl: PPTShapeElement = {
-                  type: 'shape',
-                  id: nanoid(10),
-                  width: el.width,
-                  height: el.height,
-                  left: el.left,
-                  top: el.top,
-                  rotate: el.rotate,
-                  viewBox: [200, 200],
-                  path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
-                  fill: el.fill?.type === 'color' ? el.fill.value : '',
-                  gradient: toGradient(el.fill),
-                  fixedRatio: false,
-                  outline: {
-                    color: el.borderColor,
-                    width: +(el.borderWidth * ratio).toFixed(2),
-                    style: el.borderType,
-                  },
-                  text: {
-                    content: convertTextContent(el.content, fontScale),
-                    defaultFontName: theme.value.fontName,
-                    defaultColor: theme.value.fontColor,
-                    align: vAlignMap[el.vAlign] || 'middle',
-                    lineHeight: 1,
-                  },
-                }
-                if (el.link) shapeEl.link = { type: 'web', target: el.link }
-                if (el.textInset) shapeEl.text!.inset = [el.textInset.t, el.textInset.r, el.textInset.b, el.textInset.l]
-                if (metrics.lineHeight) shapeEl.text!.lineHeight = metrics.lineHeight
-                if (metrics.margin) shapeEl.text!.paragraphSpace = metrics.margin
-                slide.elements.push(shapeEl)
+              const gradient = toGradient(el.fill)
+              if (gradient) { // text boxes only take a solid fill: put the gradient box behind the text
+                slide.elements.push({
+                  type: 'shape', id: nanoid(10), width: el.width, height: el.height, left: el.left, top: el.top,
+                  rotate: el.rotate, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
+                  fill: '', gradient, fixedRatio: false,
+                })
               }
-              else {
-                const gradient = toGradient(el.fill)
-                if (gradient) { // text boxes only take a solid fill: put the gradient box behind the text
-                  slide.elements.push({
-                    type: 'shape', id: nanoid(10), width: el.width, height: el.height, left: el.left, top: el.top,
-                    rotate: el.rotate, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z',
-                    fill: '', gradient, fixedRatio: false,
-                  })
-                }
-                const metrics = getParagraphMetrics(el.content, ratio)
-                const textEl: PPTTextElement = {
-                  type: 'text',
-                  id: nanoid(10),
-                  width: el.width,
-                  height: el.height,
-                  left: el.left,
-                  top: el.top,
-                  rotate: el.rotate,
-                  defaultFontName: theme.value.fontName,
-                  defaultColor: theme.value.fontColor,
-                  content: convertTextContent(el.content, ratio),
-                  lineHeight: 1,
-                  outline: {
-                    color: el.borderColor,
-                    width: +(el.borderWidth * ratio).toFixed(2),
-                    style: el.borderType,
-                  },
-                  fill: el.fill?.type === 'color' ? el.fill.value : '',
-                  vertical: el.isVertical,
-                }
-                if (el.shadow) {
-                  textEl.shadow = {
-                    h: el.shadow.h * ratio,
-                    v: el.shadow.v * ratio,
-                    blur: el.shadow.blur * ratio,
-                    color: el.shadow.color,
-                  }
-                }
-                if (el.link) textEl.link = { type: 'web', target: el.link }
-                if (el.textInset) textEl.inset = [el.textInset.t, el.textInset.r, el.textInset.b, el.textInset.l]
-                if (metrics.lineHeight) textEl.lineHeight = metrics.lineHeight
-                if (metrics.margin) textEl.paragraphSpace = metrics.margin
-                slide.elements.push(textEl)
+              const autoFitType = el.autoFit?.type
+              const isSelfAdaptive = autoFitType === 'shape'
+              const fontScale = autoFitType === 'text' ? (el.autoFit!.fontScale || 100) / 100 : 1
+              const textRatio = ratio * fontScale
+              const metrics = getParagraphMetrics(el.content, textRatio)
+              const textEl: PPTTextElement = {
+                type: 'text',
+                id: nanoid(10),
+                width: el.width,
+                height: el.height,
+                left: el.left,
+                top: el.top,
+                rotate: el.rotate,
+                defaultFontName: theme.value.fontName,
+                defaultColor: theme.value.fontColor,
+                content: convertTextContent(el.content, textRatio),
+                lineHeight: 1,
+                outline: {
+                  color: el.borderColor,
+                  width: +(el.borderWidth * ratio).toFixed(2),
+                  style: el.borderType,
+                },
+                fill: el.fill?.type === 'color' ? el.fill.value : '',
+                vertical: el.isVertical,
               }
+              if (!isSelfAdaptive) {
+                textEl.fixedHeight = true
+                textEl.vAlign = vAlignMap[el.vAlign] || 'top'
+              }
+              if (el.shadow) {
+                textEl.shadow = {
+                  h: el.shadow.h * ratio,
+                  v: el.shadow.v * ratio,
+                  blur: el.shadow.blur * ratio,
+                  color: el.shadow.color,
+                }
+              }
+              if (el.link) textEl.link = { type: 'web', target: el.link }
+              if (el.textInset) textEl.inset = [el.textInset.t, el.textInset.r, el.textInset.b, el.textInset.l]
+              if (metrics.lineHeight) textEl.lineHeight = metrics.lineHeight
+              if (metrics.margin) textEl.paragraphSpace = metrics.margin
+              slide.elements.push(textEl)
             }
             else if (el.type === 'image') {
               const element: PPTImageElement = {
@@ -892,7 +952,7 @@ export default () => {
 
                 const pattern: string | undefined = el.fill?.type === 'image' ? el.fill.value.base64 : undefined
 
-                const fill = el.fill?.type === 'color' ? el.fill.value : ''
+                const fill = (!el.strokeOnly && el.fill?.type === 'color') ? el.fill.value : ''
 
                 const metrics = getParagraphMetrics(el.content, ratio)
                 
@@ -1024,13 +1084,32 @@ export default () => {
                   }
                 }
                 else if (el.path && el.path.indexOf('NaN') === -1) {
-                  const { maxX, maxY } = getSvgPathRange(el.path)
                   element.path = el.path
-                  if ((maxX / maxY) > (originWidth / originHeight)) {
-                    element.viewBox = [maxX, maxX * originHeight / originWidth]
+                  const fixedViewBoxPresetShapeTypes = [
+                    'blockArc',
+                    'pie',
+                    'pieWedge',
+                    'arc',
+                    'chord',
+                    'teardrop',
+                    'mathPlus',
+                    'mathMinus',
+                    'mathMultiply',
+                    'mathDivide',
+                    'mathEqual',
+                    'mathNotEqual',
+                  ]
+                  if (fixedViewBoxPresetShapeTypes.includes(el.shapType) && el.pathViewBox) {
+                    element.viewBox = [el.pathViewBox.width, el.pathViewBox.height]
                   }
                   else {
-                    element.viewBox = [maxY * originWidth / originHeight, maxY]
+                    const { maxX, maxY } = getSvgPathRange(el.path)
+                    if ((maxX / maxY) > (originWidth / originHeight)) {
+                      element.viewBox = [maxX, maxX * originHeight / originWidth]
+                    }
+                    else {
+                      element.viewBox = [maxY * originWidth / originHeight, maxY]
+                    }
                   }
                 }
                 if (el.shapType === 'custom') {
@@ -1077,6 +1156,12 @@ export default () => {
                   const fontsize = span?.style.fontSize ? (parseInt(span?.style.fontSize) * ratio).toFixed(1) + 'px' : ''
                   const fontname = span?.style.fontFamily || ''
                   const color = span?.style.color || cellData.fontColor
+                  const fontWeight = span?.style.fontWeight || ''
+                  const bold = fontWeight === 'bold' || +fontWeight >= 600 || cellData.fontBold
+                  const em = span?.style.fontStyle === 'italic'
+                  const textDecoration = span?.style.textDecoration || ''
+                  const underline = textDecoration.includes('underline')
+                  const strikethrough = textDecoration.includes('line-through')
 
                   rowCells.push({
                     id: nanoid(10),
@@ -1090,7 +1175,10 @@ export default () => {
                       fontsize,
                       fontname,
                       color,
-                      bold: cellData.fontBold,
+                      bold,
+                      em,
+                      underline,
+                      strikethrough,
                       backcolor: cellData.fillColor,
                     },
                   })
@@ -1101,16 +1189,32 @@ export default () => {
   
               const allWidth = el.colWidths.reduce((a, b) => a + b, 0)
               const colWidths: number[] = el.colWidths.map(item => item / allWidth)
+              const cellMinHeight = el.rowHeights[0] ? el.rowHeights[0] * ratio : 36
+              const rowHeights = el.rowHeights.slice(0, row).map(height => Math.max(height * ratio, cellMinHeight))
 
-              const firstCell = el.data[0][0]
-              const border = firstCell.borders.top ||
-                firstCell.borders.bottom ||
-                el.borders.top ||
-                el.borders.bottom ||
-                firstCell.borders.left ||
-                firstCell.borders.right ||
-                el.borders.left ||
-                el.borders.right
+              const isVisibleBorder = (b?: { borderColor?: string; borderWidth?: number }) => {
+                if (!b || !b.borderWidth) return false
+                const c = b.borderColor || ''
+                if (/^#[0-9a-fA-F]{8}$/.test(c) && c.slice(-2).toLowerCase() === '00') return false
+                return true
+              }
+              const borderCounter = new Map<string, { border: any; count: number }>()
+              const collectBorders = (borders?: Record<string, any>) => {
+                if (!borders) return
+                for (const side of ['top', 'bottom', 'left', 'right'] as const) {
+                  const b = borders[side]
+                  if (!isVisibleBorder(b)) continue
+                  const key = `${b.borderColor}|${b.borderWidth}|${b.borderType}`
+                  const hit = borderCounter.get(key)
+                  if (hit) hit.count++
+                  else borderCounter.set(key, { border: b, count: 1 })
+                }
+              }
+              collectBorders(el.borders)
+              for (const rowCells of el.data) {
+                for (const cell of rowCells) collectBorders(cell.borders)
+              }
+              const border = [...borderCounter.values()].sort((a, b) => b.count - a.count)[0]?.border
               const borderWidth = border?.borderWidth || 0
               const borderStyle = border?.borderType || 'solid'
               const borderColor = border?.borderColor || '#eeece1'
@@ -1125,12 +1229,13 @@ export default () => {
                 colWidths,
                 rotate: 0,
                 data,
+                rowHeights,
                 outline: {
                   width: +(borderWidth * ratio || 2).toFixed(2),
                   style: borderStyle,
                   color: borderColor,
                 },
-                cellMinHeight: el.rowHeights[0] ? el.rowHeights[0] * ratio : 36,
+                cellMinHeight,
               })
             }
             else if (el.type === 'chart') {

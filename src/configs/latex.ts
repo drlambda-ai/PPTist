@@ -1,76 +1,471 @@
 import { t } from '@/i18n'
-export const FORMULA_LIST = [
+
+export interface FormulaPreset {
+  label: string
+  latex: string
+  category?: string
+}
+
+const MATH_FORMULAS = [
   {
-    label: t('高斯公式'),
-    latex: `\\int\\int\\int _ { \\Omega } \\left( \\frac { \\partial {P} } { \\partial {x} } + \\frac { \\partial {Q} } { \\partial {y} } + \\frac { \\partial {R} }{ \\partial {z} } \\right) \\mathrm { d } V = \\oint _ { \\partial \\Omega } ( P \\cos \\alpha + Q \\cos \\beta + R \\cos \\gamma ) \\mathrm{ d} S`
+    label: t('代数'),
+    children: [
+      {
+        label: t('完全平方公式'),
+        latex: '(a+b)^{2}=a^{2}+2ab+b^{2}',
+      },
+      {
+        label: t('平方差公式'),
+        latex: 'a^{2}-b^{2}=(a+b)(a-b)',
+      },
+      {
+        label: t('一元二次方程求根（a≠0）'),
+        latex: 'x=\\frac{-b\\pm\\sqrt{b^{2}-4ac}}{2a}',
+      },
+      {
+        label: t('二项式定理'),
+        latex: '(a+b)^{n}=\\sum_{k=0}^{n}\\binom{n}{k}a^{n-k}b^{k}',
+      },
+      {
+        label: t('和的展开式'),
+        latex: `( 1 + x ) ^ { n } = 1 + \\frac { n x } { 1 ! } + \\frac { n ( n - 1 ) x ^ { 2 } } { 2 ! } + ...`,
+      },
+      {
+        label: t('二次曲面'),
+        latex: `\\frac{{{x^2}}}{{{a^2}}} + \\frac{{{y^2}}}{{{b^2}}} - \\frac{{{z^2}}}{{{c^2}}} = 1`,
+      },
+    ],
   },
   {
-    label: t('傅里叶级数'),
-    latex: `f(x) = \\frac {a_0} 2 + \\sum_{n = 1}^\\infty {({a_n}\\cos {nx} + {b_n}\\sin {nx})}`,
+    label: t('集合'),
+    children: [
+      {
+        label: t('并集交换律'),
+        latex: 'A\\cup B=B\\cup A',
+      },
+      {
+        label: t('集合分配律'),
+        latex: 'A\\cap(B\\cup C)=(A\\cap B)\\cup(A\\cap C)',
+      },
+      {
+        label: t('德摩根律'),
+        latex: '(A\\cup B)^{c}=A^{c}\\cap B^{c}',
+      },
+      {
+        label: t('容斥原理（有限集合）'),
+        latex: '\\lvert A\\cup B\\rvert=\\lvert A\\rvert+\\lvert B\\rvert-\\lvert A\\cap B\\rvert',
+      },
+    ],
   },
   {
-    label: t('泰勒展开式'),
-    latex: `e ^ { x } = 1 + \\frac { x } { 1 ! } + \\frac { x ^ { 2 } } { 2 ! } + \\frac { x ^ { 3 } } { 3 ! } + ... , \\quad - \\infty < x < \\infty`,
+    label: t('不等式'),
+    children: [
+      {
+        label: t('均值不等式（a,b≥0）'),
+        latex: '\\frac{a+b}{2}\\geq\\sqrt{ab}',
+      },
+      {
+        label: t('柯西–施瓦茨不等式（实数）'),
+        latex: '\\left(\\sum_{i=1}^{n}a_i b_i\\right)^{2}\\leq\\left(\\sum_{i=1}^{n}a_i^{2}\\right)\\left(\\sum_{i=1}^{n}b_i^{2}\\right)',
+      },
+      {
+        label: t('三角不等式'),
+        latex: '\\lvert a+b\\rvert\\leq\\lvert a\\rvert+\\lvert b\\rvert',
+      },
+      {
+        label: t('反三角不等式'),
+        latex: '\\left\\lvert\\lvert a\\rvert-\\lvert b\\rvert\\right\\rvert\\leq\\lvert a-b\\rvert',
+      },
+    ],
   },
   {
-    label: t('定积分'),
-    latex: `\\lim_ { n \\rightarrow + \\infty } \\sum _ { i = 1 } ^ { n } f \\left[ a + \\frac { i } { n } ( b - a ) \\right] \\frac { b - a } { n } = \\int _ { a } ^ { b } f ( x ) dx`,
+    label: t('微分与微分方程'),
+    children: [
+      {
+        label: t('导数公式'),
+        latex: `(\\arcsin x)' = \\frac{1}{{\\sqrt {1 - x^2} }}`,
+      },
+      {
+        label: t('拉格朗日中值定理'),
+        latex: `f(b) - f(a) = f'(\\xi )(b - a)`,
+      },
+      {
+        label: t('柯西中值定理'),
+        latex: `\\frac{{f(b) - f(a)}}{{F(b) - F(a)}} = \\frac{{f'(\\xi )}}{{F'(\\xi )}}`,
+      },
+      {
+        label: t('方向导数'),
+        latex: `\\frac{{\\partial f}}{{\\partial l}} = \\frac{{\\partial f}}{{\\partial x}}\\cos \\phi + \\frac{{\\partial f}}{{\\partial y}}\\sin \\phi`,
+      },
+      {
+        label: t('全微分方程'),
+        latex: `du(x,y) = P(x,y)dx + Q(x,y)dy = 0`,
+      },
+      {
+        label: t('贝努利方程'),
+        latex: `\\frac {dy} {dx} + P(x)y = Q(x) y^n ({n} \\not= {0,1})`,
+      },
+      {
+        label: t('非齐次方程'),
+        latex: `y = (\\int Q(x) e^{\\int {P(x)dx}}dx + C)e^{-\\int {P(x)dx}}`,
+      },
+      {
+        label: t('二阶微分'),
+        latex: `\\frac {{d^2}y} {dx^2} + P(x) \\frac {dy} {dx} + Q(x)y = f(x)`,
+      },
+    ],
   },
   {
-    label: t('三角恒等式1'),
-    latex: `\\sin \\alpha \\pm \\sin \\beta = 2 \\sin \\frac { 1 } { 2 } ( \\alpha \\pm \\beta ) \\cos \\frac { 1 } { 2 } ( \\alpha \\mp \\beta )`,
+    label: t('积分'),
+    children: [
+      {
+        label: t('定积分'),
+        latex: `\\lim_ { n \\rightarrow + \\infty } \\sum _ { i = 1 } ^ { n } f \\left[ a + \\frac { i } { n } ( b - a ) \\right] \\frac { b - a } { n } = \\int _ { a } ^ { b } f ( x ) dx`,
+      },
+      {
+        label: t('牛顿–莱布尼茨公式（F′=f）'),
+        latex: '\\int_{a}^{b}f(x)\\,\\mathrm{d}x=F(b)-F(a)',
+      },
+      {
+        label: t('幂函数积分（n≠−1）'),
+        latex: '\\int x^{n}\\,\\mathrm{d}x=\\frac{x^{n+1}}{n+1}+C',
+      },
+      {
+        label: t('分部积分公式'),
+        latex: '\\int u\\,\\mathrm{d}v=uv-\\int v\\,\\mathrm{d}u',
+      },
+      {
+        label: t('三角函数积分'),
+        latex: '\\int\\tan x\\,\\mathrm{d}x=-\\ln\\left|\\cos x\\right|+C',
+      },
+      {
+        label: t('高斯公式'),
+        latex: `\\int\\int\\int _ { \\Omega } \\left( \\frac { \\partial {P} } { \\partial {x} } + \\frac { \\partial {Q} } { \\partial {y} } + \\frac { \\partial {R} }{ \\partial {z} } \\right) \\mathrm { d } V = \\oint _ { \\partial \\Omega } ( P \\cos \\alpha + Q \\cos \\beta + R \\cos \\gamma ) \\mathrm{ d} S`,
+      },
+    ],
   },
   {
-    label: t('三角恒等式2'),
-    latex: `\\cos \\alpha + \\cos \\beta = 2 \\cos \\frac { 1 } { 2 } ( \\alpha + \\beta ) \\cos \\frac { 1 } { 2 } ( \\alpha - \\beta )`,
+    label: t('三角函数'),
+    children: [
+      {
+        label: t('三角函数基本恒等式'),
+        latex: '\\sin^{2}x+\\cos^{2}x=1',
+      },
+      {
+        label: t('正弦和角公式'),
+        latex: '\\sin(\\alpha+\\beta)=\\sin\\alpha\\cos\\beta+\\cos\\alpha\\sin\\beta',
+      },
+      {
+        label: t('正弦倍角公式'),
+        latex: '\\sin2x=2\\sin x\\cos x',
+      },
+      {
+        label: t('三角恒等式1'),
+        latex: `\\sin \\alpha \\pm \\sin \\beta = 2 \\sin \\frac { 1 } { 2 } ( \\alpha \\pm \\beta ) \\cos \\frac { 1 } { 2 } ( \\alpha \\mp \\beta )`,
+      },
+      {
+        label: t('三角恒等式2'),
+        latex: `\\cos \\alpha + \\cos \\beta = 2 \\cos \\frac { 1 } { 2 } ( \\alpha + \\beta ) \\cos \\frac { 1 } { 2 } ( \\alpha - \\beta )`,
+      },
+      {
+        label: t('欧拉公式'),
+        latex: ` e^{ix} = \\cos {x} + i\\sin {x}`,
+      },
+    ],
   },
   {
-    label: t('和的展开式'),
-    latex: `( 1 + x ) ^ { n } = 1 + \\frac { n x } { 1 ! } + \\frac { n ( n - 1 ) x ^ { 2 } } { 2 ! } + ...`,
+    label: t('数列与级数'),
+    children: [
+      {
+        label: t('等差数列通项'),
+        latex: 'a_n=a_1+(n-1)d',
+      },
+      {
+        label: t('等差数列求和'),
+        latex: 'S_n=\\frac{n(a_1+a_n)}{2}',
+      },
+      {
+        label: t('等比数列通项'),
+        latex: 'a_n=a_1 q^{n-1}',
+      },
+      {
+        label: t('等比数列求和（q≠1）'),
+        latex: 'S_n=\\frac{a_1(1-q^{n})}{1-q}',
+      },
+      {
+        label: t('泰勒展开式'),
+        latex: `e ^ { x } = 1 + \\frac { x } { 1 ! } + \\frac { x ^ { 2 } } { 2 ! } + \\frac { x ^ { 3 } } { 3 ! } + ... , \\quad - \\infty < x < \\infty`,
+      },
+      {
+        label: t('傅里叶级数'),
+        latex: `f(x) = \\frac {a_0} 2 + \\sum_{n = 1}^\\infty {({a_n}\\cos {nx} + {b_n}\\sin {nx})}`,
+      },
+    ],
   },
   {
-    label: t('欧拉公式'),
-    latex: ` e^{ix} = \\cos {x} + i\\sin {x}`,
+    label: t('统计'),
+    children: [
+      {
+        label: t('样本均值'),
+        latex: '\\bar{x}=\\frac{1}{n}\\sum_{i=1}^{n}x_i',
+      },
+      {
+        label: t('样本方差（n>1）'),
+        latex: 's^{2}=\\frac{1}{n-1}\\sum_{i=1}^{n}(x_i-\\bar{x})^{2}',
+      },
+      {
+        label: t('二项分布'),
+        latex: 'P(X=k)=\\binom{n}{k}p^{k}(1-p)^{n-k}',
+      },
+      {
+        label: t('正态分布密度（σ>0）'),
+        latex: 'f(x)=\\frac{1}{\\sigma\\sqrt{2\\pi}}e^{-\\frac{(x-\\mu)^{2}}{2\\sigma^{2}}}',
+      },
+      {
+        label: t('贝叶斯公式（P(B)>0）'),
+        latex: 'P(A\\mid B)=\\frac{P(B\\mid A)P(A)}{P(B)}',
+      },
+    ],
+  },
+].flatMap(group => group.children.map(item => ({...item, category: group.label})))
+
+const MATRIX_FORMULAS = [
+  {
+    label: t('二阶方阵'),
+    latex: '\\begin{bmatrix}a & b \\\\ c & d\\end{bmatrix}',
   },
   {
-    label: t('贝努利方程'),
-    latex: `\\frac {dy} {dx} + P(x)y = Q(x) y^n ({n} \\not= {0,1})`,
+    label: t('三阶方阵'),
+    latex: '\\begin{bmatrix}a & b & c \\\\ d & e & f \\\\ g & h & i\\end{bmatrix}',
   },
   {
-    label: t('全微分方程'),
-    latex: `du(x,y) = P(x,y)dx + Q(x,y)dy = 0`,
+    label: t('一般矩阵'),
+    latex: '\\begin{bmatrix}a_{11} & \\cdots & a_{1n} \\\\ \\vdots & \\ddots & \\vdots \\\\ a_{m1} & \\cdots & a_{mn}\\end{bmatrix}',
   },
   {
-    label: t('非齐次方程'),
-    latex: `y = (\\int Q(x) e^{\\int {P(x)dx}}dx + C)e^{-\\int {P(x)dx}}`,
+    label: t('行向量'),
+    latex: '\\begin{bmatrix}x_1 & x_2 & \\cdots & x_n\\end{bmatrix}',
   },
   {
-    label: t('柯西中值定理'),
-    latex: `\\frac{{f(b) - f(a)}}{{F(b) - F(a)}} = \\frac{{f'(\\xi )}}{{F'(\\xi )}}`,
+    label: t('列向量'),
+    latex: '\\begin{pmatrix}x_1 \\\\ x_2 \\\\ x_3\\end{pmatrix}',
   },
   {
-    label: t('拉格朗日中值定理'),
-    latex: `f(b) - f(a) = f'(\\xi )(b - a)`,
+    label: t('单位矩阵'),
+    latex: 'I_3=\\begin{bmatrix}1 & 0 & 0 \\\\ 0 & 1 & 0 \\\\ 0 & 0 & 1\\end{bmatrix}',
   },
   {
-    label: t('导数公式'),
-    latex: `(\\arcsin x)' = \\frac{1}{{\\sqrt {1 - x^2} }}`,
+    label: t('零矩阵'),
+    latex: 'O=\\begin{bmatrix}0 & 0 & 0 \\\\ 0 & 0 & 0\\end{bmatrix}',
   },
   {
-    label: t('三角函数积分'),
-    latex: `\\int {tgxdx = - \\ln \\left| {\\cos x} \\right| + C}`,
+    label: t('对角矩阵'),
+    latex: 'D=\\begin{bmatrix}d_1 & 0 & 0 \\\\ 0 & d_2 & 0 \\\\ 0 & 0 & d_3\\end{bmatrix}',
   },
   {
-    label: t('二次曲面'),
-    latex: `\\frac{{{x^2}}}{{{a^2}}} + \\frac{{{y^2}}}{{{b^2}}} - \\frac{{{z^2}}}{{{c^2}}} = 1`,
+    label: t('上三角矩阵'),
+    latex: '\\begin{bmatrix}a & b & c \\\\ 0 & d & e \\\\ 0 & 0 & f\\end{bmatrix}',
   },
   {
-    label: t('二阶微分'),
-    latex: `\\frac {{d^2}y} {dx^2} + P(x) \\frac {dy} {dx} + Q(x)y = f(x)`,
+    label: t('下三角矩阵'),
+    latex: '\\begin{bmatrix}a & 0 & 0 \\\\ b & c & 0 \\\\ d & e & f\\end{bmatrix}',
   },
   {
-    label: t('方向导数'),
-    latex: `\\frac{{\\partial f}}{{\\partial l}} = \\frac{{\\partial f}}{{\\partial x}}\\cos \\phi + \\frac{{\\partial f}}{{\\partial y}}\\sin \\phi`,
+    label: t('对称矩阵'),
+    latex: '\\begin{bmatrix}a & b & c \\\\ b & d & e \\\\ c & e & f\\end{bmatrix}',
+  },
+  {
+    label: t('平面旋转矩阵'),
+    latex: 'R(\\theta)=\\begin{pmatrix}\\cos\\theta & -\\sin\\theta \\\\ \\sin\\theta & \\cos\\theta\\end{pmatrix}',
+  },
+  {
+    label: t('矩阵转置'),
+    latex: '\\begin{bmatrix}a & b \\\\ c & d\\end{bmatrix}^{\\mathrm{T}}=\\begin{bmatrix}a & c \\\\ b & d\\end{bmatrix}',
+  },
+  {
+    label: t('二阶行列式'),
+    latex: '\\det\\begin{pmatrix}a & b \\\\ c & d\\end{pmatrix}=ad-bc',
+  },
+  {
+    label: t('矩阵乘法元素公式'),
+    latex: '(AB)_{ij}=\\sum_{k=1}^{n}a_{ik}b_{kj}',
+  },
+]
+
+export const FORMULA_LIST: {type: string; label: string; children: FormulaPreset[]}[] = [
+  {
+    type: 'math',
+    label: t('数学'),
+    children: MATH_FORMULAS,
+  },
+  {
+    type: 'matrix',
+    label: t('矩阵'),
+    children: MATRIX_FORMULAS,
+  },
+  {
+    type: 'physics',
+    label: t('物理'),
+    children: [
+      {
+        label: t('牛顿第二定律'),
+        latex: '\\vec{F}=m\\vec{a}',
+      },
+      {
+        label: t('匀变速直线运动位移'),
+        latex: 's=v_{0}t+\\frac{1}{2}at^{2}',
+      },
+      {
+        label: t('万有引力定律'),
+        latex: 'F=G\\frac{m_{1}m_{2}}{r^{2}}',
+      },
+      {
+        label: t('动能公式'),
+        latex: 'E_{\\mathrm{k}}=\\frac{1}{2}mv^{2}',
+      },
+      {
+        label: t('动量定理'),
+        latex: '\\vec{I}=\\Delta\\vec{p}',
+      },
+      {
+        label: t('简谐振动'),
+        latex: 'x=A\\cos(\\omega t+\\varphi)',
+      },
+      {
+        label: t('单摆周期（小角度）'),
+        latex: 'T=2\\pi\\sqrt{\\frac{l}{g}}',
+      },
+      {
+        label: t('波速公式'),
+        latex: 'v=\\lambda f',
+      },
+      {
+        label: t('折射定律'),
+        latex: 'n_{1}\\sin\\theta_{1}=n_{2}\\sin\\theta_{2}',
+      },
+      {
+        label: t('欧姆定律'),
+        latex: 'U=IR',
+      },
+      {
+        label: t('焦耳定律'),
+        latex: 'Q=I^{2}Rt',
+      },
+      {
+        label: t('电功率'),
+        latex: 'P=UI',
+      },
+      {
+        label: t('库仑定律'),
+        latex: 'F=k\\frac{\\left|q_{1}q_{2}\\right|}{r^{2}}',
+      },
+      {
+        label: t('洛伦兹力'),
+        latex: '\\vec{F}=q(\\vec{E}+\\vec{v}\\times\\vec{B})',
+      },
+      {
+        label: t('法拉第电磁感应定律'),
+        latex: '\\mathcal{E}=-\\frac{\\mathrm{d}\\Phi_{\\mathrm{B}}}{\\mathrm{d}t}',
+      },
+      {
+        label: t('理想气体状态方程'),
+        latex: 'pV=nRT',
+      },
+      {
+        label: t('热力学第一定律（对外做功为正）'),
+        latex: '\\Delta U=Q-W',
+      },
+      {
+        label: t('质能关系'),
+        latex: 'E=mc^{2}',
+      },
+      {
+        label: t('光子能量'),
+        latex: 'E=h\\nu=\\frac{hc}{\\lambda}',
+      },
+      {
+        label: t('德布罗意波长'),
+        latex: '\\lambda=\\frac{h}{p}',
+      },
+    ],
+  },
+  {
+    type: 'chemistry',
+    label: t('化学'),
+    children: [
+      {
+        label: t('物质的量'),
+        latex: 'n=\\frac{m}{M}',
+      },
+      {
+        label: t('物质的量浓度'),
+        latex: 'c=\\frac{n}{V}',
+      },
+      {
+        label: t('稀释定律'),
+        latex: 'c_{1}V_{1}=c_{2}V_{2}',
+      },
+      {
+        label: t('粒子数与物质的量'),
+        latex: 'N=nN_{\\mathrm{A}}',
+      },
+      {
+        label: t('pH 定义'),
+        latex: '\\mathrm{pH}=-\\log_{10}a_{\\mathrm{H}^{+}}',
+      },
+      {
+        label: t('水的离子积（稀溶液）'),
+        latex: 'K_{\\mathrm{w}}=\\left[\\mathrm{H}^{+}\\right]\\left[\\mathrm{OH}^{-}\\right]',
+      },
+      {
+        label: t('亨德森–哈塞尔巴尔赫方程'),
+        latex: '\\mathrm{pH}=\\mathrm{p}K_{\\mathrm{a}}+\\log_{10}\\frac{[\\mathrm{A}^{-}]}{[\\mathrm{HA}]}',
+      },
+      {
+        label: t('阿伦尼乌斯方程'),
+        latex: 'k=Ae^{-\\frac{E_{\\mathrm{a}}}{RT}}',
+      },
+      {
+        label: t('吉布斯自由能'),
+        latex: '\\Delta G=\\Delta H-T\\Delta S',
+      },
+      {
+        label: t('标准自由能与平衡常数'),
+        latex: '\\Delta G^{\\circ}=-RT\\ln K^{\\circ}',
+      },
+      {
+        label: t('能斯特方程'),
+        latex: 'E=E^{\\circ}-\\frac{RT}{nF}\\ln Q',
+      },
+      {
+        label: t('法拉第电解定律'),
+        latex: 'm=\\frac{MIt}{zF}',
+      },
+      {
+        label: t('水的生成'),
+        latex: '2\\mathrm{H}_{2}+\\mathrm{O}_{2}\\rightarrow2\\mathrm{H}_{2}\\mathrm{O}',
+      },
+      {
+        label: t('甲烷燃烧'),
+        latex: '\\mathrm{CH}_{4}+2\\mathrm{O}_{2}\\rightarrow\\mathrm{CO}_{2}+2\\mathrm{H}_{2}\\mathrm{O}',
+      },
+      {
+        label: t('酸碱中和'),
+        latex: '\\mathrm{H}^{+}+\\mathrm{OH}^{-}\\rightarrow\\mathrm{H}_{2}\\mathrm{O}',
+      },
+      {
+        label: t('氯化银沉淀'),
+        latex: '\\mathrm{Ag}^{+}+\\mathrm{Cl}^{-}\\rightarrow\\mathrm{AgCl}',
+      },
+      {
+        label: t('碳酸钙热分解'),
+        latex: '\\mathrm{CaCO}_{3}\\overset{\\Delta}{\\rightarrow}\\mathrm{CaO}+\\mathrm{CO}_{2}',
+      },
+      {
+        label: t('溶解度积（氯化银）'),
+        latex: 'K_{\\mathrm{sp}}=\\left[\\mathrm{Ag}^{+}\\right]\\left[\\mathrm{Cl}^{-}\\right]',
+      },
+    ],
   },
 ]
 
@@ -86,10 +481,14 @@ export const SYMBOL_LIST = [
       { latex: '-' },
       { latex: '\\times' },
       { latex: '\\div' },
+      { latex: '\\otimes' },
+      { latex: '\\ominus' },
+      { latex: '\\oslash' },
+      { latex: '\\uplus' },
       { latex: '<' },
       { latex: '>' },
       { latex: '=' },
-      { latex: '\\neq\\ne' },
+      { latex: '\\neq' },
       { latex: '\\leqq' },
       { latex: '\\geqq' },
       { latex: '\\leq' },
@@ -97,6 +496,20 @@ export const SYMBOL_LIST = [
       { latex: '\\propto' },
       { latex: '\\sim' },
       { latex: '\\equiv' },
+      { latex: '\\cong' },
+      { latex: '\\asymp' },
+      { latex: '\\ll' },
+      { latex: '\\gg' },
+      { latex: '\\prec' },
+      { latex: '\\succ' },
+      { latex: '\\preceq' },
+      { latex: '\\succeq' },
+      { latex: '\\parallel' },
+      { latex: '\\nparallel' },
+      { latex: '\\nmid' },
+      { latex: '\\vdash' },
+      { latex: '\\dashv' },
+      { latex: '\\models' },
       { latex: '\\dagger' },
       { latex: '\\ddagger' },
       { latex: '\\ell' },
@@ -110,10 +523,30 @@ export const SYMBOL_LIST = [
       { latex: '\\{\\}' },
       { latex: '||' },
       { latex: '\\|' },
+      { latex: '\\lvert x\\rvert' },
+      { latex: '\\lVert x\\rVert' },
+      { latex: '\\lfloor x\\rfloor' },
+      { latex: '\\lceil x\\rceil' },
+      { latex: '\\backslash' },
       { latex: '\\exists' },
+      { latex: '\\forall' },
+      { latex: '\\nexists' },
       { latex: '\\in' },
+      { latex: '\\notin' },
+      { latex: '\\ni' },
+      { latex: '\\emptyset' },
       { latex: '\\subset' },
       { latex: '\\supset' },
+      { latex: '\\subseteq' },
+      { latex: '\\supseteq' },
+      { latex: '\\nsubseteq' },
+      { latex: '\\nsupseteq' },
+      { latex: '\\setminus' },
+      { latex: '\\land' },
+      { latex: '\\lor' },
+      { latex: '\\neg' },
+      { latex: '\\approx' },
+      { latex: '\\simeq' },
       { latex: '\\cup' },
       { latex: '\\cap' },
       { latex: '\\infty' },
@@ -127,8 +560,17 @@ export const SYMBOL_LIST = [
       { latex: '\\prod' },
       { latex: '\\bigoplus' },
       { latex: '\\bigodot' },
+      { latex: '\\bigotimes' },
+      { latex: '\\bigcup' },
+      { latex: '\\bigcap' },
+      { latex: '\\bigvee' },
+      { latex: '\\bigwedge' },
+      { latex: '\\biguplus' },
       { latex: '\\int' },
       { latex: '\\oint' },
+      { latex: '\\iint' },
+      { latex: '\\iiint' },
+      { latex: '\\iiiint' },
       { latex: '\\oplus' },
       { latex: '\\odot' },
       { latex: '\\perp' },
@@ -139,12 +581,22 @@ export const SYMBOL_LIST = [
       { latex: '\\to' },
       { latex: '\\leftarrow' },
       { latex: '\\gets' },
+      { latex: '\\leftrightarrow' },
+      { latex: '\\Rightarrow' },
+      { latex: '\\Leftarrow' },
+      { latex: '\\Leftrightarrow' },
+      { latex: '\\mapsto' },
       { latex: '\\circ' },
       { latex: '\\bigcirc' },
       { latex: '\\bullet' },
       { latex: '\\star' },
       { latex: '\\diamond' },
       { latex: '\\ast' },
+      { latex: '\\dots' },
+      { latex: '\\ldots' },
+      { latex: '\\cdots' },
+      { latex: '\\vdots' },
+      { latex: '\\ddots' },
       { latex: ',' },
       { latex: '.' },
       { latex: ';' },
@@ -156,6 +608,16 @@ export const SYMBOL_LIST = [
     label: t('组合'),
     children: [
       { latex: '\\frac{a}{b}' },
+      { latex: '\\dfrac{a}{b}' },
+      { latex: '\\tfrac{a}{b}' },
+      { latex: '\\binom{n}{k}' },
+      { latex: '\\dbinom{n}{k}' },
+      { latex: '\\tbinom{n}{k}' },
+      { latex: '\\overset{a}{=}' },
+      { latex: '\\underset{a}{=}' },
+      { latex: '\\stackrel{a}{\\rightarrow}' },
+      { latex: '\\operatorname{rank}(A)' },
+      { latex: '\\operatorname*{argmax}_{x} f(x)' },
       { latex: '\\frac{dx}{dx}' },
       { latex: '\\frac{\\partial a}{\\partial b}' },
       { latex: '\\sqrt{x}' },
@@ -169,6 +631,8 @@ export const SYMBOL_LIST = [
       { latex: '\\prod_a^b' },
       { latex: '\\sum_a^b' },
       { latex: '\\left(\\begin{array}a \\\\ b\\end{array}\\right)' },
+      { latex: '\\begin{array}{rcl}a+b & = & c \\\\ x & = & y+z\\end{array}' },
+      { latex: '\\begin{gathered}a+b=c \\\\ x=y+z\\end{gathered}' },
       { latex: '\\begin{bmatrix}a & b \\\\ c & d \\end{bmatrix}' },
       { latex: '\\begin{cases}a & x = 0 \\\\ b & x > 0\\end{cases}' },
       { latex: '\\hat{a}' },
@@ -183,6 +647,24 @@ export const SYMBOL_LIST = [
       { latex: '\\widehat{ab}' },
       { latex: '\\overleftarrow{ab}' },
       { latex: '\\overrightarrow{ab}' },
+      { latex: '\\dot{x}' },
+      { latex: '\\ddot{x}' },
+      { latex: '\\check{a}' },
+      { latex: '\\mathring{a}' },
+      { latex: '\\widetilde{ab}' },
+      { latex: '\\overleftrightarrow{AB}' },
+      { latex: '\\boxed{x+y}' },
+      { latex: '\\overbrace{a+b}^{n}' },
+      { latex: '\\underbrace{a+b}_{n}' },
+      { latex: '\\overparen{AB}' },
+      { latex: '\\underparen{AB}' },
+      { latex: '\\xrightarrow{f}' },
+      { latex: '\\xrightarrow[a]{b}' },
+      { latex: '\\xleftarrow{f}' },
+      { latex: '\\xleftarrow[a]{b}' },
+      { latex: '\\bigcup_{i=1}^{n} A_i' },
+      { latex: '\\left\\lVert\\frac{a}{b}\\right\\rVert' },
+      { latex: '\\Bigl(\\frac{a}{b}\\Bigr)' },
     ],
   },
   {
@@ -194,6 +676,19 @@ export const SYMBOL_LIST = [
       { latex: '\\exp' },
       { latex: '\\mod' },
       { latex: '\\lim' },
+      { latex: '\\det' },
+      { latex: '\\gcd' },
+      { latex: '\\max' },
+      { latex: '\\min' },
+      { latex: '\\sup' },
+      { latex: '\\inf' },
+      { latex: '\\limsup' },
+      { latex: '\\liminf' },
+      { latex: '\\arg' },
+      { latex: '\\ker' },
+      { latex: '\\dim' },
+      { latex: '\\deg' },
+      { latex: '\\Pr' },
       { latex: '\\sin' },
       { latex: '\\cos' },
       { latex: '\\tan' },

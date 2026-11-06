@@ -18,6 +18,7 @@ interface ImageSearchPayload {
 interface AIPPTOutlinePayload {
   content: string
   language: string
+  provider?: string
   model: string
 }
 
@@ -25,6 +26,7 @@ interface AIPPTPayload {
   content: string
   language: string
   style: string
+  provider?: string
   model: string
 }
 
@@ -45,6 +47,7 @@ export default {
   AIPPT_Outline({
     content,
     language,
+    provider,
     model,
   }: AIPPTOutlinePayload): Promise<any> {
     return fetchRequest(`${SERVER_URL}/tools/aippt_outline`, {
@@ -52,6 +55,7 @@ export default {
       body: JSON.stringify({
         content,
         language,
+        provider,
         model,
         stream: true,
       }),
@@ -62,6 +66,7 @@ export default {
     content,
     language,
     style,
+    provider,
     model,
   }: AIPPTPayload): Promise<any> {
     return fetchRequest(`${SERVER_URL}/tools/aippt`, {
@@ -69,6 +74,7 @@ export default {
       body: JSON.stringify({
         content,
         language,
+        provider,
         model,
         style,
         stream: true,
@@ -85,7 +91,6 @@ export default {
       body: JSON.stringify({
         content,
         command,
-        model: 'glm-4.7-flash',
         stream: true,
       }),
     })

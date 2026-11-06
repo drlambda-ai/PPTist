@@ -38,6 +38,20 @@ export default () => {
 
   const exporting = ref(false)
 
+  const setPPTXLayout = (pptx: pptxgen) => {
+    if (viewportRatio.value === 0.625) pptx.layout = 'LAYOUT_16x10'
+    else if (viewportRatio.value === 0.75) pptx.layout = 'LAYOUT_4x3'
+    else {
+      const layoutName = 'PPTIST_CUSTOM_LAYOUT'
+      pptx.defineLayout({
+        name: layoutName,
+        width: viewportSize.value / ratioPx2Inch.value,
+        height: viewportSize.value * viewportRatio.value / ratioPx2Inch.value,
+      })
+      pptx.layout = layoutName
+    }
+  }
+
   // 导出图片
   const exportImage = (domRef: HTMLElement, format: string, quality: number, ignoreWebfont = true) => {
     exporting.value = true
@@ -70,6 +84,7 @@ export default () => {
     
     setTimeout(() => {
       const pptx = new pptxgen()
+      setPPTXLayout(pptx)
 
       const config: ExportImageConfig = {
         quality: 1,
@@ -470,18 +485,7 @@ export default () => {
   const exportPPTX = (_slides: Slide[], masterOverwrite: boolean, ignoreMedia: boolean) => {
     exporting.value = true
     const pptx = new pptxgen()
-
-    if (viewportRatio.value === 0.625) pptx.layout = 'LAYOUT_16x10'
-    else if (viewportRatio.value === 0.75) pptx.layout = 'LAYOUT_4x3'
-    else if (viewportRatio.value === 0.70710678) {
-      pptx.defineLayout({ name: 'A3', width: 10, height: 7.0710678 })
-      pptx.layout = 'A3'
-    }
-    else if (viewportRatio.value === 1.41421356) {
-      pptx.defineLayout({ name: 'A3_V', width: 10, height: 14.1421356 })
-      pptx.layout = 'A3_V'
-    }
-    else pptx.layout = 'LAYOUT_16x9'
+    setPPTXLayout(pptx)
 
     if (masterOverwrite) {
       const { color: bgColor, alpha: bgAlpha } = formatColor(theme.value.backgroundColor)
@@ -552,11 +556,10 @@ export default () => {
             fontSize: defaultFontSize / ratioPx2Pt.value,
             fontFace: '微软雅黑',
             color: '#000000',
-            valign: 'top',
+            valign: el.vAlign || 'top',
             margin: [inset[3], inset[1], inset[2], inset[0]].map(item => item / ratioPx2Pt.value) as [number, number, number, number],
             paraSpaceBefore: 5 / ratioPx2Pt.value,
             lineSpacingMultiple: 1.5 / 1.25,
-            autoFit: true,
           }
           if (el.rotate) options.rotate = el.rotate
           if (el.wordSpace) options.charSpacing = el.wordSpace / ratioPx2Pt.value
@@ -573,6 +576,7 @@ export default () => {
           if (el.opacity !== undefined) options.transparency = (1 - el.opacity) * 100
           if (el.paragraphSpace !== undefined) options.paraSpaceBefore = el.paragraphSpace / ratioPx2Pt.value
           if (el.vertical) options.vert = 'eaVert'
+          if (!el.fixedHeight) options.fit = 'resize'
 
           pptxSlide.addText(textProps, options)
         }
@@ -891,6 +895,7 @@ export default () => {
                 fontFace: cell.style?.fontname || '微软雅黑',
                 fontSize: (cell.style?.fontsize ? parseInt(cell.style?.fontsize) : 14) / ratioPx2Pt.value,
               }
+              let fillColor: FormatColor | null = null
               if (theme && themeColor) {
                 let c: FormatColor
                 if (i % 2 === 0) c = subThemeColors[1]
@@ -901,11 +906,14 @@ export default () => {
                 else if (theme.colHeader && j === 0) c = themeColor
                 else if (theme.colFooter && j === row.length - 1) c = themeColor
 
-                cellOptions.fill = { color: c.color, transparency: (1 - c.alpha) * 100 }
+                fillColor = c
               }
-              if (cell.style?.backcolor) {
-                const c = formatColor(cell.style.backcolor)
-                cellOptions.fill = { color: c.color, transparency: (1 - c.alpha) * 100 }
+              if (cell.style?.backcolor) fillColor = formatColor(cell.style.backcolor)
+              if (fillColor) {
+                const { color, alpha } = fillColor
+                cellOptions.fill = theme && alpha < 1
+                  ? { color: tinycolor.mix('#ffffff', color, alpha * 100).toHexString() }
+                  : { color, transparency: (1 - alpha) * 100 }
               }
               if (cell.style?.color) cellOptions.color = formatColor(cell.style.color).color
 
@@ -925,6 +933,10 @@ export default () => {
             w: el.width / ratioPx2Inch.value,
             h: el.height / ratioPx2Inch.value,
             colW: el.colWidths.map(item => el.width * item / ratioPx2Inch.value),
+          }
+          if (el.rowHeights?.length && tableData.length === el.data.length) {
+            const rowHeights = el.rowHeights
+            options.rowH = el.data.map((_, rowIndex) => (rowHeights[rowIndex] || el.cellMinHeight) / ratioPx2Inch.value)
           }
           if (el.theme) options.fill = { color: '#ffffff' }
           if (el.outline.width && el.outline.color) {

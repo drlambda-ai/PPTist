@@ -202,7 +202,7 @@
         @update:value="value => updateTextProps({ align: value as 'top' | 'middle' | 'bottom' })"
       >
         <RadioButton value="top" v-tooltip="t('顶对齐')" style="flex: 1;"><i-icon-park-outline:align-text-top-one /></RadioButton>
-        <RadioButton value="middle" v-tooltip="t('居中')" style="flex: 1;"><i-icon-park-outline:align-text-middle-one /></RadioButton>
+        <RadioButton value="middle" v-tooltip="t('垂直居中')" style="flex: 1;"><i-icon-park-outline:align-text-middle-one /></RadioButton>
         <RadioButton value="bottom" v-tooltip="t('底对齐')" style="flex: 1;"><i-icon-park-outline:align-text-bottom-one /></RadioButton>
       </RadioGroup>
 
