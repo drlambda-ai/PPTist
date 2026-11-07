@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-07
+Fixed: In 67058e22, batch synchronous imports so saved versions contain complete presentation state.
+Fixed: In 67058e22, always persist protective backups even if another tab evicted an identical version.
+Fixed: In 67058e22, retry performs persistence after refreshing history.
+Verification: Follow-up review found no issues. Typecheck, scoped lint, browser save/preview/restore/undo/redo, and targeted storage regression checks passed.
