@@ -550,6 +550,7 @@ const updateViewportRatio = (value: string | number) => {
   @include flex-grid-layout-children(2, 48%);
 
   padding-bottom: 27%;
+  min-height: 100px;
   border-radius: $borderRadius;
   position: relative;
   cursor: pointer;
@@ -592,6 +593,11 @@ const updateViewportRatio = (value: string | number) => {
     background-color: rgba($color: #000, $alpha: .25);
     opacity: 0;
     transition: opacity $transitionDelay;
+
+    .button {
+      flex-shrink: 0;
+      max-width: 100%;
+    }
   }
 }
 .option {

@@ -4,10 +4,8 @@ try {
   const chatslide = window.parent !== window && window.parent.__chatslide
   if (chatslide?.locale) locale = chatslide.locale
 }
-catch {}
+catch { /* A standalone or cross-origin embed uses the browser locale. */ }
 
-const isChinese = locale.toLowerCase().startsWith('zh')
-document.documentElement.lang = isChinese ? 'zh-CN' : 'en'
-document.title = isChinese ? 'PPTist - 在线演示文稿' : 'PPTist - Presentation Editor'
-document.querySelector('.first-screen-loading-text').textContent = isChinese ? '正在加载中，请稍等 ...' : 'Loading, please wait ...'
+document.documentElement.lang = locale
+document.title = 'ChatSlide'
 document.oncontextmenu = e => e.preventDefault()

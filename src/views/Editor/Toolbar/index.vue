@@ -1,5 +1,5 @@
 <template>
-  <div class="toolbar">
+  <div class="toolbar" :dir="direction">
     <Tabs 
       :tabs="currentTabs" 
       :value="toolbarState" 
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts" setup>
-import { t } from '@/i18n'
+import { t, direction } from '@/i18n'
 
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'

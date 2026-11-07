@@ -33,10 +33,6 @@
         box-sizing: border-box;
         animation: spinner .8s linear infinite;
       }
-      .first-screen-loading-text {
-        margin-top: 20px;
-        color: #d14424;
-      }
       @keyframes spinner {
         0% {
           transform: rotate(0deg);
@@ -49,9 +45,8 @@
   </head>
   <body>
     <div id="app">
-      <div class="first-screen-loading">
+      <div class="first-screen-loading" role="status" aria-busy="true">
         <div class="first-screen-loading-spinner"></div>
-        <div class="first-screen-loading-text">Loading, please wait...</div>
       </div>
     </div>
     <script src="./boot.js"></script>

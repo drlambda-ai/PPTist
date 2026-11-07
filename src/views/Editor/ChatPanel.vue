@@ -1,9 +1,10 @@
 <template>
   <MoveablePanel
+    :dir="direction"
     class="chat-panel"
     :width="320"
     :height="480"
-    title="AI Assistant"
+    :title="t('AI Assistant')"
     :left="-340"
     :top="60"
     @close="close()"
@@ -11,13 +12,13 @@
     <div class="chat-body">
       <div class="messages" ref="messagesRef">
         <div class="hint" v-if="!messages.length">
-          Tell me how to edit this slide. Examples:
+          {{ t('Tell me how to edit this slide. Examples:') }}
           <ul>
-            <li>"Make the title bigger and purple"</li>
-            <li>"Add a subtitle under the title"</li>
-            <li>"Move the image to the right"</li>
+            <li>{{ t('Make the title bigger and purple') }}</li>
+            <li>{{ t('Add a subtitle under the title') }}</li>
+            <li>{{ t('Move the image to the right') }}</li>
           </ul>
-          Or type a description and hit <b>Image</b> to generate a picture.
+          {{ t('Type a description and select Image to generate a picture.') }}
         </div>
         <div
           class="msg"
@@ -31,12 +32,12 @@
       <div class="composer">
         <Input
           v-model:value="input"
-          placeholder="Edit this slide…"
+          :placeholder="t('Edit this slide…')"
           @enter="send()"
         />
         <div class="actions">
-          <Button :disabled="loading" @click="genImage()">Image</Button>
-          <Button type="primary" :disabled="loading" @click="send()">Send</Button>
+          <Button :disabled="loading" @click="genImage()">{{ t('Image') }}</Button>
+          <Button type="primary" :disabled="loading" @click="send()">{{ t('Send') }}</Button>
         </div>
       </div>
     </div>
@@ -44,6 +45,7 @@
 </template>
 
 <script lang="ts" setup>
+import { t, direction } from '@/i18n'
 import { nextTick, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore } from '@/store'
@@ -108,11 +110,11 @@ const send = async () => {
         height: Math.round(viewportSize.value * viewportRatio.value),
       },
     })
-    messages.value.push({ role: 'assistant', content: ret.reply || 'Done.' })
+    messages.value.push({ role: 'assistant', content: ret.reply || t('Done.') })
     if (ret.elements) applyEdits(ret.elements)
   }
   catch (e) {
-    messages.value.push({ role: 'assistant', content: 'Sorry, that failed: ' + e })
+    messages.value.push({ role: 'assistant', content: t('Sorry, that failed: ') + e })
   }
   loading.value = false
   scrollBottom()
@@ -132,16 +134,16 @@ const genImage = async () => {
       if (sel && sel.type === 'image') {
         slidesStore.updateElement({ id: sel.id, props: { src: ret.src } })
         addHistorySnapshot()
-        messages.value.push({ role: 'assistant', content: 'Replaced the selected image.' })
+        messages.value.push({ role: 'assistant', content: t('Replaced the selected image.') })
       }
       else {
         createImageElement(ret.src)
-        messages.value.push({ role: 'assistant', content: 'Added the generated image.' })
+        messages.value.push({ role: 'assistant', content: t('Added the generated image.') })
       }
     }
   }
   catch (e) {
-    messages.value.push({ role: 'assistant', content: 'Image generation failed: ' + e })
+    messages.value.push({ role: 'assistant', content: t('Image generation failed: ') + e })
   }
   loading.value = false
   scrollBottom()
@@ -169,7 +171,7 @@ const genImage = async () => {
 
   ul {
     margin: 6px 0;
-    padding-left: 16px;
+    padding-inline-start: 16px;
   }
 }
 .msg {

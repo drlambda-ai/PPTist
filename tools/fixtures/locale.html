@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>ChatSlide editor locale verification</title>
+<style>html,body,iframe{margin:0;width:100%;height:100%;border:0;overflow:hidden}</style></head>
+<body>
+<script>
+// A local host fixture: exercise the real embedded editor without an account or paid API calls.
+window.__chatslide = {
+  projectId: 'locale-verification',
+  locale: new URLSearchParams(location.search).get('locale') || 'en',
+  title: 'ChatSlide',
+  token: async () => { throw new Error('API calls are disabled in the locale fixture') },
+  canExport: () => false,
+  load: async () => ({ slides: [{ id: 'locale-preview', elements: [], background: { type: 'solid', color: '#ffffff' } }] }),
+  save: async () => {},
+  sync: async () => ({}),
+}
+</script>
+<iframe src="/" title="ChatSlide"></iframe>
+</body></html>

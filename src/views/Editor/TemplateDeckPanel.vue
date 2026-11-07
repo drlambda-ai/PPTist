@@ -1,5 +1,6 @@
 <template>
   <MoveablePanel
+    :dir="direction"
     class="template-deck-panel"
     :width="360"
     :height="560"
@@ -11,8 +12,7 @@
     <div class="body">
       <div class="messages" ref="messagesRef">
         <div class="hint" v-if="!s.history.length">
-          Hi! Ask me to change anything in this deck: text, pictures, charts, pages or language. Attach your company's
-          PowerPoint template or a PDF, Word, Excel or Markdown file with 📎 and I'll build from it.
+          {{ t("Hi! Ask me to change anything in this deck: text, pictures, charts, pages or language. Attach your company's PowerPoint template or a PDF, Word, Excel or Markdown file with 📎 and I'll build from it.") }}
         </div>
         <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}</div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
@@ -23,7 +23,7 @@
 
       <div class="composer">
         <div class="chips" v-if="s.template || s.docs.length || s.images?.length">
-          <span class="chip" v-if="s.template">Template: {{ s.template.name }}
+          <span class="chip" v-if="s.template">{{ t('Template:') }} {{ s.template.name }}
             <i @click="removeTemplate()" v-if="!busy && !s.mode">×</i></span>
           <span class="chip" v-for="(m, i) in s.images || []" :key="'img' + m.name + i">🖼 {{ m.name }}
             <i @click="s.images!.splice(i, 1); save()" v-if="!busy">×</i></span>
@@ -31,16 +31,16 @@
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
         <div class="input-box" @dragover.prevent @drop.prevent="e => attach(e.dataTransfer?.files)">
-          <TextArea v-model:value="input" :rows="3" placeholder="e.g. Make page 3 shorter / Add a page on Q3 risks / Use the attached data" @enter="onEnter" />
+          <TextArea v-model:value="input" :rows="3" :placeholder="t('e.g. Make page 3 shorter / Add a page on Q3 risks / Use the attached data')" @enter="onEnter" />
           <div class="input-row">
             <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json,.png,.jpg,.jpeg,.webp,.gif" @change="files => attach(files)">
-              <span class="attach" :class="{ disabled: !!busy }" aria-label="Attach a company template (.pptx) or material"><i-icon-park-outline:link /></span>
+              <span class="attach" :class="{ disabled: !!busy }" :aria-label="t('Attach a company template (.pptx) or material')"><i-icon-park-outline:link /></span>
             </FileInput>
             <span class="grow"></span>
-            <Button type="primary" size="small" :disabled="!!busy || !input.trim()" @click="send()">Send</Button>
+            <Button type="primary" size="small" :disabled="!!busy || !input.trim()" @click="send()">{{ t('Send') }}</Button>
           </div>
         </div>
-        <div class="new" v-if="s.mode && !busy"><span @click="restart()">Start a new deck</span></div>
+        <div class="new" v-if="s.mode && !busy"><span @click="restart()">{{ t('Start a new deck') }}</span></div>
       </div>
     </div>
   </MoveablePanel>
@@ -53,6 +53,8 @@
 </template>
 
 <script lang="ts" setup>
+import { t, direction } from '@/i18n'
+
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
@@ -124,7 +126,9 @@ const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 // eval hook (scripts/deck-eval): a replayed real conversation's earlier messages go straight into the chat history
-;(window as any).__deckPanel = { s, resetUndo: async () => { await db.snapshots.clear(); await snapshotStore.initSnapshotDatabase() } }
+;(window as any).__deckPanel = { s, resetUndo: async () => {
+  await db.snapshots.clear(); await snapshotStore.initSnapshotDatabase()
+} }
 const input = ref('')
 const busy = ref('')
 const messagesRef = ref<HTMLElement>()
@@ -144,7 +148,7 @@ const save = () => {
       chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
         .then(() => saveFailed = false)
         .catch(() => { // said once (saying saves again): the next edit retries
-          if (!saveFailed) say('assistant', 'Saving failed; your last edits may not be kept. Check your connection.')
+          if (!saveFailed) say('assistant', t('Saving failed; your last edits may not be kept. Check your connection.'))
           saveFailed = true
         })
     }, 2000)
@@ -255,9 +259,9 @@ const run = async (label: string, fn: () => Promise<void>) => {
     await fn()
   }
   catch (e) {
-    if (e instanceof OutOfCredits) say('assistant', zh(userText) ? `积分不够了（还需 ${e.required}，剩 ${e.credits}）。升级方案后可以继续。` : `You're out of credits (this needs ${e.required}, you have ${e.credits}). Upgrade your plan to keep going.`)
-    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', zh(userText) ? 'AI 服务暂时不可用，这条没有做任何修改。请稍后再试。' : 'The AI service is unavailable right now; nothing was changed. Please try again in a moment.')
-    else say('assistant', 'That failed: ' + ((e as Error).message || e))
+    if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }))
+    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
+    else say('assistant', t('That failed: ') + ((e as Error).message || e))
   }
   busy.value = ''
 }
@@ -284,13 +288,13 @@ const showPptx = async (url: string) => {
   importPPTXFile([new File([blob], 'deck.pptx')], { cover: true })
 }
 
-const uploadTemplate = (file: File) => run('Learning the template (about a minute)…', async () => {
+const uploadTemplate = (file: File) => run(t('Learning the template (about a minute)…'), async () => {
   const templateUrl = await uploadFile(file)
   const learned = await deckApi('learn', { templateUrl })
   s.template = { name: file.name, ...learned }
   save()
   await showPptx(templateUrl)
-  say('assistant', `Template ready: ${learned.analysis.length} layouts. The deck will be built on it.`)
+  say('assistant', t('Template ready: {p0} layouts. The deck will be built on it.', { p0: learned.analysis.length }))
 })
 
 const removeTemplate = () => {
@@ -299,10 +303,10 @@ const removeTemplate = () => {
 }
 
 // The user's own picture: uploaded once, then placed by the chat ("put my photo on slide 3")
-const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () => {
+const uploadPicture = (file: File) => run(t('Uploading {p0}…', { p0: file.name }), async () => {
   // re-encoded through a canvas: only raster pixels are published (never SVG/HTML or a spoofed type), at most 2000 px
   const bmp = await createImageBitmap(file).catch(() => null)
-  if (!bmp) fail(zh(userText) ? `「${file.name}」不是可用的图片。` : `${file.name} is not a picture I can use.`)
+  if (!bmp) fail(t('{p0} is not a picture I can use.', { p0: file.name }))
   const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height))
   const c = document.createElement('canvas')
   c.width = Math.round(bmp.width * k)
@@ -319,7 +323,7 @@ const uploadPicture = (file: File) => run(`Uploading ${file.name}…`, async () 
 
 const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
 const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
-const uploadContent = (file: File) => run(`Reading ${file.name}…`, async () => {
+const uploadContent = (file: File) => run(t('Reading {p0}…', { p0: file.name }), async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
   s.docs.push({ name: r.name, text: r.text })
   docFiles.set(r.name, file)
@@ -359,7 +363,6 @@ const readStream = async (res: any, onText: (t: string) => void) => {
 }
 
 const material = () => s.docs.map(d => `--- ${d.name} ---\n${d.text.slice(0, Math.floor(80000 / s.docs.length))}`).join('\n\n') // read_file reaches the rest
-const languageOf = (text: string) => (/[\u4e00-\u9fff]/.test(text) ? '中文' : 'English') // for the panel's own short replies
 // What the generators write in: a new deck follows the request's language; pages added later follow the DECK's language
 // (a Chinese deck stays Chinese when someone types an English or Russian request), unless the request names a language.
 const requestLanguage = (text: string) => `the language of this request: "${text.slice(0, 120)}"`
@@ -391,7 +394,7 @@ const generateNative = async (text: string) => {
   flush(pending)
   slidesStore.setTheme(template.theme)
   s.mode = 'native'
-  say('assistant', languageOf(text) === '中文' ? `已生成 ${slides.value.length} 页。可以继续要求增加、删除、移动或改写页面。` : `Generated ${slides.value.length} pages. Ask for any change: add, delete, move or rewrite pages.`)
+  say('assistant', t('Generated {p0} pages. Ask for any change: add, delete, move or rewrite pages.', { p0: slides.value.length }))
 }
 
 // One line per page for the router: text in reading order (top to bottom), numbered images/charts so "image 2" and
@@ -495,10 +498,10 @@ const editSlide = async (index: number, instruction: string, advanced = false) =
     body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
-  if (!ret.patch) fail(ret.reply || ret.error || 'That edit could not be applied.')
+  if (!ret.patch) fail(ret.reply || ret.error || t('That edit could not be applied.'))
   const unchanged = () => Object.assign(new NoChange(editedThisTurn.has(slide.id)
-    ? (zh(userText) ? `第 ${index + 1} 页没有进一步的改动。` : `No further change on page ${index + 1}.`)
-    : (zh(userText) ? `第 ${index + 1} 页没有改动。` : `Page ${index + 1} was not changed.`) + (ret.reply ? ` ${ret.reply}` : '')), { tooHard: ret.too_hard === true })
+    ? (t('No further change on page {p0}.', { p0: index + 1 }))
+    : (t('Page {p0} was not changed.', { p0: index + 1 })) + (ret.reply ? ` ${ret.reply}` : '')), { tooHard: ret.too_hard === true })
   if (!ret.patch.changes?.length && !ret.patch.added?.length && !ret.patch.removed?.length) throw unchanged() // say so, don't echo the request
   const live = slides.value.find(x => x.id === slide.id) || slide // merged onto the slide as it is now
   const changes: Record<string, any> = Object.fromEntries((ret.patch.changes || []).filter((c: any) => c?.id).map((c: any) => [c.id, c]))
@@ -530,7 +533,7 @@ const editSlide = async (index: number, instruction: string, advanced = false) =
   const n = merged.filter((e: any) => liveById.get(e.id) !== JSON.stringify(e)).length + live.elements.filter((e: any) => !merged.some((m: any) => m.id === e.id)).length
   void n
   editedThisTurn.add(slide.id)
-  lastEditTerse = zh(userText) ? `已修改第 ${index + 1} 页。` : `Updated page ${index + 1}.`
+  lastEditTerse = t('Updated page {p0}.', { p0: index + 1 })
   return lastEditTerse // the model's own sentence misstated the edit too often (audited 2026-11-02): code reports
 }
 
@@ -580,7 +583,6 @@ const cloneSlide = (sl: Slide): Slide => {
   }
 }
 
-const zh = (text: string) => languageOf(text) === '中文'
 // A step that cannot be done stops the turn (the router would otherwise retry it with new arguments).
 class StepFailed extends Error {}
 class NoChange extends StepFailed {} // the page already is what was asked (or the edit changed nothing visible)
@@ -626,7 +628,7 @@ const addChartPage = async (text: string, instruction: string, chartType: string
     body: JSON.stringify({ strong: true, instruction: `${CHART}\n\nChart: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
   })
   const d = await res.json()
-  if (d.error || !d.labels?.length) fail(d.error || (zh(text) ? '缺少图表数据。' : 'No numbers to chart.'))
+  if (d.error || !d.labels?.length) fail(d.error || (t('No numbers to chart.')))
   const { width: W, height: H } = slideSize()
   insertPage(at, d.title, d.note, {
     type: 'chart', id: nanoid(10), chartType, left: W * 0.08, top: H * 0.2, width: W * 0.84, height: H * (d.note ? 0.66 : 0.72),
@@ -707,7 +709,7 @@ const addTablePage = async (text: string, instruction: string, at: number) => {
     body: JSON.stringify({ strong: true, instruction: `Title and cells in the deck's language. Return JSON {"title": "...", "rows": [["header 1", "header 2"], ["cell", "cell"]], "note": "one line on the source, or empty"}. At most 8 rows and 6 columns, short cells. Copy every number exactly from the deck or material and keep each value under its own year/column (check direction: which year is higher). Use only facts the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for them>"}.\n\nTable: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
   })
   const d = await res.json()
-  if (d.error || !d.rows?.length) fail(d.error || (zh(text) ? '缺少表格内容。' : 'Nothing to put in a table.'))
+  if (d.error || !d.rows?.length) fail(d.error || (t('Nothing to put in a table.')))
   const { width: W, height: H } = slideSize()
   const cols = Math.max(...d.rows.map((r: any[]) => r.length))
   const style = { fontname: theme.value.fontName, color: theme.value.fontColor, fontsize: '14px' }
@@ -737,7 +739,7 @@ Deck: ${deckLines().join(' | ').slice(0, 2500)}
 Material: ${material().slice(0, 12000)}` }),
   })
   const d = await res.json()
-  if (!d.points?.length) fail(zh(text) ? '没能写出扩展内容。' : 'Could not write the extension.')
+  if (!d.points?.length) fail(t('Could not write the extension.'))
   const { width: W, height: H } = slideSize()
   const k = Math.min(d.points.length, 4)
   const cols = k === 4 ? 2 : k, rows = k === 4 ? 2 : 1
@@ -796,26 +798,27 @@ let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what t
 const findPicture = async (query: string, source: string, landscape: boolean) => {
   pictureNote = ''
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
-  const Z = zh(userText)
   if (source === 'attached') { // the query names one of the user's attached pictures
     const pics = s.images || []
     const pic = pics.find(m => m.name === query) || (pics.length === 1 ? pics[0] : undefined)
-    if (!pic) fail(pics.length ? (Z ? `没有找到附件图片「${query}」。现有：${pics.map(m => m.name).join('、')}。` : `There is no attached picture "${query}". Attached: ${pics.map(m => m.name).join(', ')}.`)
-      : (Z ? '还没有附加图片：请用 📎 图标上传你的图片。' : 'No picture is attached yet: attach it with the 📎 icon.'))
+    if (!pic) {
+      fail(pics.length ? (t('There is no attached picture "{p0}". Attached: {p1}.', { p0: query, p1: pics.map(m => m.name).join(', ') }))
+        : (t('No picture is attached yet: attach it with the 📎 icon.')))
+    }
     pictureSource = 'attached'
     return pic.url
   }
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
-    if (!r.src) fail(Z ? `维基共享资源上没有找到「${query}」的图片。要我改用图库照片或 AI 生成吗？` : `Wikimedia Commons has no picture of "${query}". Should I use a stock photo or generate one instead?`)
-    pictureNote = Z ? `图片来自维基共享资源：${r.title}（${r.credit}${r.license ? `，${r.license}` : ''}）${r.page}` : `Picture from Wikimedia Commons: ${r.title} (${r.credit}${r.license ? `, ${r.license}` : ''}) ${r.page}`
+    if (!r.src) fail(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
+    pictureNote = t('Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}', { p0: r.title, p1: r.credit, p2: r.license ? t(', {p0}', { p0: r.license }) : '', p3: r.page })
     return r.src as string
   }
   if (source === 'photo') {
     const r = await api.searchImage({ query, per_page: 1, orientation: landscape ? 'landscape' : 'portrait' } as any)
     const src = r.data?.[0]?.src // the services axios instance already unwraps response.data
     if (src) return src as string
-    pictureNote = Z ? `没有匹配的图库照片，所以用 AI 生成了一张。` : 'No stock photo matched, so I generated one with AI.'
+    pictureNote = t('No stock photo matched, so I generated one with AI.')
     pictureSource = 'ai'
   }
   if (chatslide?.generateImage) { // inside ChatSlide: its image route bills, gates and moderates
@@ -825,7 +828,7 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
       e.required = 10
       throw e
     }
-    if (g.error) fail(Z ? `图片没能生成（${g.error}）。` : `The picture could not be generated (${g.error}).`)
+    if (g.error) fail(t('The picture could not be generated ({p0}).', { p0: g.error }))
     return g.src || ''
   }
   const r = await fetch('/api/tools/ai_image', {
@@ -839,9 +842,9 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const sl = slides.value.find(x => x.id === slideId)
   // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
   const el = sl && (image === 0 ? sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e)) as PPTImageElement | undefined : pictures(sl)[Math.max(0, (image || 1) - 1)])
-  if (!sl || !el) fail(zh(text) ? '这一页没有图片。' : 'That page has no picture.')
+  if (!sl || !el) fail(t('That page has no picture.'))
   const src = await findPicture(query, source, el.width >= el.height)
-  if (!src) fail(zh(text) ? '没有找到合适的图片。' : 'Could not get a picture.')
+  if (!src) fail(t('Could not get a picture.'))
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
   touched([slideId])
   return { note: pictureNote, backdrop: isBackdrop(el) }
@@ -851,7 +854,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
   let written = 0
   for (const id of ids) {
     const sl = slides.value.find(x => x.id === id)!
-    busy.value = `Writing notes ${ids.indexOf(id) + 1} of ${ids.length}…`
+    busy.value = t('Writing notes {p0} of {p1}…', { p0: ids.indexOf(id) + 1, p1: ids.length })
     const r = await fetch('/api/tools/ask_json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
@@ -867,7 +870,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
 
 // New pages never land after the closing page ("Thank you"): an insert at the very end goes before it.
 // a new page's title, for replies: page numbers shift when later steps insert pages, titles do not
-const titleAt = (i: number) => (slides.value[i] ? (readingOrder(slides.value[i]).map(elText).find(Boolean) || '').slice(0, 50) : '') || (zh(userText) ? `第 ${i + 1} 页` : `page ${i + 1}`)
+const titleAt = (i: number) => (slides.value[i] ? (readingOrder(slides.value[i]).map(elText).find(Boolean) || '').slice(0, 50) : '') || (t('page {p0}', { p0: i + 1 }))
 // the new pages by number and title: the router saw only "Added 1 page(s)" and added the same TikTok page again
 const newTitles = (at: number, count: number) => Array.from({ length: count }, (_, k) => `${at + k + 1} "${titleAt(at + k)}"`).join(', ')
 const beforeClosing = (at: number) => {
@@ -881,13 +884,12 @@ const beforeClosing = (at: number) => {
 
 const runCall = async (text: string, action: string, args: any, ids: string[]): Promise<string> => {
   const idOf = (p: number) => {
-    if (!(p >= 1 && p <= ids.length)) fail(zh(text) ? `没有第 ${p} 页（共 ${ids.length} 页）。` : `There is no page ${p} (the deck has ${ids.length}).`)
+    if (!(p >= 1 && p <= ids.length)) fail(t('There is no page {p0} (the deck has {p1}).', { p0: p, p1: ids.length }))
     return ids[p - 1]
   }
   const pos = (id: string) => slides.value.findIndex(x => x.id === id)
   const nums = (ps: number[]) => [...new Set((ps || []).map(idOf))].filter(id => pos(id) >= 0)
   const n = slides.value.length
-  const Z = zh(text)
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.after) > slides.value.length) args.after = slides.value.length
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.layout_from) > slides.value.length) args.layout_from = slides.value.length
   if (action === 'add_page') {
@@ -900,14 +902,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (s.mode === 'native') {
       const n0 = slides.value.length
       const topics = Array.isArray(args.topics) && args.topics.length > 1 ? ` One page per topic, in this order: ${args.topics.join('; ')}.` : ''
-      if (!await generatePage(text, args.instruction + topics, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(Z ? '没能生成这一页。' : 'Could not write that page.')
+      if (!await generatePage(text, args.instruction + topics, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(t('Could not write that page.'))
       const added = slides.value.length - n0
-      const capped = (args.count || 1) > 10 ? (Z ? '（一次最多写 10 个主题，再说一次可继续加）' : ' (at most 10 topics per request; ask again for more)') : ''
-      return (Z ? `已在第 ${after} 页后加了 ${added} 页：${newTitles(after, added)}。` : `Added ${added} page(s) after page ${after}: ${newTitles(after, added)}.`) + capped
+      const capped = (args.count || 1) > 10 ? (t(' (at most 10 topics per request; ask again for more)')) : ''
+      return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: added, p1: after, p2: newTitles(after, added) })) + capped
     }
     const count = Math.min(Math.max(args.count || 1, 1), 10)
     for (let k = 0; k < count; k++) {
-      busy.value = `Writing page ${k + 1} of ${count}…`
+      busy.value = t('Writing page {p0} of {p1}…', { p0: k + 1, p1: count })
       const list = [...slides.value]
       const source = slides.value[pos(idOf(args.layout_from || args.after))]
       list.splice(after + k, 0, cloneSlide(source))
@@ -921,15 +923,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const stale = slides.value[after + k].elements.map(elText).filter(t => t && copied.has(t))
       if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
     }
-    const capped = (args.count || 1) > 10 ? (Z ? '（一次最多加 10 页，再说一次可继续加）' : ' (10 is the most per request; ask again for more)') : ''
-    return (Z ? `已在第 ${after} 页后加了 ${count} 页：${newTitles(after, count)}。` : `Added ${count} page(s) after page ${after}: ${newTitles(after, count)}.`) + capped
+    const capped = (args.count || 1) > 10 ? (t(' (10 is the most per request; ask again for more)')) : ''
+    return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: count, p1: after, p2: newTitles(after, count) })) + capped
   }
   if (action === 'expand_page') {
     const i = pos(idOf(args.index))
-    busy.value = Z ? '正在扩展…' : 'Extending…'
+    busy.value = t('Extending…')
     await expandPage(text, i, args.instruction || '')
     slidesStore.updateSlideIndex(i + 1)
-    return Z ? `已在第 ${i + 1} 页后加了扩展页（第 ${i + 2} 页），原页保持不变。` : `Added an extension of page ${i + 1} as page ${i + 2}; page ${i + 1} is unchanged.`
+    return t('Added an extension of page {p0} as page {p1}; page {p2} is unchanged.', { p0: i + 1, p1: i + 2, p2: i + 1 })
   }
   if (action === 'add_chart_page') {
     // changing a chart that is already there ("this chart -> pie"): edit it in place, never a new chart page
@@ -941,35 +943,39 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return reply
     }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
-    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (Z ? `已加入图表页「${titleAt(after)}」。` : `Added a chart page "${titleAt(after)}".`)
+    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
   }
   if (action === 'add_table_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     await addTablePage(text, args.instruction, after)
     slidesStore.updateSlideIndex(after)
-    return Z ? `已加入表格页「${titleAt(after)}」。` : `Added a table page "${titleAt(after)}".`
+    return t('Added a table page "{p0}".', { p0: titleAt(after) })
   }
   if (args.page_named === false && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
-    if (!file) fail(s.docs.some(d => d.name === args.file)
-      ? (Z ? `「${args.file}」需要重新上传一次才能提取其中的图片。` : `Attach ${args.file} again so I can pull its pictures out (it was attached in an earlier session).`)
-      : (Z ? '还没有附件：请用 📎 图标上传文件。' : 'No file is attached yet: attach it with the 📎 icon.'))
-    if (!chatslide?.extractImages) fail(Z ? '在 ChatSlide 里打开这个项目才能提取文件中的图片。' : 'Pulling pictures out of a file works inside ChatSlide: open this project there.')
-    busy.value = Z ? '正在提取文件中的图片…' : 'Pulling the pictures out of the file…'
+    if (!file) {
+      fail(s.docs.some(d => d.name === args.file)
+        ? (t('Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).', { p0: args.file }))
+        : (t('No file is attached yet: attach it with the 📎 icon.')))
+    }
+    if (!chatslide?.extractImages) fail(t('Pulling pictures out of a file works inside ChatSlide: open this project there.'))
+    busy.value = t('Pulling the pictures out of the file…')
     let figs = figuresOf.get(args.file) || figuresOf.get(file.name)
     if (!figs) {
       const r = await chatslide.extractImages(file)
-      if (r.error === 'plan') fail(Z ? '从文件中提取图片需要付费方案，已为你打开方案页面。' : 'Pulling pictures out of files needs a paid plan; I opened the plans for you.')
-      if (r.error) fail(Z ? `没能提取图片（${r.error}）。` : `I could not pull the pictures out (${r.error}).`)
+      if (r.error === 'plan') fail(t('Pulling pictures out of files needs a paid plan; I opened the plans for you.'))
+      if (r.error) fail(t('I could not pull the pictures out ({p0}).', { p0: r.error }))
       figs = r.images || []
       figuresOf.set(file.name, figs)
     }
     const want: number[] = args.file_pages || []
     const chosen = (want.length ? figs.filter(m => m.page && want.includes(m.page)) : figs).slice(0, Math.min(Math.max(args.count || 1, 1), 6))
-    if (!chosen.length) fail(figs.length
-      ? (Z ? `「${file.name}」第 ${want.join('、')} 页没有图片（共提取到 ${figs.length} 张，在第 ${[...new Set(figs.map(m => m.page))].filter(Boolean).join('、')} 页）。` : `There are no pictures on page(s) ${want.join(', ')} of ${file.name} (it has ${figs.length}, on pages ${[...new Set(figs.map(m => m.page))].filter(Boolean).join(', ')}).`)
-      : (Z ? `「${file.name}」里没有可用的图片。` : `${file.name} has no pictures I can use.`))
+    if (!chosen.length) {
+      fail(figs.length
+        ? (t('There are no pictures on page(s) {p0} of {p1} (it has {p2}, on pages {p3}).', { p0: want.join(', '), p1: file.name, p2: figs.length, p3: [...new Set(figs.map(m => m.page))].filter(Boolean).join(', ') }))
+        : (t('{p0} has no pictures I can use.', { p0: file.name })))
+    }
     const id = idOf(args.index)
     const { width: W, height: H } = slideSize()
     let placed = 0
@@ -981,8 +987,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     touched([id])
     slidesStore.updateSlideIndex(pos(id))
-    if (!placed) fail(Z ? `第 ${pos(id) + 1} 页没有空位放图片。` : `Page ${pos(id) + 1} has no free space for the pictures.`)
-    return (Z ? `已把「${file.name}」中的 ${placed} 张图片放到第 ${pos(id) + 1} 页。` : `Placed ${placed} picture(s) from ${file.name} on page ${pos(id) + 1}.`) + (placed < chosen.length ? (Z ? `（其余 ${chosen.length - placed} 张没有空位）` : ` (no room for the other ${chosen.length - placed})`) : '')
+    if (!placed) fail(t('Page {p0} has no free space for the pictures.', { p0: pos(id) + 1 }))
+    return (t('Placed {p0} picture(s) from {p1} on page {p2}.', { p0: placed, p1: file.name, p2: pos(id) + 1 })) + (placed < chosen.length ? (t(' (no room for the other {p0})', { p0: chosen.length - placed })) : '')
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
     const sl = slides.value[pos(idOf(args.page_named === false ? slideIndex.value + 1 : args.index))]
@@ -1006,24 +1012,23 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         box = freeBox(slides.value[pos(id)], room)
       }
     }
-    if (!box) fail(Z ? `第 ${pos(id) + 1} 页已经排满，没有放图片的空位；可以先删掉或缩小一些内容，或者把图片放到新的一页。` : `Page ${pos(id) + 1} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.`)
-    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
+    if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: pos(id) + 1 }))
+    busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     const src = await findPicture(args.query, args.source, box.width >= box.height)
-    if (!src) fail(Z ? '没有找到合适的图片。' : 'Could not get a picture.')
+    if (!src) fail(t('Could not get a picture.'))
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
-    if (!now) fail(Z ? `第 ${pos(id) + 1} 页已经没有空位了。` : `Page ${pos(id) + 1} has no free space any more.`)
+    if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     touched([id])
     picturedThisTurn.add(id)
     slidesStore.updateSlideIndex(pos(id))
-    const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
     const askedX = clamp(b.x) + clamp(b.w) / 2 // where the router wanted it; the free-space search may have moved it
     const moved = (askedX > 2 / 3 && cx <= 2 / 3) || (askedX < 1 / 3 && cx >= 1 / 3)
-    const movedNote = moved ? (Z ? `（${askedX > 2 / 3 ? '右' : '左'}侧没有空位，所以放在了这里）` : ` (no free space on the ${askedX > 2 / 3 ? 'right' : 'left'}, so it went here)`) : ''
-    const zhWhere = (cy < 1 / 3 || cy > 2 / 3 ? (cx < 1 / 3 ? '左' : cx > 2 / 3 ? '右' : '') + (cy < 1 / 3 ? '上' : '下') + (cx >= 1 / 3 && cx <= 2 / 3 ? '方' : '') : cx < 1 / 3 ? '左侧' : cx > 2 / 3 ? '右侧' : '正中')
-    const where = Z ? zhWhere : `${cy < 1 / 3 ? 'top' : cy > 2 / 3 ? 'bottom' : 'middle'} ${cx < 1 / 3 ? 'left' : cx > 2 / 3 ? 'right' : 'centre'}`
-    return (Z ? `已在页面${where}插入“${String(args.query || '').slice(0, 60)}”的${how}图片${movedNote}。` : `Added a picture (${how}) for "${String(args.query || '').slice(0, 60)}" at the ${where}${movedNote}.`) + (pictureNote ? ` ${pictureNote}` : '')
+    const movedNote = moved ? (t(' (no free space on the {p0}, so it went here)', { p0: askedX > 2 / 3 ? t('right') : t('left') })) : ''
+    const where = t('{p0} {p1}', { p0: cy < 1 / 3 ? t('top') : cy > 2 / 3 ? t('bottom') : t('middle'), p1: cx < 1 / 3 ? t('left') : cx > 2 / 3 ? t('right') : t('centre') })
+    return (t('Added a picture ({p0}) for "{p1}" at the {p2}{p3}.', { p0: how, p1: String(args.query || '').slice(0, 60), p2: where, p3: movedNote })) + (pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -1042,13 +1047,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter(e => !drop.has(e.id)) }, id)
       touched([id])
     }
-    if (!n) fail(Z ? '没有可删除的图片。' : 'There is no picture to remove.')
-    return Z ? `已删除 ${n} 张图片。` : `Removed ${n} picture(s).`
+    if (!n) fail(t('There is no picture to remove.'))
+    return t('Removed {p0} picture(s).', { p0: n })
   }
   if (action === 'set_transition') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     for (const id of targets) slidesStore.updateSlide({ turningMode: args.effect }, id)
-    return Z ? `已设置 ${targets.length} 页的切换效果。` : `Transition set on ${targets.length} page(s).`
+    return t('Transition set on {p0} page(s).', { p0: targets.length })
   }
   if (action === 'animate_pages') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -1060,63 +1065,65 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }))
       slidesStore.updateSlide({ animations }, id)
     }
-    return Z ? (args.effect === 'none' ? '已移除动画。' : `已给 ${targets.length} 页加上动画。`) : (args.effect === 'none' ? 'Animations removed.' : `Animated ${targets.length} page(s).`)
+    return (args.effect === 'none' ? t('Animations removed.') : t('Animated {p0} page(s).', { p0: targets.length }))
   }
   if (action === 'delete_pages') {
     const del = nums(args.pages)
-    if (del.length >= n) fail(Z ? '至少要保留一页。' : 'A deck needs at least one page, so I kept it.')
+    if (del.length >= n) fail(t('A deck needs at least one page, so I kept it.'))
     slidesStore.deleteSlide(del)
-    return Z ? `已删除 ${del.length} 页，现在共 ${slides.value.length} 页。` : `Deleted ${del.length} page(s); ${slides.value.length} remain.`
+    return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
   if (action === 'read_file') {
     const doc = s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
-    if (!doc) fail(s.docs.length ? (Z ? `没有找到附件「${args.file}」。现有附件：${s.docs.map(d => d.name).join('、')}。` : `There is no attached file "${args.file}". Attached: ${s.docs.map(d => d.name).join(', ')}.`)
-      : (Z ? '还没有附件：请用输入框的 📎 图标上传文件。' : 'No file is attached yet: attach it with the 📎 icon in the chat box.'))
+    if (!doc) {
+      fail(s.docs.length ? (t('There is no attached file "{p0}". Attached: {p1}.', { p0: args.file, p1: s.docs.map(d => d.name).join(', ') }))
+        : (t('No file is attached yet: attach it with the 📎 icon in the chat box.')))
+    }
     const parts = doc.text.split(/^(?=\[page \d+\]$)/m)
     const want: number[] = args.pages || []
     const total = parts.filter(p => /^\[page \d+\]/.test(p)).length
     const missing = want.filter(n => n < 1 || n > total)
-    if (want.length && total && missing.length === want.length) fail(Z ? `「${doc.name}」只有 ${total} 页。` : `${doc.name} has only ${total} pages.`)
+    if (want.length && total && missing.length === want.length) fail(t('{p0} has only {p1} pages.', { p0: doc.name, p1: total }))
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
-    if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(Z ? `「${doc.name}」这几页读不出文字（可能是扫描图片）。` : `No text could be read from ${doc.name}${want.length ? ` page(s) ${want.join(', ')}` : ''} (it may be a scanned image).`)
+    if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }) : '' }))
     memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
-    const skipped = missing.length && total ? (Z ? `（没有第 ${missing.join('、')} 页，共 ${total} 页）` : ` (no page ${missing.join(', ')}; it has ${total})`) : ''
-    return (Z ? `已读取「${doc.name}」${want.length ? `第 ${got.join('、')} 页` : ''}。` : `Read ${doc.name}${want.length ? `, page(s) ${got.join(', ')}` : ''}.`) + skipped
+    const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
+    return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }) : '' })) + skipped
   }
   if (action === 'find_papers') {
-    busy.value = Z ? '正在查找学术文献…' : 'Finding papers…'
+    busy.value = t('Finding papers…')
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'scholar', query: args.query }) })).json()
     if (r.error || !r.papers?.length) { // no paper on that: real web sources still answer "add citations"
       const found: string = await runCall(text, 'web_search', { query: args.query }, ids)
-      return Z ? `没有找到相关学术论文，改用了网上来源。${found}` : `No academic papers on that, so I used web sources. ${found}`
+      return t('No academic papers on that, so I used web sources. {p0}', { p0: found })
     }
     memo = `<web-results>\n${fence(r.papers.map((p: any, i: number) => `[${i + 1}] ${p.authors} (${p.year}). ${p.title}. ${p.venue}. ${p.url} (cited ${p.cited}x)`).join('\n'))}\n</web-results>`
-    return Z ? `已找到 ${r.papers.length} 篇相关文献。` : `Found ${r.papers.length} relevant paper(s).`
+    return t('Found {p0} relevant paper(s).', { p0: r.papers.length })
   }
   if (action === 'read_link') {
-    busy.value = Z ? '正在读取链接…' : 'Reading the link…'
+    busy.value = t('Reading the link…')
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'url', query: args.url }) })).json()
-    if (r.error || !String(r.text || '').trim()) fail(Z ? `没能读取这个链接（${r.error || '没有内容'}）。` : `I could not read that link (${r.error || 'no content'}).`)
+    if (r.error || !String(r.text || '').trim()) fail(t('I could not read that link ({p0}).', { p0: r.error || 'no content' }))
     memo = `<file-content name="${String(r.title).replace(/["<>]/g, '').slice(0, 80)}">\n${fence(String(r.text).slice(0, 12000))}\n</file-content>`
-    return Z ? `已读取${r.kind === 'video transcript' ? '视频字幕' : '网页'}：${String(r.title).slice(0, 60)}。` : `Read the ${r.kind}: ${String(r.title).slice(0, 60)}.`
+    return t('Read the {p0}: {p1}.', { p0: r.kind, p1: String(r.title).slice(0, 60) })
   }
   if (action === 'web_search') {
-    busy.value = Z ? '正在网上搜索…' : 'Searching the web…'
+    busy.value = t('Searching the web…')
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'web', query: args.query }) })).json()
-    if (r.error || !r.sources?.length) fail(Z ? `网上没有找到可靠的来源（${args.query}），所以没有添加引用。` : `I found no reliable sources online for "${args.query}", so I added no citations.`)
+    if (r.error || !r.sources?.length) fail(t('I found no reliable sources online for "{p0}", so I added no citations.', { p0: args.query }))
     memo = `<web-results>\n${fence(`${r.answer}\nSources:\n${r.sources.slice(0, 6).map((x: any, i: number) => `[${i + 1}] ${x.title} ${x.url}`).join('\n')}`)}\n</web-results>`
-    return Z ? '已在网上查到资料。' : 'Searched online.'
+    return t('Searched online.')
   }
   if (action === 'merge_pages') {
     const ids = nums(args.pages)
-    if (ids.length < 2) fail(Z ? '请说明要合并哪几页。' : 'Which pages should be combined?')
+    if (ids.length < 2) fail(t('Which pages should be combined?'))
     const [keep, ...rest] = ids
     // the router sees each page in one short line; the merge gets every word of the pages being folded in
     const extra = rest.map(id => readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')).join('\n\n')
     await editSlide(pos(keep), `Combine the content below into this page: keep this page's title, add the points of the other page(s) condensed so everything fits without overflow, and rearrange the layout if needed. ${args.instruction || ''}\n\nContent of the other page(s):\n${extra}`)
     slidesStore.deleteSlide(rest)
-    return Z ? `已把 ${ids.length} 页合并为第 ${pos(keep) + 1} 页，现在共 ${slides.value.length} 页。` : `Combined ${ids.length} pages into page ${pos(keep) + 1}; ${slides.value.length} remain.`
+    return t('Combined {p0} pages into page {p1}; {p2} remain.', { p0: ids.length, p1: pos(keep) + 1, p2: slides.value.length })
   }
   if (action === 'duplicate_pages') {
     args.pages = (args.pages || []).map((p: number) => (p >= 1 && p <= slides.value.length ? p : slideIndex.value + 1))
@@ -1126,7 +1133,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       for (let k = 0; k < Math.min(Math.max(args.copies || 1, 1), 50); k++) list.splice(i + 1, 0, cloneSlide(list[i]))
     }
     slidesStore.setSlides(list)
-    return Z ? '已复制。' : 'Duplicated.'
+    return t('Duplicated.')
   }
   if (action === 'move_pages') {
     const move = nums(args.pages)
@@ -1134,24 +1141,24 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const rest = slides.value.filter(x => !move.includes(x.id))
     const at = Math.min(Math.max((args.to || 1) - 1, 0), rest.length)
     rest.splice(at, 0, ...moved)
-    if (rest.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(Z ? '这些页已经在那个位置了，顺序没有变化。' : 'Those pages are already there; the order is unchanged.')
+    if (rest.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(t('Those pages are already there; the order is unchanged.'))
     slidesStore.setSlides(rest)
-    return Z ? `已移动到第 ${at + 1} 页。` : `Moved to position ${at + 1}.`
+    return t('Moved to position {p0}.', { p0: at + 1 })
   }
   if (action === 'reorder_pages') {
     const order = nums(args.order)
     const list = [...order, ...slides.value.map(x => x.id).filter(id => !order.includes(id))] // pages left out keep their relative order at the end
       .map(id => slides.value[pos(id)])
-    if (list.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(Z ? '这已经是当前的顺序，没有变化。' : 'That is already the current order; nothing changed.')
+    if (list.map(x => x.id).join() === slides.value.map(x => x.id).join()) fail(t('That is already the current order; nothing changed.'))
     slidesStore.setSlides(list)
-    return Z ? '已重新排序。' : 'Reordered.'
+    return t('Reordered.')
   }
   if (action === 'swap_pages') {
     const list = [...slides.value]
     const i = pos(idOf(args.a)), j = pos(idOf(args.b))
     ;[list[i], list[j]] = [list[j], list[i]]
     slidesStore.setSlides(list)
-    return Z ? `已对调第 ${i + 1} 页和第 ${j + 1} 页。` : `Swapped pages ${i + 1} and ${j + 1}.`
+    return t('Swapped pages {p0} and {p1}.', { p0: i + 1, p1: j + 1 })
   }
   if (action === 'edit_page') {
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
@@ -1165,7 +1172,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const canAdvanced = !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced) // the eval's paid user
     const offer = () => {
       chatslide?.offerAdvanced?.()
-      return chatslide?.offerAdvanced ? (Z ? '这类请求用高级模型效果更好，付费方案可用。' : 'Requests like this work better on our advanced model, on paid plans.') : ''
+      return chatslide?.offerAdvanced ? (t('Requests like this work better on our advanced model, on paid plans.')) : ''
     }
     let upgradeLine = ''
     const reply = await editSlide(i, args.instruction, !!args.hard && canAdvanced).catch((e) => {
@@ -1177,12 +1184,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     })
     if (args.hard && !canAdvanced) upgradeLine = offer()
     keepUnaskedSizes(i, was)
-    if (JSON.stringify(slides.value[i].elements) === JSON.stringify(was)) throw new NoChange(Z ? `第 ${i + 1} 页没有改动。` : `Page ${i + 1} was not changed.`)
+    if (JSON.stringify(slides.value[i].elements) === JSON.stringify(was)) throw new NoChange(t('Page {p0} was not changed.', { p0: i + 1 }))
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
       if (left.length) await editSlide(i, `Translate these remaining lines into ${args.translate_to}, keeping their style: ${left.map(t => `"${t.slice(0, 160)}"`).join('; ')}`).catch(() => undefined)
-      lastEditTerse = Z ? `已把第 ${i + 1} 页译成${args.translate_to}（只改了这一页）。` : `Translated page ${i + 1} into ${args.translate_to} (only this page).`
+      lastEditTerse = t('Translated page {p0} into {p1} (only this page).', { p0: i + 1, p1: args.translate_to })
       slidesStore.updateSlideIndex(i)
       return lastEditTerse
     }
@@ -1198,7 +1205,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const sampleHtml = String(sample?.content || sample?.text?.content || '')
     const sampleFont = sampleHtml.match(/font-family:\s*([^;"]+)/)?.[1] || sample?.defaultFontName || sample?.text?.defaultFontName
     const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
-    if (!font) fail(Z ? '请说明要换成哪种字体。' : 'Which font?')
+    if (!font) fail(t('Which font?'))
     const setIn = (html: string) => html.replace(/font-family:\s*[^;"]*/g, `font-family: ${font}`)
     let n = 0
     for (const id of targets) {
@@ -1212,7 +1219,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         n++
       }
     }
-    return Z ? `已把 ${targets.length} 页上 ${n} 处文字换成 ${font}。` : `Set ${font} on ${n} text boxes across ${targets.length} page(s).`
+    return t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length })
   }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
@@ -1237,7 +1244,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             throw e
           }
         }
-        busy.value = `Working on the pages: ${++done} of ${all.length}…`
+        busy.value = t('Working on the pages: {p0} of {p1}…', { p0: ++done, p1: all.length })
       }
     }
     // wait for every worker (an edit in flight still lands), then report the first unexpected error
@@ -1263,27 +1270,27 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const earlier = same.filter(p => editedThisTurn.has(all[p - 1])) // done by an earlier step of this turn
     const untouched = same.filter(p => !editedThisTurn.has(all[p - 1]))
     const changedNow = all.length - same.length - failed.length
-    if (!changedNow && earlier.length && !untouched.length && !failed.length) return Z ? '这些页在前一步已经改好，没有进一步的改动。' : 'No further change: the earlier step already covered these pages.'
+    if (!changedNow && earlier.length && !untouched.length && !failed.length) return t('No further change: the earlier step already covered these pages.')
     const ok = changedNow + earlier.length
-    const list = (xs: number[]) => xs.sort((a, b) => a - b).join(Z ? '、' : ', ')
+    const list = (xs: number[]) => xs.sort((a, b) => a - b).join(', ')
     const what = String(args.instruction || '').slice(0, 60)
-    const why = (failed.length ? (Z ? `第 ${list(failed)} 页修改失败。` : ` Page(s) ${list(failed)} failed.`) : '')
-      + (untouched.length && ok ? (Z ? `第 ${list(untouched)} 页没有可改的内容。` : ` Page(s) ${list(untouched)} had nothing for that.`) : '')
+    const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) })) : '')
+      + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) })) : '')
     void earlier
-    if (!ok && !failed.length) return Z ? `没有页面需要改动。${noChangeWhy.replace(/^第 \d+ 页没有改动。\s*/, '')}` : `No page needed that change. ${noChangeWhy.replace(/^Page \d+ was not changed\.\s*/, '')}`
-    if (!ok) fail((Z ? `这个修改在任何一页都没做成：“${what}”。` : `I could not make that change on any page: "${what}".`) + why)
-    return (Z ? `已更新 ${ok} 页。` : `Updated ${ok} page${ok > 1 ? 's' : ''}.`) + why
+    if (!ok && !failed.length) return t('No page needed that change. {p0}', { p0: noChangeWhy })
+    if (!ok) fail((t('I could not make that change on any page: "{p0}".', { p0: what })) + why)
+    return (t('Pages updated: {p0}.', { p0: ok })) + why
   }
   if (action === 'change_image') {
-    busy.value = args.source === 'ai' ? 'Drawing the picture…' : 'Finding a picture…'
+    busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     const id = idOf(args.index)
     slidesStore.updateSlideIndex(pos(id))
     const { note, backdrop } = await changeImage(text, id, args.image, args.query, args.source)
     replacedThisTurn.add(`${id}:${args.image ?? 1}`)
-    const how = pictureSource === 'attached' ? (Z ? '你上传的' : 'your attached') : pictureSource === 'ai' ? (Z ? 'AI 生成' : 'AI-generated') : pictureSource === 'wikimedia' ? (Z ? '维基共享资源' : 'Wikimedia') : (Z ? '图库照片' : 'stock photo')
+    const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     // says WHICH picture changed, so a later reply about this step is grounded in what happened
-    const which = backdrop ? (Z ? `第 ${pos(id) + 1} 页的背景图` : `the background picture on page ${pos(id) + 1}`) : (Z ? `第 ${pos(id) + 1} 页的图片` : `the picture on page ${pos(id) + 1}`)
-    return (Z ? `已把${which}换成“${String(args.query || '').slice(0, 60)}”的${how}图片，请看看是否合适。` : `Replaced ${which} with a ${how} picture for "${String(args.query || '').slice(0, 60)}"; check it is what you meant.`) + (note ? ` ${note}` : '')
+    const which = backdrop ? (t('the background picture on page {p0}', { p0: pos(id) + 1 })) : (t('the picture on page {p0}', { p0: pos(id) + 1 }))
+    return (t('Replaced {p0} with a {p1} picture for "{p2}"; check it is what you meant.', { p0: which, p1: how, p2: String(args.query || '').slice(0, 60) })) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
     const from = slides.value[pos(idOf(args.from))], to = idOf(args.to)
@@ -1294,23 +1301,23 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       body: JSON.stringify({ instruction: `Which element is "${args.element}"? Elements: ${JSON.stringify(list.map((e: any, k) => ({ k, type: e.type === 'image' ? `image ${++img}` : e.type, text: elText(e).slice(0, 60), left: Math.round(e.left), top: Math.round(e.top), width: Math.round(e.width), height: Math.round(e.height || 0) })))}. "The picture" is the largest image. Return JSON {"k": <index>} or {"k": -1}.` }),
     })
     const el = list[(await r.json()).k]
-    if (!el) fail(Z ? '没找到这个元素。' : 'Could not find that element.')
+    if (!el) fail(t('Could not find that element.'))
     if (!args.copy) slidesStore.updateSlide({ elements: from.elements.filter(e => e.id !== el.id) }, from.id)
     const target = slides.value[pos(to)]
     slidesStore.updateSlide({ elements: [...target.elements, { ...JSON.parse(JSON.stringify(el)), id: nanoid(10) }] }, to)
     slidesStore.updateSlideIndex(pos(to))
-    return args.copy ? (Z ? '已复制过去。' : 'Copied.') : (Z ? '已移动。' : 'Moved.')
+    return args.copy ? (t('Copied.')) : (t('Moved.'))
   }
   if (action === 'set_background') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     let background: any = { type: 'solid', color: args.color }
     if (args.photo_query) {
-      busy.value = 'Finding a picture…'
+      busy.value = t('Finding a picture…')
       const src = await findPicture(args.photo_query, 'photo', true)
-      if (!src) fail(Z ? '没有找到合适的背景图。' : 'Could not get a background picture.')
+      if (!src) fail(t('Could not get a background picture.'))
       background = { type: 'image', image: { src, size: 'cover' } }
     }
-    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(Z ? '请给出背景颜色。' : 'Which background colour?')
+    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(t('Which background colour?'))
     for (const id of targets) slidesStore.updateSlide({ background }, id)
     // a full-slide picture covers the background fill: a new background PHOTO replaces that picture, or nothing shows
     if (args.photo_query) {
@@ -1337,11 +1344,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           })))
       }
     }
-    const note = missed.length ? (Z ? `（第 ${missed.join('、')} 页的大色块没能改色，可能仍会挡住背景）` : ` (the large shapes on page(s) ${missed.join(', ')} could not be recoloured and may still cover it)`) : ''
+    const note = missed.length ? (t(' (the large shapes on page(s) {p0} could not be recoloured and may still cover it)', { p0: missed.join(', ') })) : ''
     const bgHow = args.photo_query
-      ? (pictureSource === 'ai' ? (Z ? `“${String(args.photo_query).slice(0, 60)}”的 AI 生成图片` : `an AI-generated picture for "${String(args.photo_query).slice(0, 60)}"`) : (Z ? `“${String(args.photo_query).slice(0, 60)}”的图库照片` : `a stock photo for "${String(args.photo_query).slice(0, 60)}"`))
-      : (Z ? `颜色 ${args.color}` : `colour ${args.color}`)
-    return (Z ? `已把 ${targets.length} 页背景设为${bgHow}。` : `Background of ${targets.length} page(s) set to ${bgHow}.`) + note
+      ? (pictureSource === 'ai' ? (t('an AI-generated picture for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })) : (t('a stock photo for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })))
+      : (t('colour {p0}', { p0: args.color }))
+    return (t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })) + note
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
@@ -1349,79 +1356,81 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.clear) {
       for (const id of asked) slidesStore.updateSlide({ remark: '' }, id)
       touched(asked)
-      return Z ? `已清空 ${asked.length} 页的演讲备注。` : `Cleared the speaker notes on ${asked.length} page(s).`
+      return t('Cleared the speaker notes on {p0} page(s).', { p0: asked.length })
     }
     // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
     const having = args.existing_only ? asked.filter(hasNotes) : asked
     const targets = having.length ? having : asked
     const written = await writeNotes(targets, args.instruction || '')
-    if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
-    return (Z ? `已写好 ${written} 页的演讲备注。` : `Wrote speaker notes for ${written} page(s).`) + (written < targets.length ? (Z ? `（${targets.length - written} 页没写成）` : ` (${targets.length - written} page(s) failed)`) : '')
+    if (!written) fail(t('The speaker notes could not be written.'))
+    return (t('Wrote speaker notes for {p0} page(s).', { p0: written })) + (written < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written })) : '')
   }
   if (action === 'download_deck') {
-    if (chatslide && !chatslide.canExport()) return Z ? '下载需要付费方案，已为你打开方案页面。' : 'Downloading needs a paid plan; I opened the plans for you.'
+    if (chatslide && !chatslide.canExport()) return t('Downloading needs a paid plan; I opened the plans for you.')
     if (s.mode === 'template' && !s.edited) { // the engine's own .pptx is exact; after editor changes, export the editor
       const a = document.createElement('a')
       a.href = s.versions[s.versions.length - 1].deckUrl
       a.download = 'deck.pptx'
       a.click()
-      return Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.'
+      return t('Downloading the .pptx now.')
     }
     if (args.format === 'pdf' || args.format === 'images') {
-      const n = await downloadRendered(args.format, (i, all) => { busy.value = Z ? `正在导出第 ${i} / ${all} 页…` : `Exporting page ${i} of ${all}…` })
-        .catch(() => fail(Z ? '这次没能导出文件；可以先下载 PowerPoint。' : 'I could not create that file this time; the PowerPoint download still works.'))
+      const n = await downloadRendered(args.format, (i, all) => {
+        busy.value = t('Exporting page {p0} of {p1}…', { p0: i, p1: all })
+      })
+        .catch(() => fail(t('I could not create that file this time; the PowerPoint download still works.')))
       return args.format === 'pdf'
-        ? (Z ? `正在下载 PDF（${n} 页）。` : `Downloading the PDF (${n} pages).`)
-        : (Z ? `正在下载 ${n} 张图片（zip）。` : `Downloading ${n} images (zip).`)
+        ? (t('Downloading the PDF ({p0} pages).', { p0: n }))
+        : (t('Downloading {p0} images (zip).', { p0: n }))
     }
-    busy.value = Z ? '正在导出 .pptx…' : 'Exporting the .pptx…'
+    busy.value = t('Exporting the .pptx…')
     exportPPTX(slides.value, true, false) // the browser saves the file; no dialog
     const asked = String(args.asked || '').trim()
     const other = asked && !/pptx|powerpoint|ppt/i.test(asked) // a format we cannot export to directly (Google Slides, Keynote…)
     return other
-      ? (Z ? `这里不能直接导出为 ${asked}；正在下载 .pptx，${asked} 可以直接打开它。` : `There is no direct export to ${asked} here; downloading a .pptx, which ${asked} opens directly.`)
-      : (Z ? '正在下载 .pptx。' : 'Downloading the .pptx now.')
+      ? (t('There is no direct export to {p0} here; downloading a .pptx, which {p1} opens directly.', { p0: asked, p1: asked }))
+      : (t('Downloading the .pptx now.'))
   }
   if (action === 'share_deck') {
-    if (!hostSteps()?.share) fail(Z ? '这里不能分享：请在 ChatSlide 里打开这个项目再分享。' : 'Sharing is not available here: open this project in ChatSlide to share it.')
-    if (chatslide && !chatslide.canExport()) return Z ? '分享需要付费方案，已为你打开方案页面。' : 'Sharing needs a paid plan; I opened the plans for you.'
+    if (!hostSteps()?.share) fail(t('Sharing is not available here: open this project in ChatSlide to share it.'))
+    if (chatslide && !chatslide.canExport()) return t('Sharing needs a paid plan; I opened the plans for you.')
     const { url, copied } = await hostSteps()!.share!()
-    return (Z ? `已开启分享：${url}` : `Sharing is on: ${url}`) + (copied ? (Z ? '（链接已复制）' : ' (link copied)') : '')
+    return (t('Sharing is on: {p0}', { p0: url })) + (copied ? (t(' (link copied)')) : '')
   }
   if (action === 'open_step') {
     if (!hostSteps()?.goto && args.step === 'scripts') { // no Scripts step outside ChatSlide: the notes here ARE the script
       const targets = slides.value.map(x => x.id)
       const written = await writeNotes(targets, text)
-      if (!written) fail(Z ? '演讲备注没能写出来。' : 'The speaker notes could not be written.')
-      return Z ? `已写好 ${written} 页的演讲备注（脚本）。` : `Wrote the speaker notes (the script) for ${written} page(s).`
+      if (!written) fail(t('The speaker notes could not be written.'))
+      return t('Wrote the speaker notes (the script) for {p0} page(s).', { p0: written })
     }
-    if (!hostSteps()?.goto) fail(Z ? '这里没有该步骤：请在 ChatSlide 里打开这个项目。' : 'That step is not available here: open this project in ChatSlide.')
+    if (!hostSteps()?.goto) fail(t('That step is not available here: open this project in ChatSlide.'))
     await hostSteps()!.goto!(args.step)
-    return Z ? `正在打开：${args.step}。` : `Opening ${({ video: 'the Video step', scripts: 'the Scripts step', outlines: 'the Outlines step', dashboard: 'your Dashboard, where a new project starts' } as Record<string, string>)[args.step] || args.step}.`
+    return t('Opening {p0}.', { p0: ({ video: t('the Video step'), scripts: t('the Scripts step'), outlines: t('the Outlines step'), dashboard: t('your Dashboard, where a new project starts') } as Record<string, string>)[args.step] || args.step })
   }
   if (action === 'open_refund') {
-    if (!hostSteps()?.goto) return Z ? '退款请到 https://app.chatslide.ai/refund 申请。' : 'You can request a refund at https://app.chatslide.ai/refund'
+    if (!hostSteps()?.goto) return t('You can request a refund at https://app.chatslide.ai/refund')
     await hostSteps()!.goto!('refund')
-    return Z ? '正在打开退款页面。' : 'Opening the refund page.'
+    return t('Opening the refund page.')
   }
   if (action === 'apply_theme') {
     const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
-    if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(Z ? '这个主题的颜色无效。' : 'That theme has invalid colours.')
+    if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(t('That theme has invalid colours.'))
     for (const sl of slides.value) fadeBackdrop(sl.id) // a full-slide picture would hide it
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true)
     touched(slides.value.map(x => x.id))
-    return Z ? '已给整份演示文稿换了新主题。' : 'Applied a new theme to the whole deck.'
+    return t('Applied a new theme to the whole deck.')
   }
   if (action === 'say_unable') {
     // only says "recorded" when it was: outside ChatSlide nothing records it
     const saved = await (hostSteps()?.featureRequest?.(String(args.what || ''), text) ?? Promise.resolve(false)).catch(() => false)
-    return [args.message, saved ? (Z ? '我已把它记录为功能需求。' : 'I have recorded this as a feature request.') : ''].filter(Boolean).join(' ')
+    return [args.message, saved ? (t('I have recorded this as a feature request.')) : ''].filter(Boolean).join(' ')
   }
   if (action === 'set_page_size') {
-    if (!(args.width > 0) || !(args.height > 0)) fail(Z ? '请说明页面尺寸。' : 'Which page size?')
+    if (!(args.width > 0) || !(args.height > 0)) fail(t('Which page size?'))
     slidesStore.setViewportRatio(args.height / args.width)
     touched(slides.value.map(x => x.id))
-    return Z ? `页面比例已改为 ${args.width}:${args.height}。` : `Slide shape set to ${args.width}:${args.height}.`
+    return t('Slide shape set to {p0}:{p1}.', { p0: args.width, p1: args.height })
   }
   if (action === 'copy_page_style') {
     const src = args.page_named === false ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
@@ -1440,27 +1449,27 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlide({ background: JSON.parse(JSON.stringify(src.background || {})), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
     }
     touched(targets)
-    return Z ? `已把第 ${pos(src.id) + 1} 页的背景和文字颜色用到 ${targets.length} 页。` : `Applied page ${pos(src.id) + 1}'s background and text colour to ${targets.length} page(s).`
+    return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })
   }
   if (action === 'open_design') {
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
-    return Z ? '已打开右侧的“设计”面板，可以在那里换主题。模板页面在左上角“添加幻灯片”旁的下拉箭头里，会作为新页插入。' : 'I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.'
+    return t('I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.')
   }
   if (action === 'talk_to_human') {
-    if (!hostSteps()?.support) fail(Z ? '请发邮件到 contact@chatslide.ai 联系支持团队。' : 'Please email contact@chatslide.ai to reach the support team.')
-    busy.value = Z ? '正在联系支持…' : 'Contacting support…'
-    return (await hostSteps()!.support!(args.message || userText)) || (Z ? '已转给支持团队。' : 'Sent to the support team.')
+    if (!hostSteps()?.support) fail(t('Please email contact@chatslide.ai to reach the support team.'))
+    busy.value = t('Contacting support…')
+    return (await hostSteps()!.support!(args.message || userText)) || (t('Sent to the support team.'))
   }
   if (action === 'go_to_page') {
     const id = idOf(args.page)
     slidesStore.updateSlideIndex(pos(id))
-    return Z ? `已切换到第 ${pos(id) + 1} 页。` : `Showing page ${pos(id) + 1}.`
+    return t('Showing page {p0}.', { p0: pos(id) + 1 })
   }
   if (action === 'ask_user') {
     const opts = (args.options || []).filter(Boolean).slice(0, 4)
     s.pending = { request: userText, question: args.question || '', options: opts }
     save()
-    return args.question || (Z ? '能再具体一点吗？' : 'Could you say that more specifically?')
+    return args.question || (t('Could you say that more specifically?'))
   }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
@@ -1471,12 +1480,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         await showPptx(s.versions[s.versions.length - 1].deckUrl)
       }
       else if (snapshotStore.canUndo) await snapshotStore.unDo()
-      else return Z ? '没有可以撤销的修改。' : 'There is nothing to undo yet.'
+      else return t('There is nothing to undo yet.')
     }
     else await snapshotStore.reDo()
-    return Z ? (action === 'undo' ? '已撤销。' : '已重做。') : (action === 'undo' ? 'Undone.' : 'Redone.')
+    return (action === 'undo' ? t('Undone.') : t('Redone.'))
   }
-  return args.answer || (Z ? '能再具体一点吗？' : 'Could you say that more specifically?')
+  return args.answer || (t('Could you say that more specifically?'))
 }
 
 // Footer page numbers are static text in an imported deck: after pages move, set each to its page's position.
@@ -1573,7 +1582,7 @@ const deckTurn = async (text: string) => {
     }
     if (newDeck && !done.length) {
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
-      busy.value = s.template ? 'Building the deck (about a minute)…' : 'Writing the deck…'
+      busy.value = s.template ? t('Building the deck (about a minute)…') : t('Writing the deck…')
       await (s.template ? templateTurn(text) : generateNative(text))
       addHistorySnapshot() // the new deck is a history step of its own
       return
@@ -1632,7 +1641,7 @@ const deckTurn = async (text: string) => {
           terse.splice(k, 1)
         }
       }
-      const kept = zh(text) ? '上一步改的已经是你要的那张图（背景没有动），我把它保留了。要把背景也改回去吗？' : 'My last change was already to the picture you meant (the background was not touched), so I kept it. Should I also restore the background?'
+      const kept = t('My last change was already to the picture you meant (the background was not touched), so I kept it. Should I also restore the background?')
       replies.push(kept)
       terse.push(kept)
       break
@@ -1640,13 +1649,13 @@ const deckTurn = async (text: string) => {
     if (extra) {
       const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
-        : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
-        ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
-        : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
-        ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
-        : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
-        ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
-        : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
+          : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
+            ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
+            : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
+              ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
+              : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
+                ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
+                : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       continue
     }
@@ -1666,7 +1675,7 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
       }
-      busy.value = `Working (step ${done.length + 1})…`
+      busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
       try {
         reply = await runCall(text, c.action, c.args || {}, ids)
@@ -1704,26 +1713,11 @@ const deckTurn = async (text: string) => {
   }
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
-  if (slides.value.length !== pagesAtStart) lines.push(zh(text) ? `现在共 ${slides.value.length} 页。` : `The deck now has ${slides.value.length} pages.`)
-  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (zh(text) ? '已完成。' : 'Done.') // every step reports: merging repeats hid a doubled page
+  if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
+  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
-  const fee = sp.charged > 0 ? (zh(text) ? `\n（用了 ${sp.charged} 积分${sp.left >= 0 && sp.left <= 9000000 ? `，剩 ${sp.left}` : ''}）` : `\n(Used ${sp.charged} credit${sp.charged > 1 ? 's' : ''}${sp.left >= 0 && sp.left <= 9000000 ? ` · ${sp.left} left` : ''})`) : ''
-  say('assistant', await finalize(text, reply, done) + fee)
-}
-
-// One small call on every turn: the reply in the user's language, plus any part of the request that none of the steps
-// covered, said out loud (a Haiku router sometimes calls finish without naming what it skipped).
-const finalize = async (instruction: string, reply: string, steps: string[]) => {
-  try {
-    // the steps (tool, arguments, result) are the evidence of what was done; the reply alone is too terse to judge
-    const evidence = steps.map(d => d.split('\n')[0].slice(0, 300))
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, steps: evidence }) })).json()
-    void steps // the generated "not done" sentence was wrong more often than right (audited 2026-11-02); the router's not_done and the code's own replies carry that
-    return r.reply || reply
-  }
-  catch {
-    return reply
-  }
+  const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
+  say('assistant', reply + fee)
 }
 
 const send = () => {
@@ -1733,7 +1727,7 @@ const send = () => {
   // every message goes through the router and edits the deck in the editor; only an explicit request for a new
   // presentation builds one (create_deck), and that stays undoable
   const before = JSON.parse(JSON.stringify(slides.value))
-  return run('Working…', async () => {
+  return run(t('Working…'), async () => {
     try {
       await deckTurn(text)
       save()
@@ -1876,7 +1870,7 @@ onMounted(() => {
   if (chatslide) { // ChatSlide project: its saved editor state, or on first open its deck converted from ChatSlide
     if (chatslide.title) slidesStore.setTitle(chatslide.title)
     chatslide.flush = () => syncToChatSlide() // before Scripts: the latest pages first
-    run('Opening your deck…', async () => {
+    run(t('Opening your deck…'), async () => {
       const saved = await chatslide!.load()
       if (saved?.slides?.length) {
         Object.assign(s, blank(), saved.session || {})
@@ -1916,7 +1910,7 @@ onMounted(() => {
   catch { /* not a URL */ }
   if (link && host.endsWith('.public.blob.vercel-storage.com')) {
     history.replaceState(null, '', location.pathname)
-    run('Opening your deck…', async () => {
+    run(t('Opening your deck…'), async () => {
       await showPptx(link)
       Object.assign(s, blank()) // only once the deck is in: a failed import keeps the previous session
       localStorage.removeItem(SLIDES_KEY)
@@ -1940,7 +1934,7 @@ onMounted(() => {
   }
   else if (s.mode === 'template' && s.versions.length) {
     s.edited = false // the editor copy was lost; the last built version is what is shown
-    run('Loading your deck…', () => showPptx(s.versions[s.versions.length - 1].deckUrl))
+    run(t('Loading your deck…'), () => showPptx(s.versions[s.versions.length - 1].deckUrl))
   }
 })
 </script>
@@ -2044,7 +2038,7 @@ onMounted(() => {
 
   i {
     cursor: pointer;
-    margin-left: 4px;
+    margin-inline-start: 4px;
     font-style: normal;
   }
 }
