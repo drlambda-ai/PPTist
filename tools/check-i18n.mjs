@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import process from 'node:process'
 import ts from 'typescript'
+import { parse } from 'vue/compiler-sfc'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = file => JSON.parse(readFileSync(path.join(root, file), 'utf8'))
@@ -25,7 +26,33 @@ for (const locale of locales) {
   }
   for (const key of Object.keys(messages)) if (!(key in english)) errors.push(`${locale}: extra ${key}`)
 }
-// Check authored t() calls, including Vue template expressions, against the same source catalog.
+// Parse Vue expressions as well as scripts so interpolated UI copy cannot bypass the check.
+function inspectCode(file, source, template = false) {
+  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true)
+  const visit = node => {
+    if (ts.isCallExpression(node) && node.expression.getText(ast) === 't') {
+      const key = node.arguments[0]
+      if (key && ts.isStringLiteral(key) && !(key.text in english)) errors.push(`${file}: unknown key ${key.text}`)
+      for (const argument of node.arguments.slice(1)) visit(argument)
+      return
+    }
+    if (template && (ts.isStringLiteral(node) || ts.isTemplateLiteralToken(node)) && /\p{Script=Han}/u.test(node.text)) {
+      errors.push(`${file}: untranslated template expression ${node.text}`)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(ast)
+}
+function inspectTemplate(file, node) {
+  if (node.type === 2 && /\p{Script=Han}/u.test(node.content)) errors.push(`${file}: untranslated template text ${node.content.trim()}`)
+  if (node.type === 5) inspectCode(file, node.content.content, true)
+  if (node.type === 7 && node.exp) inspectCode(file, node.exp.content, ['title', 'label', 'placeholder', 'tip', 'searchLabel', 'aria-label'].includes(node.arg?.content))
+  if (node.type === 6 && ['title', 'label', 'placeholder', 'tip', 'searchLabel', 'aria-label'].includes(node.name) && /\p{Script=Han}/u.test(node.value?.content || '')) {
+    errors.push(`${file}: untranslated ${node.name} ${node.value.content}`)
+  }
+  for (const prop of node.props || []) inspectTemplate(file, prop)
+  for (const child of node.children || []) inspectTemplate(file, child)
+}
 function inspect(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name)
@@ -34,22 +61,15 @@ function inspect(directory) {
     }
     if (!/\.(ts|vue)$/.test(entry.name)) continue
     const text = readFileSync(file, 'utf8')
-    const chunks = entry.name.endsWith('.vue')
-      ? [...text.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1])
-      : [text]
-    // Template t calls have literal keys; decode JS escapes using the TS parser.
-    if (entry.name.endsWith('.vue')) chunks.push(...[...text.slice(0, text.indexOf('<script')).matchAll(/\bt\(("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g)].map(m => `t(${m[1]})`))
-    for (const chunk of chunks) {
-      const ast = ts.createSourceFile(file, chunk, ts.ScriptTarget.Latest, true)
-      const visit = node => {
-        if (ts.isCallExpression(node) && node.expression.getText(ast) === 't' && node.arguments.length) {
-          const key = node.arguments[0]
-          if (ts.isStringLiteral(key) && !(key.text in english)) errors.push(`${path.relative(root, file)}: unknown key ${key.text}`)
-        }
-        ts.forEachChild(node, visit)
+    if (entry.name.endsWith('.vue')) {
+      const { descriptor, errors: parseErrors } = parse(text, { filename: file })
+      for (const error of parseErrors) errors.push(`${file}: ${error}`)
+      for (const script of [descriptor.script, descriptor.scriptSetup]) {
+        if (script) inspectCode(file, script.content)
       }
-      visit(ast)
+      if (descriptor.template?.ast) inspectTemplate(file, descriptor.template.ast)
     }
+    else inspectCode(file, text)
   }
 }
 inspect(path.join(root, 'src'))

@@ -61,6 +61,20 @@ const currentDialogComponent = computed<unknown>(() => {
 <style lang="scss" scoped>
 .export-dialog {
   margin: -20px;
+
+  :deep(.configs) {
+    width: 100%;
+    max-width: 560px;
+
+    .title {
+      flex: 0 0 140px;
+      padding-inline-end: 12px;
+      box-sizing: border-box;
+    }
+    .radio-group {
+      align-items: stretch;
+    }
+  }
 }
 .content {
   height: 460px;

@@ -69,7 +69,7 @@
       </template>
     </Draggable>
 
-    <div class="page-number">{{ t('幻灯片') }} {{slideIndex + 1}} / {{slides.length}}</div>
+    <div class="page-number">{{ t('幻灯片') }} <bdi>{{slideIndex + 1}} / {{slides.length}}</bdi></div>
   </div>
 </template>
 

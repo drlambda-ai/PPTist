@@ -1,9 +1,10 @@
 <template>
-  <MoveablePanel 
+  <MoveablePanel
+    :dir="direction"
     class="notes-panel" 
     :width="300" 
     :height="560" 
-    :title="`幻灯片${slideIndex + 1}的批注`" 
+    :title="t('Comments on slide {p0}', { p0: slideIndex + 1 })"
     :left="-270" 
     :top="90"
     :minWidth="300"
@@ -62,7 +63,7 @@
           ref="textAreaRef"
           v-model:value="content"
           :padding="6"
-          :placeholder="`输入批注（为${handleElementId ? t('选中元素') : t('当前页幻灯片') }）`"
+          :placeholder="handleElementId ? t('Comment on the selected element') : t('Comment on this slide')"
           :rows="2"
           @focus="replyNoteId = ''; activeNoteId = ''"
           @enter.prevent="createNote()"
@@ -77,6 +78,7 @@
 </template>
 
 <script lang="ts" setup>
+import { direction } from '@/i18n'
 import { ref, computed, watch, nextTick, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'

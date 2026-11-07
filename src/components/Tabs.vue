@@ -98,6 +98,8 @@ const emit = defineEmits<{
 
     .tab {
       flex: 1;
+      padding: 6px;
+      text-align: center;
       display: flex;
       justify-content: center;
       align-items: center;

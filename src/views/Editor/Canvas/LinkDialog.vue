@@ -69,7 +69,7 @@ const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
 
 const slideOptions = computed(() => {
   return slides.value.map((item, index) => ({
-    label: `幻灯片 ${index + 1}`,
+    label: t('Slide {p0}', { p0: index + 1 }),
     value: item.id,
     disabled: currentSlide.value.id === item.id,
   }))

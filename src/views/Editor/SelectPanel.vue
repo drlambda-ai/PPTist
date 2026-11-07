@@ -1,9 +1,10 @@
 <template>
-  <MoveablePanel 
+  <MoveablePanel
+    :dir="direction"
     class="select-panel" 
     :width="200" 
     :height="360" 
-    :title="`选择（${activeElementIdList.length}/${currentSlide.elements.length}）`" 
+    :title="t('Selection ({p0}/{p1})', { p0: activeElementIdList.length, p1: currentSlide.elements.length })"
     :left="-270" 
     :top="90"
     @close="close()"
@@ -86,6 +87,7 @@
 </template>
 
 <script lang="ts" setup>
+import { direction } from '@/i18n'
 import { computed, nextTick, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore, useMainStore } from '@/store'
