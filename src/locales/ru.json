@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Комментарии к слайду {p0}",
   "Comment on the selected element": "Комментарий к выбранному элементу",
   "Comment on this slide": "Комментарий к этому слайду",
-  "Selection ({p0}/{p1})": "Выбрано ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Выбрано ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Панель «Дизайн» пока недоступна на телефонах. Попросите меня здесь изменить тему или откройте эту презентацию на компьютере."
 }

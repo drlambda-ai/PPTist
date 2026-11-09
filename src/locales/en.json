@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Comments on slide {p0}",
   "Comment on the selected element": "Comment on the selected element",
   "Comment on this slide": "Comment on this slide",
-  "Selection ({p0}/{p1})": "Selection ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Selection ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer."
 }

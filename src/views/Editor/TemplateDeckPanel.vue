@@ -1,12 +1,10 @@
 <template>
-  <MoveablePanel
+  <component
+    :is="inline ? 'div' : MoveablePanel"
     :dir="direction"
     class="template-deck-panel"
-    :width="360"
-    :height="560"
-    :title="chatslide ? 'ChatSlide' : 'AI'"
-    :left="-380"
-    :top="60"
+    :class="{ inline }"
+    v-bind="inline ? {} : { width: 360, height: 560, title: chatslide ? 'ChatSlide' : 'AI', left: -380, top: 60 }"
     @close="close()"
   >
     <div class="body">
@@ -31,7 +29,7 @@
             <i @click="s.docs.splice(i, 1); save()" v-if="!busy">×</i></span>
         </div>
         <div class="input-box" @dragover.prevent @drop.prevent="e => attach(e.dataTransfer?.files)">
-          <TextArea v-model:value="input" :rows="3" :placeholder="t('e.g. Make page 3 shorter / Add a page on Q3 risks / Use the attached data')" @enter="onEnter" />
+          <TextArea v-model:value="input" :rows="inline ? 2 : 3" :placeholder="t('e.g. Make page 3 shorter / Add a page on Q3 risks / Use the attached data')" @enter="onEnter" />
           <div class="input-row">
             <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json,.png,.jpg,.jpeg,.webp,.gif" @change="files => attach(files)">
               <span class="attach" :class="{ disabled: !!busy }" :aria-label="t('Attach a company template (.pptx) or material')"><i-icon-park-outline:link /></span>
@@ -43,7 +41,7 @@
         <div class="new" v-if="s.mode && !busy"><span @click="restart()">{{ t('Start a new deck') }}</span></div>
       </div>
     </div>
-  </MoveablePanel>
+  </component>
   <!-- ChatSlide: pages being turned into pictures (off-screen, outside the panel so a closed panel still renders) -->
   <Teleport to="body">
     <div class="chatslide-render" ref="renderRef" v-if="toRender.length">
@@ -55,10 +53,13 @@
 <script lang="ts" setup>
 import { t, direction } from '@/i18n'
 
+defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
+
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
+import { isPC } from '@/utils/common'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
 import { db } from '@/utils/database'
 import { ToolbarStates } from '@/types/toolbar'
@@ -1452,6 +1453,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })
   }
   if (action === 'open_design') {
+    if (!isPC()) return t("The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.")
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
     return t('I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.')
   }
@@ -1696,9 +1698,9 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
+    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
@@ -1940,6 +1942,26 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.inline {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  background: #fff;
+
+  :deep(.button) {
+    min-height: 36px;
+    padding: 0 16px;
+  }
+  .msg {
+    font-size: 15px;
+  }
+  .hint {
+    font-size: 14px;
+  }
+  .attach {
+    font-size: 24px;
+  }
+}
 .chatslide-render {
   position: fixed;
   left: -100000px;

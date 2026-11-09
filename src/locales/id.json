@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Komentar pada slide {p0}",
   "Comment on the selected element": "Komentari elemen yang dipilih",
   "Comment on this slide": "Komentari slide ini",
-  "Selection ({p0}/{p1})": "Pilihan ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Pilihan ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Panel Desain belum tersedia di ponsel. Minta saya di sini untuk mengubah tema, atau buka presentasi ini di komputer."
 }

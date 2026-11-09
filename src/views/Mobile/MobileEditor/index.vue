@@ -41,6 +41,7 @@
 </template>
 
 <script lang="ts" setup>
+import { host } from '@/embed'
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import useCanvasElementList from '@/hooks/useCanvasElementList'
 import { storeToRefs } from 'pinia'
@@ -89,7 +90,7 @@ const canvasScale = computed(() => {
 
 onMounted(() => {
   if (activeElementIdList.value.length) mainStore.setActiveElementIdList([])
-  if (slideIndex.value !== 0) slidesStore.updateSlideIndex(0)
+  if (slideIndex.value !== 0 && !host) slidesStore.updateSlideIndex(0) // inside ChatSlide: stay on the page being worked on
 })
 
 const viewportStyles = computed(() => ({

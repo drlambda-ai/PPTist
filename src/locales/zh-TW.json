@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "第 {p0} 張投影片的註解",
   "Comment on the selected element": "針對選取的元素註解",
   "Comment on this slide": "針對這張投影片註解",
-  "Selection ({p0}/{p1})": "已選取（{p0}/{p1}）"
+  "Selection ({p0}/{p1})": "已選取（{p0}/{p1}）",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手機上目前無法使用「設計」面板。你可以在這裡請我變更主題，或在電腦上開啟這份簡報。"
 }

@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Коментарі до слайда {p0}",
   "Comment on the selected element": "Коментар до вибраного елемента",
   "Comment on this slide": "Коментар до цього слайда",
-  "Selection ({p0}/{p1})": "Вибрано ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Вибрано ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Панель «Дизайн» поки недоступна на телефонах. Попросіть мене тут змінити тему або відкрийте цю презентацію на комп’ютері."
 }

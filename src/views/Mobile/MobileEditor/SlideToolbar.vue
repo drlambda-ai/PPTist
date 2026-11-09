@@ -87,11 +87,16 @@ const insertShapeElement = (type: 'square' | 'round') => {
   }, shape[type])
 }
 
-const remark = computed(() => currentSlide.value?.remark || '')
+// notes are stored as HTML paragraphs (the desktop notes editor writes them): edited here as plain lines
+const remark = computed(() => {
+  const body = new DOMParser().parseFromString(currentSlide.value?.remark || '', 'text/html').body
+  return body.children.length ? [...body.children].map(p => p.textContent).join('\n') : body.textContent || ''
+})
 
 const handleInputMark = (e: Event) => {
-  const value = (e.target as HTMLTextAreaElement).value
-  slidesStore.updateSlide({ remark: value })
+  const lines = (e.target as HTMLTextAreaElement).value.split('\n')
+  const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  slidesStore.updateSlide({ remark: lines.map(l => `<p>${escape(l)}</p>`).join('') })
 }
 </script>
 
@@ -126,9 +131,18 @@ const handleInputMark = (e: Event) => {
   }
 }
 .toolbar {
-  height: 90px;
+  flex-shrink: 0;
   border-bottom: 1px solid $borderColor;
-  padding: 10px;
+  padding: 10px 10px 5px;
+
+  :deep(.button) { // labels get long in translation: one line each, or the rows overlap
+    min-width: 0;
+    padding: 0 2px;
+    letter-spacing: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 .row {
   width: 100%;

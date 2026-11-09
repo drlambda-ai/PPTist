@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Commentaires sur la diapositive {p0}",
   "Comment on the selected element": "Commenter l’élément sélectionné",
   "Comment on this slide": "Commenter cette diapositive",
-  "Selection ({p0}/{p1})": "Sélection ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Sélection ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Le panneau Création n’est pas encore disponible sur téléphone. Demandez-moi ici de changer le thème ou ouvrez cette présentation sur un ordinateur."
 }

@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "Nhận xét trên trang chiếu {p0}",
   "Comment on the selected element": "Nhận xét về phần tử đã chọn",
   "Comment on this slide": "Nhận xét về trang chiếu này",
-  "Selection ({p0}/{p1})": "Lựa chọn ({p0}/{p1})"
+  "Selection ({p0}/{p1})": "Lựa chọn ({p0}/{p1})",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Bảng Thiết kế chưa có trên điện thoại. Hãy nhắn tại đây để đổi chủ đề hoặc mở bản trình bày này trên máy tính."
 }

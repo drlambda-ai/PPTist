@@ -3,7 +3,7 @@
     :style="{
       width: playerSize.width + 'px',
       height: playerSize.height + 'px',
-      transform: `rotate(90deg) translateY(-${playerSize.height}px)`,
+      transform: landscape ? 'none' : `rotate(90deg) translateY(-${playerSize.height}px)`,
     }"
   >
     <div 
@@ -54,7 +54,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue'
+import { host } from '@/embed'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import type { Mode } from '@/types/mobile'
@@ -75,15 +76,21 @@ const { slidesWithTurningMode } = useSlidesWithTurningMode()
 const toolVisible = ref(false)
 
 const playerSize = ref({ width: 0, height: 0 })
+const landscape = ref(false) // a phone held sideways already shows the slide the right way up
+
+const measure = () => {
+  const { clientWidth: w, clientHeight: h } = document.body
+  landscape.value = w > h
+  playerSize.value = landscape.value ? { width: w, height: h } : { width: h, height: w }
+}
 
 onMounted(() => {
-  if (slideIndex.value !== 0) slidesStore.updateSlideIndex(0)
+  if (slideIndex.value !== 0 && !host) slidesStore.updateSlideIndex(0) // inside ChatSlide: stay on the page being worked on
 
-  playerSize.value = {
-    width: document.body.clientHeight,
-    height: document.body.clientWidth,
-  }
+  measure()
+  window.addEventListener('resize', measure)
 })
+onUnmounted(() => window.removeEventListener('resize', measure))
 
 const slideSize = computed(() => {
   const playerRatio = playerSize.value.height / playerSize.value.width
@@ -122,8 +129,9 @@ const touchEndListener = (e: TouchEvent) => {
   const offsetAbsY = Math.abs(offsetY)
 
   if ( offsetAbsX > offsetAbsY && offsetAbsX > 50 ) {
-    if (offsetX < 0 && slideIndex.value > 0) slidesStore.updateSlideIndex(slideIndex.value - 1)
-    if (offsetX > 0 && slideIndex.value < slides.value.length - 1) slidesStore.updateSlideIndex(slideIndex.value + 1)
+    const toLeft = landscape.value ? offsetX > 0 : offsetX < 0
+    if (toLeft && slideIndex.value > 0) slidesStore.updateSlideIndex(slideIndex.value - 1)
+    if (!toLeft && slideIndex.value < slides.value.length - 1) slidesStore.updateSlideIndex(slideIndex.value + 1)
   }
 
   if ( offsetAbsY > offsetAbsX && offsetAbsY > 50 ) {

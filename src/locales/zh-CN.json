@@ -1168,5 +1168,6 @@
   "Comments on slide {p0}": "幻灯片 {p0} 上的批注",
   "Comment on the selected element": "批注选中的元素",
   "Comment on this slide": "批注这张幻灯片",
-  "Selection ({p0}/{p1})": "已选元素（{p0}/{p1}）"
+  "Selection ({p0}/{p1})": "已选元素（{p0}/{p1}）",
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手机上暂不支持“设计”面板。你可以在这里让我更改主题，或在电脑上打开这份演示文稿。"
 }
