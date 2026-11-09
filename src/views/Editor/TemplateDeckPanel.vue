@@ -464,7 +464,7 @@ const createdThisMessage = new Set<string>() // pages added since the message wa
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
-  .filter(([k]) => !['query', 'instruction', 'photo_query', 'answer', 'source'].includes(k)).sort()))}`
+  .filter(([k]) => !['answer', 'source'].includes(k)).sort()))}` // what to change stays in: "no, red instead" is a new step
 // what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
 const overlapNote = (sl: Slide) => {
   const els = readingOrder(sl).filter((e: any) => (e.type === 'image' && !isBackdrop(e)) || elText(e))
@@ -1630,7 +1630,7 @@ const deckTurn = async (text: string) => {
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
-    if (extra && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
+    if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
       await snapshotStore.reDo()
       pendingInstead = ''
       // the "Undone." line no longer describes the deck: the change is back
