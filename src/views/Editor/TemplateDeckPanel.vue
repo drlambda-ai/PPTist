@@ -1782,6 +1782,13 @@ const restart = () => {
 // Video and sharing use it. Only pages that changed since the last sync are rendered and uploaded.
 const renderRef = ref<HTMLElement>()
 const toRender = ref<Slide[]>([])
+// one off-screen renderer: a sync and an export take turns, or one replaces the pages the other is drawing
+let renderer: Promise<unknown> = Promise.resolve()
+const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
+  const run = renderer.then(job)
+  renderer = run.catch(() => undefined)
+  return run
+}
 const hashOf = (x: string) => {
   let h = 5381
   for (let i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0
@@ -1794,8 +1801,7 @@ const plainText = (sl: Slide) => sl.elements
 const pageKeys = (deck: Slide[]) => deck.map(sl => `${sl.id}-${hashOf(JSON.stringify(sl))}`)
 // PDF / images straight from the chat, using the same off-screen pages: a real file (the Export window's PDF is the
 // browser's print dialog, which gives no file). A page that cannot be drawn fails the export, it never goes missing.
-const downloadRendered = async (format: 'pdf' | 'images', progress: (i: number, n: number) => void) => {
-  await syncing // ponytail: one off-screen renderer, shared with the sync
+const downloadRendered = (format: 'pdf' | 'images', progress: (i: number, n: number) => void) => withRenderer(async () => {
   toRender.value = JSON.parse(JSON.stringify(slides.value))
   try {
     await nextTick()
@@ -1824,7 +1830,7 @@ const downloadRendered = async (format: 'pdf' | 'images', progress: (i: number, 
   finally {
     toRender.value = []
   }
-}
+})
 
 let syncing: Promise<void> | null = null
 const syncOnce = async () => {
@@ -1835,16 +1841,22 @@ const syncOnce = async () => {
   const need = deck.filter((_, i) => !urls[keys[i]])
   const images: Record<string, Blob> = {}
   if (need.length) {
-    toRender.value = need
-    await nextTick()
-    await new Promise(r => setTimeout(r, 400)) // images inside the pages load
-    const nodes = [...(renderRef.value?.children || [])] as HTMLElement[]
-    for (const [j, sl] of need.entries()) {
-      nodes[j].querySelectorAll('foreignObject [xmlns]').forEach(e => e.removeAttribute('xmlns'))
-      const dataUrl = await toJpeg(nodes[j], { quality: 0.9, width: 1600, fontEmbedCSS: '' })
-      images[keys[deck.indexOf(sl)]] = await (await fetch(dataUrl)).blob()
-    }
-    toRender.value = []
+    await withRenderer(async () => {
+      toRender.value = need
+      try {
+        await nextTick()
+        await new Promise(r => setTimeout(r, 400)) // images inside the pages load
+        const nodes = [...(renderRef.value?.children || [])] as HTMLElement[]
+        for (const [j, sl] of need.entries()) {
+          nodes[j].querySelectorAll('foreignObject [xmlns]').forEach(e => e.removeAttribute('xmlns'))
+          const dataUrl = await toJpeg(nodes[j], { quality: 0.9, width: 1600, fontEmbedCSS: '' })
+          images[keys[deck.indexOf(sl)]] = await (await fetch(dataUrl)).blob()
+        }
+      }
+      finally {
+        toRender.value = []
+      }
+    })
   }
   const got = await chatslide!.sync(deck.map((sl, i) => ({
     key: keys[i], url: urls[keys[i]], image: images[keys[i]], text: plainText(sl), notes: plain(sl.remark),
@@ -1863,7 +1875,6 @@ const syncToChatSlide = () => syncing ||= (async () => {
   }
   finally {
     syncing = null
-    toRender.value = []
   }
 })()
 
