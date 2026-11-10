@@ -10,6 +10,8 @@ export interface ScreenState {
   snapshotLength: number
 }
 
+let adding: Promise<void> = Promise.resolve()
+
 export const useSnapshotStore = defineStore('snapshot', {
   state: (): ScreenState => ({
     snapshotCursor: -1, // 历史快照指针
@@ -45,11 +47,21 @@ export const useSnapshotStore = defineStore('snapshot', {
       this.setSnapshotLength(1)
     },
   
-    async addSnapshot() {
+    // one at a time, and none equal to the latest: two hooks' debounces fired together and the first Undo did nothing
+    addSnapshot() {
+      adding = adding.then(() => this.addSnapshotNow()).catch(() => undefined)
+      return adding
+    },
+
+    async addSnapshotNow() {
       const slidesStore = useSlidesStore()
 
       // 获取当前indexeddb中全部快照的ID
       const allKeys = await db.snapshots.orderBy('id').keys()
+      if (allKeys.length && this.snapshotCursor === allKeys.length - 1) {
+        const latest = await db.snapshots.get(allKeys[this.snapshotCursor] as number)
+        if (latest && JSON.stringify(latest.slides) === JSON.stringify(slidesStore.slides)) return
+      }
   
       let needDeleteKeys: IndexableTypeArray = []
   
