@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "J’ai effectué une modification sur l’ensemble de la présentation dans ce message ; envoyez la suivante dans un message distinct.",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Supprimer {p0} pages ({p1}) ? Rien n’a encore été supprimé.",
   "Yes, delete them": "Oui, les supprimer",
-  "No, keep them": "Non, les conserver"
+  "No, keep them": "Non, les conserver",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "La taille du texte a été modifiée dans {p0} zones de texte sur {p1} page(s).",
+  "That page has no text to match.": "Cette page ne contient aucun texte à faire correspondre."
 }

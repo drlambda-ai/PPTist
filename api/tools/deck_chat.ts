@@ -82,6 +82,12 @@ const TOOLS = [
     same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
   }, ['pages', 'font', 'same_as_page', 'scope']),
+  fn('set_font_size', 'Make text bigger or smaller, on some or all pages (done directly, exact): "title bigger", "more", "font size like slide 1".', {
+    pages: { ...pages, description: 'Pages; empty = every page' },
+    scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
+    scale: { type: 'number', description: 'Factor: 1.25 = bigger / "more" / "a bit more", 1.5 = much bigger / "so it reads from the back", 0.8 = smaller' },
+    same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
+  }, ['pages', 'scope', 'scale', 'same_as_page']),
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
     instruction: { type: 'string' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
@@ -233,6 +239,9 @@ Rules:
    Exchanging two pages -> swap_pages. A full new order or a sort -> reorder_pages.
 4. Anything about what is ON a page (text, fonts, colours, sizes, positions of text/images/shapes) -> edit_page for that page.
    Only a font FAMILY change (字体/font/Schrift/шрифт) -> set_font, never edit_page/edit_all_pages.
+   Only a text SIZE change ("bigger", "to hơn", "більше", "size like slide 1") -> set_font_size, never edit_page/
+   edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
+   No page named -> the current page; "all slides"/"cả 10 slide" -> every page.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
    Removing pictures -> remove_images (not edit_page).
@@ -312,7 +321,7 @@ Rules:
    Hello/thanks/small talk -> answer_question, briefly. "Help me create a new project" with no topic -> open_step dashboard.
    A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief.
    A change that does not say where and could mean this slide or the whole deck ("make this more persuasive", "make it
-   shorter", "make the font bigger", "fix it", "try a different layout") -> edit_page on the current page with
+   shorter", "fix it", "try a different layout") -> edit_page on the current page with
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.

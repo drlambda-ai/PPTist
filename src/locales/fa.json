@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "در این پیام یک تغییر در کل ارائه ایجاد کردم؛ مورد بعدی را در پیامی جداگانه بفرستید.",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "{p0} صفحه ({p1}) حذف شوند؟ هنوز چیزی حذف نشده است.",
   "Yes, delete them": "بله، حذفشان کن",
-  "No, keep them": "نه، نگه‌شان دار"
+  "No, keep them": "نه، نگه‌شان دار",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "اندازهٔ متن در {p0} کادر متنی در {p1} صفحه تغییر کرد.",
+  "That page has no text to match.": "متنی برای تطبیق در آن صفحه وجود ندارد."
 }

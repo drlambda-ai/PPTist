@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "أجريت تغييرًا واحدًا على العرض التقديمي بالكامل في هذه الرسالة؛ أرسل التغيير التالي في رسالة منفصلة.",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "هل تريد حذف {p0} صفحات ({p1})؟ لم يُحذف أي شيء بعد.",
   "Yes, delete them": "نعم، احذفها",
-  "No, keep them": "لا، احتفظ بها"
+  "No, keep them": "لا، احتفظ بها",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "تم تغيير حجم النص في {p0} مربعات نص عبر {p1} صفحات.",
+  "That page has no text to match.": "لا يوجد نص للمطابقة في هذه الصفحة."
 }

@@ -1257,6 +1257,38 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     return t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length })
   }
+  if (action === 'set_font_size') { // direct, like set_font: "title bigger", "more" got barely-changed model rewrites (2026-11-10)
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const isTitle = (sl: any, e: any) => e.textType === 'title' || e.text?.type === 'title' || e === readingOrder(sl).find((x: any) => elText(x))
+    const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
+      && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
+    const html = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
+    const sizes = (h: string) => [...h.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
+    let to = 0 // "same size as page N": that page's largest size in the same scope
+    if (args.same_as_page > 0) {
+      const sl = slides.value[args.same_as_page - 1]
+      to = Math.max(0, ...(sl?.elements || []).filter((e: any) => inScope(sl, e)).flatMap((e: any) => sizes(html(e)).length ? sizes(html(e)) : [16]))
+      if (!to) fail(t('That page has no text to match.'))
+    }
+    const k = Math.min(3, Math.max(0.3, Number(args.scale) || 1.25))
+    const resize = (h: string) => {
+      const doc = new DOMParser().parseFromString(h, 'text/html')
+      if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' }) // PPTist's default
+      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${Math.max(8, Math.round(to || +n * k))}px`)
+    }
+    let n = 0
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      for (const e of sl.elements as any[]) {
+        if (!inScope(sl, e)) continue
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: resize(e.content) }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content: resize(e.text.content) } }, slideId: id })
+        n++
+      }
+    }
+    touched(targets)
+    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
+  }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
     const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one

@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "Tôi đã thực hiện một thay đổi cho toàn bộ bộ slide trong tin nhắn này; hãy gửi yêu cầu tiếp theo trong một tin nhắn riêng.",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Xóa {p0} trang ({p1})? Chưa có gì bị xóa.",
   "Yes, delete them": "Có, xóa chúng",
-  "No, keep them": "Không, giữ lại"
+  "No, keep them": "Không, giữ lại",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "Đã đổi kích thước văn bản trong {p0} hộp văn bản trên {p1} trang.",
+  "That page has no text to match.": "Trang đó không có văn bản để khớp."
 }

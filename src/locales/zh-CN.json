@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "我已在这条消息中对整个演示文稿进行了一项更改；请将下一项单独发送一条消息。",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "删除 {p0} 页（{p1}）？目前尚未删除任何内容。",
   "Yes, delete them": "是，删除",
-  "No, keep them": "否，保留"
+  "No, keep them": "否，保留",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "已调整 {p1} 页中 {p0} 个文本框的文字大小。",
+  "That page has no text to match.": "该页没有可匹配的文本。"
 }

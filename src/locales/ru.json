@@ -1175,5 +1175,7 @@
   "I made one deck-wide change in this message; send the next one as its own message.": "В этом сообщении я внёс одно изменение во всю презентацию; отправьте следующее отдельным сообщением.",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Удалить страницы: {p0} ({p1})? Пока ничего не удалено.",
   "Yes, delete them": "Да, удалить",
-  "No, keep them": "Нет, оставить"
+  "No, keep them": "Нет, оставить",
+  "Resized the text in {p0} text boxes across {p1} page(s).": "Размер текста изменён в {p0} текстовых блоках на {p1} стр.",
+  "That page has no text to match.": "На этой странице нет текста для сопоставления."
 }
