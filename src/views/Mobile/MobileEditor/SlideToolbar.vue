@@ -90,7 +90,8 @@ const insertShapeElement = (type: 'square' | 'round') => {
 // notes are stored as HTML paragraphs (the desktop notes editor writes them): edited here as plain lines
 const remark = computed(() => {
   const body = new DOMParser().parseFromString(currentSlide.value?.remark || '', 'text/html').body
-  return body.children.length ? [...body.children].map(p => p.textContent).join('\n') : body.textContent || ''
+  body.querySelectorAll('br').forEach(br => br.replaceWith('\n')) // a line break inside a paragraph stays one
+  return body.children.length ? [...body.children].map(p => [...p.querySelectorAll('li')].map(li => li.textContent).join('\n') || p.textContent).join('\n') : body.textContent || ''
 })
 
 const handleInputMark = (e: Event) => {
