@@ -1773,7 +1773,19 @@ const deckTurn = async (text: string) => {
   const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
-  say('assistant', await finalize(text, reply) + fee)
+  const said = await finalize(text, reply)
+  say('assistant', said + fee)
+  recordTurn(text, said, done, true)
+}
+
+// ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
+// arguments, result), so a complaint like "I don't see a change" can be traced to the edit before it. Never charged.
+const recordTurn = (message: string, reply: string, steps: string[], ok: boolean) => {
+  if (!chatslide) return
+  fetch('/api/record_turn', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30) }),
+  }).catch(() => undefined)
 }
 
 // Every turn's reply in the language of the user's message: the code's lines follow the app language and the
@@ -1802,6 +1814,7 @@ const send = () => {
     }
     catch (e) { // never leave a half-applied operation (e.g. an inserted page that was never rewritten)
       slidesStore.setSlides(before)
+      recordTurn(text, String((e as Error)?.message || e), [], false)
       throw e
     }
   })

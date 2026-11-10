@@ -58,7 +58,7 @@ export const host: ChatSlideHost | null = (() => {
 })()
 
 // PPTist's own endpoints (fixed paths in this app), moved under the proxy
-const OWN = /^\/api\/(deck|deck_config|deck_upload|deck_put|tools\/)/
+const OWN = /^\/api\/(deck|deck_config|deck_upload|deck_put|record_turn|tools\/)/
 export const route = (url: string) => {
   const u = new URL(url, location.origin)
   return u.origin === location.origin && OWN.test(u.pathname) ? `/api/pptist${u.pathname}${u.search}` : null
@@ -74,6 +74,7 @@ if (host) {
     const headers = new Headers(init?.headers || req.headers)
     headers.set('Authorization', `Bearer ${await host.token()}`)
     headers.set('x-turn-id', turnId)
+    headers.set('x-project-id', host.projectId) // ChatSlide records each chat turn per project, for review
     const r = await fetch0(new Request(req, { ...init, headers }))
     if (r.status === 402) {
       const data = await r.json().catch(() => ({}))
