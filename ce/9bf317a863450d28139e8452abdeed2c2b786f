@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high), review of the fix round afcc6f58..53229a96 and app 256bdf79b..bb612c549
+Reviewed-At: 2026-11-10T03:38:11Z
+Fixed: blank loading page saved over a deck through other save paths; queued undo snapshots capturing a later state; nested note lists duplicated
+Declined-By: Claude Code
+Declined: remove-all-pictures keeps a page's only full-slide photo (indistinguishable from a template background, the case the earlier fix protects; images [0] still removes it).
