@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-10T11:08:20Z
+Declined-By: Claude Code
+Declined: no per-user cap on turn records (P2). Only signed-in users can write, each field is capped, and abuse shows up in the review report itself; add a cap if the log ever grows from it.
