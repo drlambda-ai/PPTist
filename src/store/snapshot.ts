@@ -49,18 +49,21 @@ export const useSnapshotStore = defineStore('snapshot', {
   
     // one at a time, and none equal to the latest: two hooks' debounces fired together and the first Undo did nothing
     addSnapshot() {
-      adding = adding.then(() => this.addSnapshotNow()).catch(() => undefined)
+      const slidesStore = useSlidesStore()
+      // the deck as it is now, not when the queue gets to it: queued edits B and C were both recorded as C
+      const snapshot = { index: slidesStore.slideIndex, slides: JSON.parse(JSON.stringify(slidesStore.slides)) }
+      adding = adding.then(() => this.addSnapshotNow(snapshot)).catch(() => undefined)
       return adding
     },
 
-    async addSnapshotNow() {
+    async addSnapshotNow(snapshot: { index: number, slides: any[] }) {
       const slidesStore = useSlidesStore()
 
       // 获取当前indexeddb中全部快照的ID
       const allKeys = await db.snapshots.orderBy('id').keys()
       if (allKeys.length && this.snapshotCursor === allKeys.length - 1) {
         const latest = await db.snapshots.get(allKeys[this.snapshotCursor] as number)
-        if (latest && JSON.stringify(latest.slides) === JSON.stringify(slidesStore.slides)) return
+        if (latest && JSON.stringify(latest.slides) === JSON.stringify(snapshot.slides)) return
       }
   
       let needDeleteKeys: IndexableTypeArray = []
@@ -73,10 +76,6 @@ export const useSnapshotStore = defineStore('snapshot', {
       }
   
       // 添加新快照
-      const snapshot = {
-        index: slidesStore.slideIndex,
-        slides: JSON.parse(JSON.stringify(slidesStore.slides)),
-      }
       await db.snapshots.add(snapshot)
   
       // 计算当前快照长度，用于设置快照指针的位置（此时指针应该处在最后一位，即：快照长度 - 1）
@@ -92,7 +91,7 @@ export const useSnapshotStore = defineStore('snapshot', {
       // 快照数大于1时，需要保证撤回操作后维持页面焦点不变：也就是将倒数第二个快照对应的索引设置为当前页的索引
       // https://github.com/pipipi-pikachu/PPTist/issues/27
       if (snapshotLength >= 2) {
-        db.snapshots.update(allKeys[snapshotLength - 2] as number, { index: slidesStore.slideIndex })
+        db.snapshots.update(allKeys[snapshotLength - 2] as number, { index: snapshot.index })
       }
   
       await db.snapshots.bulkDelete(needDeleteKeys as number[])

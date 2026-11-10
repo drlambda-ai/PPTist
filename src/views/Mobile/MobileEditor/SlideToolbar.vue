@@ -91,7 +91,7 @@ const insertShapeElement = (type: 'square' | 'round') => {
 const remark = computed(() => {
   const body = new DOMParser().parseFromString(currentSlide.value?.remark || '', 'text/html').body
   body.querySelectorAll('br').forEach(br => br.replaceWith('\n')) // a line break inside a paragraph stays one
-  return body.children.length ? [...body.children].map(p => [...p.querySelectorAll('li')].map(li => li.textContent).join('\n') || p.textContent).join('\n') : body.textContent || ''
+  return body.children.length ? [...body.children].map(p => [...p.children].filter(li => li.tagName === 'LI').map(li => li.textContent).join('\n') || p.textContent).join('\n') : body.textContent || ''
 })
 
 const handleInputMark = (e: Event) => {

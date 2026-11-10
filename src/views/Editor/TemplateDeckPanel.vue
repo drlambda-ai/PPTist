@@ -139,7 +139,9 @@ const SLIDES_KEY = 'ai-deck-slides'
 let saveTimer = 0
 let syncTimer = 0
 let saveFailed = false
+let loadingPage = '' // while a project's deck is being converted: never saved, or the blank page replaces the deck
 const save = () => {
+  if (chatslide && loadingPage && slides.value.map(x => x.id).join() === loadingPage) return
   if (chatslide) { // per project, debounced; also after manual edits (watch below)
     clearTimeout(saveTimer)
     clearTimeout(syncTimer)
@@ -1915,7 +1917,7 @@ onMounted(() => {
       }
       else {
         const link = await chatslide!.pptx()
-        const blank = slides.value.map(x => x.id).join() // the empty page shown while it loads
+        loadingPage = slides.value.map(x => x.id).join() // the empty page shown while it loads
         const loaded = new Promise<void>(res => {
           const stop = watch(slides, () => {
             stop()
@@ -1930,7 +1932,7 @@ onMounted(() => {
         URL.revokeObjectURL(link)
         // saved at once: the saved deck is what makes the project open in this editor next time. Never a failed
         // conversion: a saved blank page would be opened instead of the project's slides from then on
-        if (slides.value.map(x => x.id).join() !== blank) save()
+        save()
       }
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
