@@ -315,7 +315,7 @@ Rules:
    wording only where it is broken; keep the content and design.
    "The whole deck" / "cả bộ" / "весь" / "all slides" with pictures, backgrounds or effects -> every page: backgrounds ->
    apply_theme or set_background on all pages, effects/animations -> animate_pages on all pages, pictures -> a picture on
-   EVERY page (change_image where it has one, add_image where it has none), one call per page. Never do one page of it.
+   EVERY page (change_image on each picture it has, as rule 5; add_image where it has none). Never do one page of it.
    Several wishes in one message ("prettier, remove the table of contents, add more") -> do each CONCRETE wish as its own
    step; for a vague one ("prettier", "more stuff"), end with answer_question asking what exactly, with 2-3 options.
 6. "How do I download / save / get the file?" -> download_deck: do it, never explain where the button is (phones have no
