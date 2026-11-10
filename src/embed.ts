@@ -28,6 +28,13 @@ export interface ChatSlideHost {
   generateImage?: (prompt: string, aspectRatio: '16:9' | '9:16') => Promise<{ src?: string, error?: string }>
 }
 
+// The Share button (desktop and phone bars): the editor had none, so shares fell to zero at launch (2026-11-10).
+export async function shareDeck(t: (k: string, v?: Record<string, string | number>) => string, say: (text: string) => void) {
+  if (!host?.share || !host.canExport()) return // canExport() false opens ChatSlide's upgrade prompt
+  const { url, copied } = await host.share()
+  say(t('Sharing is on: {p0}', { p0: url }) + (copied ? t(' (link copied)') : ''))
+}
+
 // A proxied call that ChatSlide refused for lack of credits (HTTP 402).
 export class OutOfCredits extends Error {
   credits = 0

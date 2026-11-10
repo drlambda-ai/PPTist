@@ -100,6 +100,9 @@
       <div class="menu-item" v-tooltip="t('导出')" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
       </div>
+      <div class="menu-item" v-if="chatslide?.share" v-tooltip="t('分享')" :aria-label="t('分享')" @click="shareDeck(t, m => message.success(m))">
+        <i-icon-park-outline:share class="icon" />
+      </div>
       <!-- AGPL-3.0: users of the hosted editor get its source (inside ChatSlide: our fork, as deployed) -->
       <a class="github-link" v-tooltip="chatslide ? 'Source code (AGPL-3.0) · © pipipi-pikachu' : 'Copyright © 2020-PRESENT pipipi-pikachu'" :aria-label="'Source code (AGPL-3.0)'" :href="chatslide ? 'https://github.com/drlambda-ai/PPTist' : 'https://github.com/pipipi-pikachu/PPTist'" target="_blank" rel="noopener">
         <div class="menu-item"><i-icon-park-outline:github class="icon" /></div>
@@ -136,7 +139,8 @@ import Input from '@/components/Input.vue'
 import Popover from '@/components/Popover.vue'
 import PopoverMenuItem from '@/components/PopoverMenuItem.vue'
 import Divider from '@/components/Divider.vue'
-import { host as chatslide } from '@/embed'
+import { host as chatslide, shareDeck } from '@/embed'
+import message from '@/utils/message'
 const CHATSLIDE_LOGO = '/images/Chatslide-favicon.svg' // ChatSlide serves it (same origin); not bundled
 
 const mainStore = useMainStore()

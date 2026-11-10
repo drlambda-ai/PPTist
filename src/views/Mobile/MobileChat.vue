@@ -9,8 +9,11 @@
         <span class="count">{{ slideIndex + 1 }} / {{ slides.length }}</span>
         <span class="nav" :class="{ disable: slideIndex === slides.length - 1 }" :aria-label="t('下一页')" @click="go(slideIndex + 1)"><i-icon-park-outline:right /></span>
         <span class="grow"></span>
-        <span class="action" @click="changeMode('editor')"><i-icon-park-outline:edit /> {{ t('编辑') }}</span>
-        <span class="action" @click="changeMode('player')"><i-icon-park-outline:full-screen-play /> {{ t('播放') }}</span>
+        <span class="action" :aria-label="t('编辑')" @click="changeMode('editor')"><i-icon-park-outline:edit /> <span class="label">{{ t('编辑') }}</span></span>
+        <span class="action" :aria-label="t('播放')" @click="changeMode('player')"><i-icon-park-outline:full-screen-play /> <span class="label">{{ t('播放') }}</span></span>
+        <!-- phones had no way to download or share but asking the chat (2026-11-10) -->
+        <span class="nav" :aria-label="t('导出')" @click="download()"><i-icon-park-outline:download /></span>
+        <span class="nav" v-if="host?.share" :aria-label="t('分享')" @click="shareDeck(t, m => message.success(m))"><i-icon-park-outline:share /></span>
         <a class="nav" href="https://github.com/drlambda-ai/PPTist" target="_blank" rel="noopener" aria-label="Source code (AGPL-3.0)"><i-icon-park-outline:github /></a>
       </div>
     </div>
@@ -23,6 +26,9 @@ import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import { t } from '@/i18n'
+import { host, shareDeck } from '@/embed'
+import message from '@/utils/message'
+import useExport from '@/hooks/useExport'
 import type { Mode } from '@/types/mobile'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
@@ -54,6 +60,12 @@ const fit = new ResizeObserver(([e]) => {
 })
 onMounted(() => fit.observe(stageRef.value!))
 onUnmounted(() => fit.disconnect())
+
+const { exportPPTX } = useExport()
+const download = () => {
+  if (host && !host.canExport()) return // ChatSlide opens its upgrade prompt
+  exportPPTX(slides.value, true, false)
+}
 </script>
 
 <style lang="scss" scoped>
@@ -104,6 +116,21 @@ onUnmounted(() => fit.disconnect())
 }
 .grow {
   flex: 1;
+}
+.count {
+  white-space: nowrap;
+}
+// with download and share the bar holds 7 buttons: narrow phones show icons only
+@media (max-width: 480px) {
+  .bar {
+    gap: 0;
+  }
+  .nav, .action {
+    min-width: 40px;
+  }
+  .action .label {
+    display: none;
+  }
 }
 @media (orientation: landscape) {
   .mobile-chat {
