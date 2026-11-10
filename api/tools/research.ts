@@ -1,4 +1,4 @@
-import { chat, getKey, readBody } from '../_llm.js'
+import { addCost, addUsage, chat, getKey, metered, readBody } from '../_llm.js'
 
 // Real lookups for the chat agent, so nothing it calls a source or a photo of a real thing is made up.
 //   {kind: "web", query}        -> {answer, sources: [{title, url}]}  (OpenAI web search; sources are the pages it read)
@@ -17,6 +17,8 @@ const web = async (query: string) => {
   })
   if (!r.ok) throw new Error(`web search ${r.status}: ${(await r.text()).slice(0, 200)}`)
   const data = await r.json()
+  addUsage(process.env.RESEARCH_MODEL || 'gpt-6-luna', data.usage)
+  addCost(0.025 * Math.max(1, (data.output || []).filter((o: any) => o.type === 'web_search_call').length)) // per search, rounded up
   const msg = (data.output || []).filter((o: any) => o.type === 'message').flatMap((o: any) => o.content || [])
   const answer = msg.map((c: any) => c.text || '').join('\n').trim()
   const seen = new Set<string>()
@@ -107,7 +109,7 @@ const readUrl = async (url: string) => {
   return { title: d.name || d.title || url, text: String(d.content || '').slice(0, 60000), kind: yt ? 'video transcript' : 'web page' }
 }
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
     const { kind = '', query = '' } = await readBody(req)
@@ -122,3 +124,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: String(e?.message || e) })
   }
 }
+
+export default metered(handler)

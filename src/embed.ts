@@ -37,6 +37,10 @@ export class OutOfCredits extends Error {
 // Credits the proxy charged since the last takeSpend() (read by the chat panel for its footnote).
 let spent = 0
 let left = -1
+// ChatSlide charges a chat message what its AI calls cost, at least a credit: its signed running total goes back
+// with each call of the message (newTurn starts the next message)
+let ticket = ''
+export const newTurn = () => { ticket = '' }
 export const takeSpend = () => {
   const out = { charged: spent, left }
   spent = 0
@@ -69,7 +73,9 @@ if (host) {
     const req = new Request(to, input instanceof Request ? input : undefined)
     const headers = new Headers(init?.headers || req.headers)
     headers.set('Authorization', `Bearer ${await host.token()}`)
+    if (ticket) headers.set('x-turn-ticket', ticket)
     const r = await fetch0(new Request(req, { ...init, headers }))
+    ticket = r.headers.get('x-turn-ticket') || ticket
     if (r.status === 402) {
       const data = await r.json().catch(() => ({}))
       if (!headers.get('X-Quiet-402')) host.outOfCredits?.() // quiet: the caller has a free way to do it

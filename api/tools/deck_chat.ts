@@ -1,4 +1,4 @@
-import { FALLBACK_MODEL, chat, getKey, readBody, vendorDown } from '../_llm.js'
+import { FALLBACK_MODEL, addUsage, chat, getKey, metered, readBody, vendorDown } from '../_llm.js'
 
 // Deck-level chat router, modelled on ChatSlide's assistant menu (chatslide-backend util/assistant/slide_tools.json)
 // but able to do several steps: the editor calls it in a loop, applying each round's calls and sending back what was
@@ -390,7 +390,9 @@ const viaOpenAI = async (model: string, context: string, history: any[], user: s
     }),
   })
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
-  return ((await r.json()).choices?.[0]?.message?.tool_calls || []).map((c: any) => ({ action: c.function?.name || 'answer_question', args: parseArgs(c.function?.arguments) }))
+  const data = await r.json()
+  addUsage(model, data.usage)
+  return (data.choices?.[0]?.message?.tool_calls || []).map((c: any) => ({ action: c.function?.name || 'answer_question', args: parseArgs(c.function?.arguments) }))
 }
 
 // gpt-6.x: function tools with reasoning are only served by the Responses API
@@ -405,7 +407,9 @@ const viaResponses = async (model: string, context: string, history: any[], user
     }),
   })
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
-  return ((await r.json()).output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
+  const data = await r.json()
+  addUsage(model, data.usage)
+  return (data.output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
@@ -436,13 +440,15 @@ const viaAnthropic = async (model: string, context: string, history: any[], user
     }),
   })
   if (!r.ok) throw new Error(`Anthropic ${r.status}: ${await r.text()}`)
-  const content = (await r.json()).content || []
+  const data = await r.json()
+  addUsage(model, data.usage)
+  const content = data.content || []
   const used = content.filter((c: any) => c.type === 'tool_use').map((c: any) => ({ action: c.name, args: parseArgs(c.input) }))
   const text = content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n').trim()
   return used.length ? used : [{ action: 'answer_question', args: { answer: text } }] // plain text = an answer
 }
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST only' }); return
   }
@@ -489,3 +495,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: String(e?.message || e) })
   }
 }
+
+export default metered(handler)

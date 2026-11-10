@@ -1,9 +1,9 @@
-import { chat, readBody } from '../_llm.js'
+import { chat, metered, readBody } from '../_llm.js'
 
 // Small JSON helper for the AI panel (chart data, speaker notes, picking an element): one instruction in, one JSON
 // object out.
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'POST only' }); return
   }
@@ -19,3 +19,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: String(e?.message || e) })
   }
 }
+
+export default metered(handler)

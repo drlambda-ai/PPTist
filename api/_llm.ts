@@ -1,4 +1,44 @@
 // Shared OpenAI helpers (no SDK dependency — uses global fetch on Vercel Node runtime).
+import { AsyncLocalStorage } from 'node:async_hooks'
+
+// What each request cost us, for ChatSlide to charge credits by (Quanlai, 2026-11-10: "charge based on the real cost
+// on our side"). $ per 1M tokens [input, cached input, output], read off our OpenAI bill for 2026-11-03..10 and
+// rounded up; Claude from its price list. A model not listed is priced as the dearest, never as free.
+const PRICES: [string, [number, number, number]][] = [
+  ['gpt-6-luna', [0.15, 0.03, 0.6]], ['gpt-5.6-luna', [0.15, 0.03, 1.2]],
+  ['gpt-6.1-sol', [2.5, 0.5, 10]], ['gpt-6.1-terra', [2.5, 0.5, 10]], ['gpt-5.6-terra', [2.5, 0.5, 10]],
+  ['gpt-6-astra', [2.5, 0.5, 15]], ['gpt-5.5', [5, 0.5, 30]], ['gpt-5.4-mini', [0.4, 0.04, 4.5]], ['gpt-5.4', [2.5, 0.25, 15]],
+  ['gpt-4o-mini', [0.15, 0.075, 0.6]], ['gpt-4o', [2.5, 1.25, 10]],
+  ['claude-haiku', [1, 0.1, 5]], ['claude-sonnet', [3, 0.3, 15]], ['claude-opus', [5, 0.5, 25]],
+]
+const meter = new AsyncLocalStorage<{ usd: number }>()
+export const addCost = (usd: number) => {
+  const m = meter.getStore()
+  if (m) m.usd += usd
+}
+// usage as OpenAI chat (prompt_tokens includes cached), OpenAI responses (input_tokens includes cached) or Anthropic
+// (input_tokens excludes cache reads and writes) returns it
+export const addUsage = (model: string, u: any) => {
+  if (!u) return
+  const [pin, pcached, pout] = PRICES.find(([k]) => model.startsWith(k))?.[1] ?? [10, 1, 40]
+  const anthropic = 'cache_read_input_tokens' in u || 'cache_creation_input_tokens' in u
+  const cached = anthropic ? u.cache_read_input_tokens || 0 : u.prompt_tokens_details?.cached_tokens ?? u.input_tokens_details?.cached_tokens ?? 0
+  const fresh = anthropic ? (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) : (u.prompt_tokens ?? u.input_tokens ?? 0) - cached
+  const out = u.completion_tokens ?? u.output_tokens ?? 0
+  addCost((fresh * pin + cached * pcached + out * pout) / 1e6)
+}
+// A handler whose response carries what it cost (header x-ai-cost-usd), read by ChatSlide's credit proxy.
+export const metered = (handler: (req: any, res: any) => Promise<unknown>) => (req: any, res: any) => meter.run({ usd: 0 }, () => {
+  const store = meter.getStore()!
+  for (const k of ['json', 'send', 'end'] as const) {
+    const send = res[k]?.bind(res)
+    if (send) res[k] = (...a: any[]) => {
+      if (!res.headersSent) res.setHeader('x-ai-cost-usd', store.usd.toFixed(6))
+      return send(...a)
+    }
+  }
+  return handler(req, res)
+})
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
@@ -38,7 +78,9 @@ async function claude(messages: any[], opts: ChatOpts): Promise<string> {
     }),
   })
   if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await res.text()}`)
-  const text = ((await res.json()).content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
+  const data = await res.json()
+  addUsage(String(opts.model), data.usage)
+  const text = (data.content || []).filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
   if (!opts.jsonMode) return text
   const a = text.indexOf('{'), b = text.lastIndexOf('}')
   return a >= 0 && b > a ? text.slice(a, b + 1) : '{}'
@@ -76,6 +118,7 @@ export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string
   })
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`)
   const data = await res.json()
+  addUsage(opts.model || 'gpt-4o', data.usage)
   return data.choices?.[0]?.message?.content ?? ''
 }
 

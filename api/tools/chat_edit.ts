@@ -1,4 +1,4 @@
-import { chat, readBody } from '../_llm.js'
+import { chat, metered, readBody } from '../_llm.js'
 
 // Edit chatbot: given the current slide's elements + a natural-language instruction,
 // return the updated elements array. The client merges the result onto the live slide.
@@ -43,7 +43,7 @@ Rules:
 
 Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the language of the instruction>", "elements": [ ...full updated array... ]}.`
 
-export default async function handler(req: any, res: any) {
+async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
     const { elements = [], instruction = '', history = [], slideSize, patch = false, model: asked = '', advanced = false } = await readBody(req)
@@ -85,3 +85,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: String(e?.message || e) })
   }
 }
+
+export default metered(handler)

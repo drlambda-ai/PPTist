@@ -56,7 +56,7 @@ import { t, direction } from '@/i18n'
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { host as chatslide, OutOfCredits, takeSpend } from '@/embed'
+import { host as chatslide, newTurn, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { isPC } from '@/utils/common'
@@ -1544,6 +1544,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 const deckTurn = async (text: string) => {
+  newTurn() // a new message: charged on its own
   userText = text
   editedThisTurn.clear()
   picturedThisTurn.clear()
