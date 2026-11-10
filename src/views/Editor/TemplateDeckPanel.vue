@@ -1719,7 +1719,19 @@ const deckTurn = async (text: string) => {
   const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
-  say('assistant', reply + fee)
+  say('assistant', await finalize(text, reply) + fee)
+}
+
+// Every turn's reply in the language of the user's message: the code's lines follow the app language and the
+// router's own sentences (say_unable, ask_user) came back in Chinese for English messages without this step.
+const finalize = async (instruction: string, reply: string) => {
+  try {
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction }) })).json()
+    return r.reply || reply
+  }
+  catch {
+    return reply
+  }
 }
 
 const send = () => {
