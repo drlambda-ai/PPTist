@@ -66,12 +66,14 @@ export default async function handler(req: any, res: any) {
     const raw = await chat(messages, { jsonMode: true, model: advanced === true ? 'gpt-6.1-sol' : process.env.VERCEL_ENV !== 'production' && ['gpt-6-luna', 'gpt-5.5', 'gpt-6.1-sol', 'gpt-6.1-terra', 'claude-sonnet-5-5', 'claude-haiku-5-5'].includes(asked) ? asked : (process.env.SLIDE_EDIT_MODEL || 'gpt-6-luna'), effort: 'low', maxTokens: 32000 })
     let parsed: any
     try { parsed = JSON.parse(raw) }
-    catch { res.status(200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }
+    // an advanced edit is paid: a failed one answers an error status, so ChatSlide's proxy refunds the credit
+    catch { res.status(advanced === true ? 502 : 200).json({ reply: raw || 'Sorry, I could not edit that.', elements: null }); return }
 
     if (patch) {
       const ok = Array.isArray(parsed.changes) || Array.isArray(parsed.added) || Array.isArray(parsed.removed)
       const arr = (v: any) => (Array.isArray(v) ? v : []) // a malformed field becomes empty, never a crash downstream
-      res.status(200).json({ reply: parsed.reply || 'Done.', too_hard: parsed.too_hard === true, patch: ok ? { changes: arr(parsed.changes), added: arr(parsed.added), removed: arr(parsed.removed) } : null })
+      const empty = !ok || !(arr(parsed.changes).length || arr(parsed.added).length || arr(parsed.removed).length)
+      res.status(advanced === true && empty ? 422 : 200).json({ reply: parsed.reply || 'Done.', too_hard: parsed.too_hard === true, patch: ok ? { changes: arr(parsed.changes), added: arr(parsed.added), removed: arr(parsed.removed) } : null })
       return
     }
     res.status(200).json({

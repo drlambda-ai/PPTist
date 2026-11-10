@@ -1169,5 +1169,7 @@
   "Comment on the selected element": "批注选中的元素",
   "Comment on this slide": "批注这张幻灯片",
   "Selection ({p0}/{p1})": "已选元素（{p0}/{p1}）",
-  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手机上暂不支持“设计”面板。你可以在这里让我更改主题，或在电脑上打开这份演示文稿。"
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手机上暂不支持“设计”面板。你可以在这里让我更改主题，或在电脑上打开这份演示文稿。",
+  "No page was changed. {p0}": "未更改任何页面。{p0}",
+  "I made one deck-wide change in this message; send the next one as its own message.": "我已在这条消息中对整个演示文稿进行了一项更改；请将下一项单独发送一条消息。"
 }

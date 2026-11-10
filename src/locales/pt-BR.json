@@ -1169,5 +1169,7 @@
   "Comment on the selected element": "Comentar o elemento selecionado",
   "Comment on this slide": "Comentar este slide",
   "Selection ({p0}/{p1})": "Seleção ({p0}/{p1})",
-  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "O painel Design ainda não está disponível em celulares. Peça aqui para eu mudar o tema ou abra esta apresentação em um computador."
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "O painel Design ainda não está disponível em celulares. Peça aqui para eu mudar o tema ou abra esta apresentação em um computador.",
+  "No page was changed. {p0}": "Nenhuma página foi alterada. {p0}",
+  "I made one deck-wide change in this message; send the next one as its own message.": "Fiz uma alteração em toda a apresentação nesta mensagem; envie a próxima em outra mensagem."
 }

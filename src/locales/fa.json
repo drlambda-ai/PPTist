@@ -1169,5 +1169,7 @@
   "Comment on the selected element": "نظر درباره عنصر انتخاب‌شده",
   "Comment on this slide": "نظر درباره این اسلاید",
   "Selection ({p0}/{p1})": "انتخاب ({p0}/{p1})",
-  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "پنل طراحی هنوز در گوشی‌ها در دسترس نیست. اینجا از من بخواهید تم را تغییر دهم، یا این ارائه را در رایانه باز کنید."
+  "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "پنل طراحی هنوز در گوشی‌ها در دسترس نیست. اینجا از من بخواهید تم را تغییر دهم، یا این ارائه را در رایانه باز کنید.",
+  "No page was changed. {p0}": "هیچ صفحه‌ای تغییر نکرد. {p0}",
+  "I made one deck-wide change in this message; send the next one as its own message.": "در این پیام یک تغییر در کل ارائه ایجاد کردم؛ مورد بعدی را در پیامی جداگانه بفرستید."
 }

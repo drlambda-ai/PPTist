@@ -180,43 +180,33 @@ const externalizeImages = async () => {
   for (const sl of slides.value) {
     for (const e of sl.elements as any[]) {
       if (e.type === 'image' && e.src?.startsWith('data:image/')) {
-        const url = await swap(e.src)
-        if (url !== e.src) slidesStore.updateElement({ id: e.id, props: { src: url }, slideId: sl.id })
+        const src = e.src
+        const url = await swap(src)
+        // only the picture that was uploaded: a newer one placed while it uploaded stays
+        const live: any = slides.value.find(x => x.id === sl.id)?.elements.find(x => x.id === e.id)
+        if (url !== src && live?.src === src) slidesStore.updateElement({ id: e.id, props: { src: url }, slideId: sl.id })
       }
     }
     const bg = sl.background as any
     if (bg?.type === 'image' && bg.image?.src?.startsWith('data:image/')) {
-      const url = await swap(bg.image.src)
-      if (url !== bg.image.src) slidesStore.updateSlide({ background: { ...bg, image: { ...bg.image, src: url } } }, sl.id)
+      const src = bg.image.src
+      const url = await swap(src)
+      const live = slides.value.find(x => x.id === sl.id)?.background as any
+      if (url !== src && live?.image?.src === src) slidesStore.updateSlide({ background: { ...live, image: { ...live.image, src: url } } }, sl.id)
     }
   }
 }
 
-// A text box whose wording and box did not change has no reason for a smaller font: "make the title bigger" also
-// shrank the headline 32 -> 30px. Such a shrink is reverted (text that changed or outgrew its box may still shrink).
-const fontSizes = (html = '') => [...html.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
+// The full-slide background picture keeps its box: "make the picture bigger" also stretched it to the canvas.
+// Backgrounds change through set_background / change_image(image 0), never as a side effect of a page edit; the one
+// exception is a page whose only picture it is, where "the picture" can mean nothing else.
 const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
   const sl = slides.value[i]
-  const html = (e: any) => (e?.type === 'text' ? e.content : e?.text?.content) || ''
-  // only an edit that made some text BIGGER can have shrunk others as a side effect; when nothing grew, a smaller font
-  // is what was asked ("make the bullet points smaller", "the text runs off the page") and stays
-  const grew = (was as any[]).some(o => {
-    const n = sl.elements.find(e => e.id === o.id) as any
-    return n && Math.max(0, ...fontSizes(html(n))) > Math.max(0, ...fontSizes(html(o)))
-  })
+  if ((was as any[]).filter(e => e.type === 'image').length < 2) return
   for (const old of was as any[]) {
     const now = sl.elements.find(e => e.id === old.id) as any
-    // the full-slide background picture keeps its box: "make the picture bigger" also stretched it to the canvas.
-    // Backgrounds change through set_background / change_image(image 0), never as a side effect of a page edit.
     if (now && old.type === 'image' && isBackdrop(old) && ['left', 'top', 'width', 'height'].some(k => now[k] !== old[k])) {
       slidesStore.updateElement({ id: old.id, props: { left: old.left, top: old.top, width: old.width, height: old.height }, slideId: sl.id })
-      continue
-    }
-    if (!grew || !now || now.type !== old.type || !['text', 'shape'].includes(now.type)) continue
-    const same = elText(now) === elText(old) && now.width === old.width && now.height === old.height
-    const shrank = fontSizes(html(now)).some((v, k) => v < (fontSizes(html(old))[k] ?? v))
-    if (same && shrank) {
-      slidesStore.updateElement({ id: old.id, props: now.type === 'text' ? { content: old.content } : { text: { ...now.text, content: old.text.content } }, slideId: sl.id })
     }
   }
 }
@@ -478,7 +468,19 @@ const overlapNote = (sl: Slide) => {
   return pairs.length ? `\n(Measured on this page, these elements overlap: ${pairs.slice(0, 8).join('; ')}. Fix them when the request is about layout, overlap, or text that is covered or cut off.)` : ''
 }
 
+// Out of credits for the advanced model: the standard one (no credit) does the edit, without the paywall.
 const editSlide = async (index: number, instruction: string, advanced = false) => {
+  if (advanced) {
+    try {
+      return await editSlideWith(index, instruction, true)
+    }
+    catch (e) {
+      if (!(e instanceof OutOfCredits)) throw e
+    }
+  }
+  return editSlideWith(index, instruction, false)
+}
+const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
   // a shape's words (every text box of an imported ChatSlide/PowerPoint deck) are shown like a text box's: the model
@@ -495,7 +497,7 @@ const editSlide = async (index: number, instruction: string, advanced = false) =
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
     body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
@@ -1041,7 +1043,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
       const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? [...imgs, backdrop] : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? imgs.filter(e => !isBackdrop(e)) : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
@@ -1278,7 +1280,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) })) : '')
       + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) })) : '')
     void earlier
-    if (!ok && !failed.length) return t('No page needed that change. {p0}', { p0: noChangeWhy })
+    if (!ok && !failed.length) return t('No page was changed. {p0}', { p0: noChangeWhy })
     if (!ok) fail((t('I could not make that change on any page: "{p0}".', { p0: what })) + why)
     return (t('Pages updated: {p0}.', { p0: ok })) + why
   }
@@ -1663,7 +1665,12 @@ const deckTurn = async (text: string) => {
     }
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
-    if (work.some((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))) {
+    // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
+    const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
+    if (again) {
+      const line = t('I made one deck-wide change in this message; send the next one as its own message.')
+      replies.push(line)
+      terse.push(line)
       break
     }
     for (const c of work) {
@@ -1673,6 +1680,8 @@ const deckTurn = async (text: string) => {
         continue
       }
       if (ADDS.includes(c.action) && pagesWanted < 0) pagesWanted = Math.max(1, Number(c.args?.message_new_pages) || Number(c.args?.count) || 1)
+      // no step adds more than this message still allows
+      if (ADDS.includes(c.action) && Number(c.args?.count) > 0) c.args.count = Math.min(Number(c.args.count), Math.max(1, pagesWanted - created()))
       else if (ADDS.includes(c.action) && created() >= pagesWanted) { // planned in the same batch as the pages already added
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
@@ -1906,19 +1915,21 @@ onMounted(() => {
       }
       else {
         const link = await chatslide!.pptx()
-        const loaded = new Promise<void>(res => {
+        const loaded = new Promise<boolean>(res => {
           const stop = watch(slides, () => {
             stop()
-            setTimeout(res, 1500) // let the import settle
+            setTimeout(() => res(true), 1500) // let the import settle
           })
-          setTimeout(res, 20000)
+          setTimeout(() => res(false), 20000)
         })
         await showPptx(link)
-        await loaded
+        const imported = await loaded
         s.edited = true // the editor copy is the deck from now on
         s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
-        save() // saved at once: the saved deck is what makes the project open in this editor next time
+        // saved at once: the saved deck is what makes the project open in this editor next time. Never a failed
+        // conversion: a saved blank page would be opened instead of the project's slides from then on
+        if (imported && slides.value.some(sl => sl.elements.length)) save()
       }
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()

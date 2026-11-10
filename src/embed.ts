@@ -72,7 +72,7 @@ if (host) {
     const r = await fetch0(new Request(req, { ...init, headers }))
     if (r.status === 402) {
       const data = await r.json().catch(() => ({}))
-      host.outOfCredits?.()
+      if (!headers.get('X-Quiet-402')) host.outOfCredits?.() // quiet: the caller has a free way to do it
       const e = new OutOfCredits('out of credits')
       e.credits = Number(data.credits) || 0
       e.required = Number(data.required) || 0
