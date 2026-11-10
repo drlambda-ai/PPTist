@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high), two passes on the billing change
+Reviewed-At: 2026-11-10T07:30:14Z
+Fixed: replayable and forgeable signed totals (now a locked pptist_turns row), unpaid credits recorded as paid on a short balance, parallel double-charge and lost cost, non-AI calls charged, cost rounded down, concurrent settlements over-recording payment (balance row locked), unpaid debt dodged by switching message ids (collected first), settle failure withholding a finished result
+Declined-By: Claude Code
+Declined: failed calls are not charged though they cost us (an error should never cost the user); reusing a message id skips only the 1-credit minimum and needs a modified client; flat plus metered double count does not apply (flat endpoints report no cost).
