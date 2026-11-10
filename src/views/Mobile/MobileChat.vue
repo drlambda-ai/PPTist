@@ -11,6 +11,7 @@
         <span class="grow"></span>
         <span class="action" @click="changeMode('editor')"><i-icon-park-outline:edit /> {{ t('编辑') }}</span>
         <span class="action" @click="changeMode('player')"><i-icon-park-outline:full-screen-play /> {{ t('播放') }}</span>
+        <a class="nav" href="https://github.com/drlambda-ai/PPTist" target="_blank" rel="noopener" aria-label="Source code (AGPL-3.0)"><i-icon-park-outline:github /></a>
       </div>
     </div>
     <TemplateDeckPanel inline />
@@ -87,6 +88,7 @@ onUnmounted(() => fit.disconnect())
   font-size: 14px;
 }
 .nav, .action {
+  color: inherit;
   min-width: 44px;
   height: 44px;
   display: inline-flex;

@@ -50,6 +50,8 @@
         <i-icon-park-outline:off-screen-one class="tool-btn" v-tooltip="t('退出全屏')" v-if="fullscreenState" @click="manualExitFullscreen()" />
         <i-icon-park-outline:full-screen-one class="tool-btn" v-tooltip="t('进入全屏')" v-else @click="enterFullscreen()" />
         <i-icon-park-outline:power class="tool-btn" v-tooltip="t('结束放映')" @click="exitScreening()" />
+        <!-- AGPL-3.0: viewers of a shared deck use this program too -->
+        <a href="https://github.com/drlambda-ai/PPTist" target="_blank" rel="noopener" aria-label="Source code (AGPL-3.0)" v-tooltip="'Source code (AGPL-3.0)'"><i-icon-park-outline:github class="tool-btn" /></a>
       </div>
     </div>
 

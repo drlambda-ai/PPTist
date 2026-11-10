@@ -100,7 +100,8 @@
       <div class="menu-item" v-tooltip="t('导出')" @click="setDialogForExport('pptx')">
         <i-icon-park-outline:download class="icon" />
       </div>
-      <a class="github-link" v-if="!chatslide" v-tooltip="'Copyright © 2020-PRESENT pipipi-pikachu'" href="https://github.com/pipipi-pikachu/PPTist" target="_blank">
+      <!-- AGPL-3.0: users of the hosted editor get its source (inside ChatSlide: our fork, as deployed) -->
+      <a class="github-link" v-tooltip="chatslide ? 'Source code (AGPL-3.0) · © pipipi-pikachu' : 'Copyright © 2020-PRESENT pipipi-pikachu'" :aria-label="'Source code (AGPL-3.0)'" :href="chatslide ? 'https://github.com/drlambda-ai/PPTist' : 'https://github.com/pipipi-pikachu/PPTist'" target="_blank" rel="noopener">
         <div class="menu-item"><i-icon-park-outline:github class="icon" /></div>
       </a>
     </div>
