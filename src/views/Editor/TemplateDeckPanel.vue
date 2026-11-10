@@ -988,7 +988,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     slidesStore.updateSlideIndex(after)
     return t('Added a table page "{p0}".', { p0: titleAt(after) })
   }
-  if (args.page_named === false && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
+  // with a selection sent, the router's page is the one it was on (the user may have moved on since)
+  if (args.page_named === false && !turnSelected && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
     if (!file) {
@@ -1661,6 +1662,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let askedThisTurn = false // a question for the user ends the message
+let turnSelected = '' // what was selected on the canvas when the message was sent
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
   // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
@@ -1683,8 +1685,12 @@ const deckTurn = async (text: string) => {
   const startPageId = slides.value[slideIndex.value]?.id
   // what the user has selected on the canvas when they send: "this picture" / "make it bigger" means it
   const startSl = slides.value[slideIndex.value]
-  const selected = startSl ? startSl.elements.filter((e: any) => mainStore.activeElementIdList.includes(e.id)).map((e: any) => {
-    if (e.type === 'image') return isBackdrop(e) ? 'image 0 (the background picture)' : `image ${pictures(startSl).indexOf(e) + 1}`
+  const selected = turnSelected = startSl ? startSl.elements.filter((e: any) => mainStore.activeElementIdList.includes(e.id)).map((e: any) => {
+    // numbered as changeImage resolves them: 0 is the first full-slide picture, the rest by pictures()
+    if (e.type === 'image') {
+      const first = startSl.elements.find((x: any) => x.type === 'image' && isBackdrop(x))
+      return e === first ? 'image 0 (the background picture)' : `image ${pictures(startSl).indexOf(e) + 1}`
+    }
     if (e.type === 'chart') return `the ${e.chartType} chart`
     if (e.type === 'table') return 'the table'
     const tx = elText(e)
