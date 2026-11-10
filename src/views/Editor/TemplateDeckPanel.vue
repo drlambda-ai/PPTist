@@ -4,7 +4,8 @@
     :dir="direction"
     class="template-deck-panel"
     :class="{ inline }"
-    v-bind="inline ? {} : { width: 360, height: 560, title: chatslide ? 'ChatSlide' : 'AI', left: -380, top: 60 }"
+    :key="chatLeft"
+    v-bind="inline ? {} : { width: 320, height: 560, title: chatslide ? 'ChatSlide' : 'AI', left: chatLeft, top: 84 }"
     @close="close()"
   >
     <div class="body">
@@ -55,6 +56,9 @@ import { PRESET_THEMES } from '@/configs/theme'
 import { t, direction } from '@/i18n'
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
+// The chat opens at the right edge, over the Design sidebar: in the middle it covered half the slide on a laptop and
+// users could not see what it changed (2026-11-10). Asking for the Design panel moves it to the left edge.
+const chatLeft = ref(-8)
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, newTurn, OutOfCredits, takeSpend } from '@/embed'
@@ -1495,6 +1499,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return t('Applied a new theme to the whole deck.')
     }
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
+    chatLeft.value = 8
     return t('I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.')
   }
   if (action === 'talk_to_human') {
