@@ -247,6 +247,10 @@ export default () => {
     if (imgs) imgPool.value = imgs
 
     const AISlides: AIPPTSlide[] = []
+    // an agenda longer than the library's biggest agenda page is split over several pages: a 6-item library cut 7-10
+    // items to six (the rest were dropped), as only 11+ items were ever split
+    const agendaMax = Math.max(1, ...templateSlides.filter(sl => sl.type === 'contents')
+      .map(sl => sl.elements.filter(el => checkTextType(el, 'item')).length))
     for (const template of _AISlides) {
       if (template.type === 'content') {
         const items = template.data.items
@@ -284,17 +288,11 @@ export default () => {
       }
       else if (template.type === 'contents') {
         const items = template.data.items
-        if (items.length === 11) {
-          const items1 = items.slice(0, 6)
-          const items2 = items.slice(6)
-          AISlides.push({ ...template, data: { ...template.data, items: items1 } })
-          AISlides.push({ ...template, data: { ...template.data, items: items2 }, offset: 6 })
-        }
-        else if (items.length > 11) {
-          const items1 = items.slice(0, 10)
-          const items2 = items.slice(10)
-          AISlides.push({ ...template, data: { ...template.data, items: items1 } })
-          AISlides.push({ ...template, data: { ...template.data, items: items2 }, offset: 10 })
+        if (items.length > agendaMax) {
+          const per = Math.ceil(items.length / Math.ceil(items.length / agendaMax)) // even pages: 11 on a 10-max is 6 + 5
+          for (let k = 0; k < items.length; k += per) {
+            AISlides.push({ ...template, data: { ...template.data, items: items.slice(k, k + per) }, ...(k ? { offset: k } : {}) })
+          }
         }
         else {
           AISlides.push(template)
