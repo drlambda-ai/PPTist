@@ -279,6 +279,8 @@ export default () => {
   const setSlideTheme = (slide: Slide, theme: PresetTheme) => {
     const colorMap = createSlideThemeColorMap(slide, theme.colors)
 
+    // a theme without a font keeps the deck's fonts (the built-in themes have none; before, they reset every font)
+    const keepFont = (html: string) => (theme.fontname ? html.replace(/font-family: .+?;/g, '') : html)
     const getColor = (color: string) => {
       const alpha = tinycolor(color).getAlpha()
       const _color = colorMap[tinycolor(color).setAlpha(1).toRgbString()]
@@ -297,15 +299,15 @@ export default () => {
         if (el.gradient) delete el.gradient
         if (el.text) {
           el.text.defaultColor = theme.fontColor
-          el.text.defaultFontName = theme.fontname
-          if (el.text.content) el.text.content = el.text.content.replace(/color: .+?;/g, '').replace(/font-family: .+?;/g, '')
+          if (theme.fontname) el.text.defaultFontName = theme.fontname
+          if (el.text.content) el.text.content = keepFont(el.text.content.replace(/color: .+?;/g, ''))
         }
       }
       if (el.type === 'text') {
         if (el.fill) el.fill = getColor(el.fill)
         el.defaultColor = theme.fontColor
-        el.defaultFontName = theme.fontname
-        if (el.content) el.content = el.content.replace(/color: .+?;/g, '').replace(/font-family: .+?;/g, '')
+        if (theme.fontname) el.defaultFontName = theme.fontname
+        if (el.content) el.content = keepFont(el.content.replace(/color: .+?;/g, ''))
       }
       if (el.type === 'image' && el.colorMask) {
         el.colorMask = getColor(el.colorMask)
@@ -316,7 +318,7 @@ export default () => {
           for (const cell of rowCells) {
             if (cell.style) {
               cell.style.color = theme.fontColor
-              cell.style.fontname = theme.fontname
+              if (theme.fontname) cell.style.fontname = theme.fontname
             }
           }
         }
@@ -350,7 +352,7 @@ export default () => {
         style: 'solid',
         color: theme.borderColor,
       },
-      fontName: theme.fontname,
+      ...(theme.fontname ? { fontName: theme.fontname } : {}),
     })
 
     if (resetSlides) {
