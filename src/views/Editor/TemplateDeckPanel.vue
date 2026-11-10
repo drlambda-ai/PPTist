@@ -1564,6 +1564,12 @@ const deckTurn = async (text: string) => {
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id)).length
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
+  // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
+  const animatedThisTurn = (pages?: number[]) => done.some((d) => {
+    if (!d.startsWith('animate_pages ') || d.includes('-> skipped')) return false
+    const a = (() => { try { return JSON.parse(d.slice(14, d.indexOf(' -> '))) } catch { return {} } })()
+    return a.effect !== 'none' && (!a.pages?.length || !pages?.length || pages.some((p: number) => a.pages.includes(p)))
+  })
   let pagesWanted = -1 // declared by the first page-adding step (message_new_pages)
   for (let round = 0; round < 10; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
@@ -1633,7 +1639,7 @@ const deckTurn = async (text: string) => {
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
       // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
-      || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && done.some(d => d.startsWith('animate_pages ')))
+      || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && animatedThisTurn(c.args?.pages))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
