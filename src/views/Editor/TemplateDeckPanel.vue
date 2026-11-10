@@ -1802,7 +1802,8 @@ const deckTurn = async (text: string) => {
     // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
     if (again) {
-      const line = t('I made one deck-wide change in this message; send the next one as its own message.')
+      // names what is left: "I made one change" read as wrong after a theme, pictures and an edit (2026-11-10)
+      const line = t('Not done yet: {p0}. Send it as its own message.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
       replies.push(line)
       terse.push(line)
       break

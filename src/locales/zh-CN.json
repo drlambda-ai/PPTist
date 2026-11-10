@@ -1172,7 +1172,6 @@
   "Selection ({p0}/{p1})": "已选元素（{p0}/{p1}）",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手机上暂不支持“设计”面板。你可以在这里让我更改主题，或在电脑上打开这份演示文稿。",
   "No page was changed. {p0}": "未更改任何页面。{p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "我已在这条消息中对整个演示文稿进行了一项更改；请将下一项单独发送一条消息。",
   "Delete {p0} pages ({p1})? Nothing is deleted yet.": "删除 {p0} 页（{p1}）？目前尚未删除任何内容。",
   "Yes, delete them": "是，删除",
   "No, keep them": "否，保留",
@@ -1181,5 +1180,6 @@
   "Which picture on page {p0} should I change?": "要更改第 {p0} 页上的哪张图片？",
   "Picture {p0}": "图片 {p0}",
   "All of them": "全部",
-  "center": "居中"
+  "center": "居中",
+  "Not done yet: {p0}. Send it as its own message.": "尚未完成：{p0}。请单独发送这条内容。"
 }
