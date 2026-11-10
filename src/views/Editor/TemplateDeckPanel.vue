@@ -1681,6 +1681,15 @@ const deckTurn = async (text: string) => {
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
+  // what the user has selected on the canvas when they send: "this picture" / "make it bigger" means it
+  const startSl = slides.value[slideIndex.value]
+  const selected = startSl ? startSl.elements.filter((e: any) => mainStore.activeElementIdList.includes(e.id)).map((e: any) => {
+    if (e.type === 'image') return isBackdrop(e) ? 'image 0 (the background picture)' : `image ${pictures(startSl).indexOf(e) + 1}`
+    if (e.type === 'chart') return `the ${e.chartType} chart`
+    if (e.type === 'table') return 'the table'
+    const tx = elText(e)
+    return tx ? `the text "${tx.slice(0, 80)}"` : `a ${e.type}`
+  }).join('; ') : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
@@ -1702,6 +1711,7 @@ const deckTurn = async (text: string) => {
         // and "add a page after this one" then re-ran after each new page (30 -> 36)
         instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
         pending: s.pending || undefined,
+        selected: selected || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         pictures: (s.images || []).map(m => m.name),
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),

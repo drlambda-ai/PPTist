@@ -492,7 +492,9 @@ async function handler(req: any, res: any) {
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
     const context = `The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
-      : 'No company template is in use: never call rebuild_from_template.'}\n\nDeck:\n${deck}${fileList}`
+      : 'No company template is in use: never call rebuild_from_template.'}${body.selected
+      ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`
+      : ''}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 500)}". You asked: "${String(body.pending.question).slice(0, 300)}"]` : ''
