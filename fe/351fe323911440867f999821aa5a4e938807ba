@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-10T10:14:01Z
+Fixed: deletion unlocked by any next message (now only the Yes button); background move hiding text; the confirmation question counted as an edit
