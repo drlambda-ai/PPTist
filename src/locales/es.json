@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "Selección ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "El panel Diseño aún no está disponible en teléfonos. Pídeme aquí que cambie el tema o abre esta presentación en una computadora.",
   "No page was changed. {p0}": "No se modificó ninguna página. {p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "Hice un cambio en toda la presentación en este mensaje; envía el siguiente en otro mensaje."
+  "I made one deck-wide change in this message; send the next one as its own message.": "Hice un cambio en toda la presentación en este mensaje; envía el siguiente en otro mensaje.",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "¿Eliminar {p0} páginas ({p1})? Aún no se ha eliminado nada.",
+  "Yes, delete them": "Sí, eliminarlas",
+  "No, keep them": "No, conservarlas"
 }

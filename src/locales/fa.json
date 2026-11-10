@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "انتخاب ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "پنل طراحی هنوز در گوشی‌ها در دسترس نیست. اینجا از من بخواهید تم را تغییر دهم، یا این ارائه را در رایانه باز کنید.",
   "No page was changed. {p0}": "هیچ صفحه‌ای تغییر نکرد. {p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "در این پیام یک تغییر در کل ارائه ایجاد کردم؛ مورد بعدی را در پیامی جداگانه بفرستید."
+  "I made one deck-wide change in this message; send the next one as its own message.": "در این پیام یک تغییر در کل ارائه ایجاد کردم؛ مورد بعدی را در پیامی جداگانه بفرستید.",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "{p0} صفحه ({p1}) حذف شوند؟ هنوز چیزی حذف نشده است.",
+  "Yes, delete them": "بله، حذفشان کن",
+  "No, keep them": "نه، نگه‌شان دار"
 }

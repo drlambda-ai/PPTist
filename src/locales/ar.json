@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "التحديد ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "لوحة «التصميم» غير متاحة على الهواتف بعد. اطلب مني هنا تغيير السمة، أو افتح هذا العرض التقديمي على جهاز كمبيوتر.",
   "No page was changed. {p0}": "لم يتم تغيير أي صفحة. {p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "أجريت تغييرًا واحدًا على العرض التقديمي بالكامل في هذه الرسالة؛ أرسل التغيير التالي في رسالة منفصلة."
+  "I made one deck-wide change in this message; send the next one as its own message.": "أجريت تغييرًا واحدًا على العرض التقديمي بالكامل في هذه الرسالة؛ أرسل التغيير التالي في رسالة منفصلة.",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "هل تريد حذف {p0} صفحات ({p1})؟ لم يُحذف أي شيء بعد.",
+  "Yes, delete them": "نعم، احذفها",
+  "No, keep them": "لا، احتفظ بها"
 }

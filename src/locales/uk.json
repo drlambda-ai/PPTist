@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "Вибрано ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Панель «Дизайн» поки недоступна на телефонах. Попросіть мене тут змінити тему або відкрийте цю презентацію на комп’ютері.",
   "No page was changed. {p0}": "Жодну сторінку не змінено. {p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "У цьому повідомленні я вніс одну зміну для всієї презентації; надішліть наступну окремим повідомленням."
+  "I made one deck-wide change in this message; send the next one as its own message.": "У цьому повідомленні я вніс одну зміну для всієї презентації; надішліть наступну окремим повідомленням.",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Видалити сторінки: {p0} ({p1})? Поки нічого не видалено.",
+  "Yes, delete them": "Так, видалити",
+  "No, keep them": "Ні, залишити"
 }

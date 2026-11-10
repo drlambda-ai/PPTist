@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "已選取（{p0}/{p1}）",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手機上目前無法使用「設計」面板。你可以在這裡請我變更主題，或在電腦上開啟這份簡報。",
   "No page was changed. {p0}": "未變更任何頁面。{p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "我已在這則訊息中對整份簡報做了一項變更；請將下一項單獨傳送一則訊息。"
+  "I made one deck-wide change in this message; send the next one as its own message.": "我已在這則訊息中對整份簡報做了一項變更；請將下一項單獨傳送一則訊息。",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "刪除 {p0} 頁（{p1}）？目前尚未刪除任何內容。",
+  "Yes, delete them": "是，刪除",
+  "No, keep them": "否，保留"
 }

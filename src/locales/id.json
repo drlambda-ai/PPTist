@@ -1171,5 +1171,8 @@
   "Selection ({p0}/{p1})": "Pilihan ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Panel Desain belum tersedia di ponsel. Minta saya di sini untuk mengubah tema, atau buka presentasi ini di komputer.",
   "No page was changed. {p0}": "Tidak ada halaman yang diubah. {p0}",
-  "I made one deck-wide change in this message; send the next one as its own message.": "Saya membuat satu perubahan untuk seluruh dek dalam pesan ini; kirim perubahan berikutnya dalam pesan tersendiri."
+  "I made one deck-wide change in this message; send the next one as its own message.": "Saya membuat satu perubahan untuk seluruh dek dalam pesan ini; kirim perubahan berikutnya dalam pesan tersendiri.",
+  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Hapus {p0} halaman ({p1})? Belum ada yang dihapus.",
+  "Yes, delete them": "Ya, hapus",
+  "No, keep them": "Tidak, pertahankan"
 }

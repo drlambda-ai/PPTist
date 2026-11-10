@@ -101,6 +101,7 @@ interface Session {
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   pending?: { request: string, question: string, options?: string[] } | null // an ask_user waiting for the user's answer
+  deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
 }
 
 const KEY = 'ai-deck-session'
@@ -851,8 +852,21 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const src = await findPicture(query, source, el.width >= el.height)
   if (!src) fail(t('Could not get a picture.'))
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
+  if (isBackdrop(el)) showBackdrop(slideId, el.id)
   touched([slideId])
   return { note: pictureNote, backdrop: isBackdrop(el) }
+}
+// A background picture the user just chose is seen: a colour change had faded it to 12% and left a full-slide colour
+// layer over it ("I don't see changes", twice). The fade goes and the picture moves above such layers, under the text.
+const showBackdrop = (slideId: string, picId: string) => {
+  const sl = slides.value.find(x => x.id === slideId)
+  if (!sl) return
+  const { width, height } = slideSize()
+  const els = sl.elements.map((e: any) => (e.id !== picId ? e : { ...e, filters: (({ opacity, ...rest }) => rest)(e.filters || {}) }))
+  const at = els.findIndex((e: any) => e.id === picId)
+  const layers = els.map((e: any, k) => (k > at && e.type === 'shape' && !elText(e) && e.width >= width * 0.95 && e.height >= height * 0.95 ? k : -1)).filter(k => k >= 0)
+  if (layers.length) els.splice(layers[layers.length - 1], 0, els.splice(at, 1)[0])
+  slidesStore.updateSlide({ elements: els }, slideId)
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
@@ -1075,6 +1089,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'delete_pages') {
     const del = nums(args.pages)
     if (del.length >= n) fail(t('A deck needs at least one page, so I kept it.'))
+    // more than one page goes only after the user says yes: a pasted homework task once deleted 9 of 10 pages
+    if (del.length > 1 && !del.every(id => deleteConfirmable.includes(id))) {
+      const q = t('Delete {p0} pages ({p1})? Nothing is deleted yet.', { p0: del.length, p1: del.map(id => pos(id) + 1).join(', ') })
+      s.deleteAsked = del
+      s.pending = { request: userText, question: q, options: [t('Yes, delete them'), t('No, keep them')] }
+      askedThisTurn = true
+      save()
+      return q
+    }
     slidesStore.deleteSlide(del)
     return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
@@ -1329,6 +1352,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       for (const id of targets) {
         for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) {
           slidesStore.updateElement({ id: e.id, props: { src: background.image.src } as any, slideId: id })
+          showBackdrop(id, e.id)
         }
       }
     }
@@ -1543,8 +1567,13 @@ let memo = ''
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
+let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
+let askedThisTurn = false // a question for the user ends the message
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
+  deleteConfirmable = s.deleteAsked || []
+  s.deleteAsked = undefined
+  askedThisTurn = false
   userText = text
   editedThisTurn.clear()
   picturedThisTurn.clear()
@@ -1721,7 +1750,7 @@ const deckTurn = async (text: string) => {
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action)) changed = true
     }
-    if (work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
+    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
