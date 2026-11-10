@@ -1918,6 +1918,7 @@ onMounted(() => {
         s.edited = true // the editor copy is the deck from now on
         s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
+        save() // saved at once: the saved deck is what makes the project open in this editor next time
       }
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
