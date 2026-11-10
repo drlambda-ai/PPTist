@@ -1259,7 +1259,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'set_font_size') { // direct, like set_font: "title bigger", "more" got barely-changed model rewrites (2026-11-10)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
-    const isTitle = (sl: any, e: any) => e.textType === 'title' || e.text?.type === 'title' || e === readingOrder(sl).find((x: any) => elText(x))
+    const marked = (e: any) => e.textType === 'title' || e.text?.type === 'title'
+    // the first text is the title only on a page with no element marked as one (a header above it is not the title)
+    const isTitle = (sl: any, e: any) => marked(e) || (!sl.elements.some(marked) && e === readingOrder(sl).find((x: any) => elText(x)))
     const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
     const html = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
