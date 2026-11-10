@@ -864,9 +864,12 @@ const showBackdrop = (slideId: string, picId: string) => {
   const { width, height } = slideSize()
   const els = sl.elements.map((e: any) => (e.id !== picId ? e : { ...e, filters: (({ opacity, ...rest }) => rest)(e.filters || {}) }))
   const at = els.findIndex((e: any) => e.id === picId)
-  const layers = els.map((e: any, k) => (k > at && e.type === 'shape' && !elText(e) && e.width >= width * 0.95 && e.height >= height * 0.95 ? k : -1)).filter(k => k >= 0)
-  if (layers.length) els.splice(layers[layers.length - 1], 0, els.splice(at, 1)[0])
-  slidesStore.updateSlide({ elements: els }, slideId)
+  // the colour layers above it go just under it; everything else keeps its order (text never ends up beneath it)
+  const layer = (e: any, k: number) => k > at && e.type === 'shape' && !elText(e) && e.width >= width * 0.95 && e.height >= height * 0.95
+  const layers = els.filter(layer)
+  const rest = els.filter((e: any, k) => !layer(e, k))
+  rest.splice(rest.findIndex((e: any) => e.id === picId), 0, ...layers)
+  slidesStore.updateSlide({ elements: rest }, slideId)
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
@@ -1571,7 +1574,8 @@ let deleteConfirmable: string[] = [] // pages the previous message asked about: 
 let askedThisTurn = false // a question for the user ends the message
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
-  deleteConfirmable = s.deleteAsked || []
+  // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
+  deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
   s.deleteAsked = undefined
   askedThisTurn = false
   userText = text
@@ -1748,7 +1752,7 @@ const deckTurn = async (text: string) => {
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
       memo = ''
-      if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action)) changed = true
+      if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
     if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
   }
