@@ -1632,6 +1632,8 @@ const deckTurn = async (text: string) => {
       || work.find((c: any) => done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(c.action, c.args)))
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
+      // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
+      || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && done.some(d => d.startsWith('animate_pages ')))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
@@ -1661,6 +1663,7 @@ const deckTurn = async (text: string) => {
               ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
                 ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
+                : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
                 : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       continue
@@ -1916,8 +1919,9 @@ onMounted(() => {
         slidesStore.updateSlideIndex(0)
       }
       else {
+        loadingPage = slides.value.map(x => x.id).join() // the empty page shown while it loads; set first, as a
+        // failed conversion (the classic backup included) is reported in the chat, and a chat message saves
         const link = await chatslide!.pptx()
-        loadingPage = slides.value.map(x => x.id).join() // the empty page shown while it loads
         const loaded = new Promise<void>(res => {
           const stop = watch(slides, () => {
             stop()
