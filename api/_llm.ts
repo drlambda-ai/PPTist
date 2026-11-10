@@ -33,7 +33,7 @@ export const metered = (handler: (req: any, res: any) => Promise<unknown>) => (r
   for (const k of ['json', 'send', 'end'] as const) {
     const send = res[k]?.bind(res)
     if (send) res[k] = (...a: any[]) => {
-      if (!res.headersSent) res.setHeader('x-ai-cost-usd', store.usd.toFixed(6))
+      if (!res.headersSent) res.setHeader('x-ai-cost-usd', (Math.ceil(store.usd * 1e6) / 1e6).toFixed(6)) // never rounded down
       return send(...a)
     }
   }
