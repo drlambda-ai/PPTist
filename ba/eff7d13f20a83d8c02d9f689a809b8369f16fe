@@ -4,3 +4,5 @@ Reviewed-At: 2026-11-10T02:28:32Z
 Fixed: failed conversion saved as a blank deck; phone notes losing line breaks; editor lookup outage read as not-owned; switch and lookup not keyed by project; plus the Nov 5 list (upload overwrite, agendas cut at six, remove-all-pictures wiping backgrounds, credits for no-op advanced edits, no standard fallback at 0 credits, silent second deck-wide step, no-op wording, smaller bullets reverted, single large photo not resizable, duplicate/page-count bypass, duplicate snapshots)
 Declined-By: Claude Code
 Declined: a step that changed nothing only after the client merge is still charged (refund needs a client call; 1 credit, paid users only); an agenda split inside useAIPPT can still exceed the page budget (generation only, visible).
+
+Fix round reviewed 2026-11-10T03:38:11Z; see the note on ce9bf317.
