@@ -463,6 +463,15 @@ let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: wh
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
   .filter(([k]) => !['answer', 'source'].includes(k)).sort()))}` // what to change stays in: "no, red instead" is a new step
+// text boxes that run into a picture, as "text|picture" keys
+const textOnPictures = (els: any[]) => {
+  const pics = els.filter((e: any) => e.type === 'image' && !isBackdrop(e))
+  return new Set(els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
+    const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+    const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+    return w > 0 && h > 0 && w * h > 0.05 * Math.min(a.width * a.height, b.width * b.height)
+  }).map((b: any) => `${a.id}|${b.id}`)))
+}
 // what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
 const overlapNote = (sl: Slide) => {
   const els = readingOrder(sl).filter((e: any) => (e.type === 'image' && !isBackdrop(e)) || elText(e))
@@ -1231,6 +1240,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return lastEditTerse
     }
     slidesStore.updateSlideIndex(i)
+    // longer text that now runs behind a picture ("the letters are behind the picture", 2026-11-10): one layout pass.
+    // Measured after the page renders, since text boxes grow to fit their text then.
+    await nextTick(); await new Promise(r => setTimeout(r, 300))
+    const hadBefore = textOnPictures(was)
+    if ([...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))) {
+      await editSlide(i, 'Fix the layout only: no text may overlap or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.').catch(() => undefined)
+    }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
     if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option] }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
