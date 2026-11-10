@@ -806,7 +806,7 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
 // Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
 let pictureNote = ''
 let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
-const findPicture = async (query: string, source: string, landscape: boolean) => {
+const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = []) => {
   pictureNote = ''
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   if (source === 'attached') { // the query names one of the user's attached pictures
@@ -826,8 +826,9 @@ const findPicture = async (query: string, source: string, landscape: boolean) =>
     return r.src as string
   }
   if (source === 'photo') {
-    const r = await api.searchImage({ query, per_page: 1, orientation: landscape ? 'landscape' : 'portrait' } as any)
-    const src = r.data?.[0]?.src // the services axios instance already unwraps response.data
+    // a few results, so "all the pictures" with similar searches do not get the same photo twice
+    const r = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any)
+    const src = (r.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u)) // the services axios instance already unwraps response.data
     if (src) return src as string
     pictureNote = t('No stock photo matched, so I generated one with AI.')
     pictureSource = 'ai'
@@ -854,7 +855,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
   const el = sl && (image === 0 ? sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e)) as PPTImageElement | undefined : pictures(sl)[Math.max(0, (image || 1) - 1)])
   if (!sl || !el) fail(t('That page has no picture.'))
-  const src = await findPicture(query, source, el.width >= el.height)
+  const src = await findPicture(query, source, el.width >= el.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
   if (!src) fail(t('Could not get a picture.'))
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
   if (isBackdrop(el)) showBackdrop(slideId, el.id)
@@ -1352,11 +1353,30 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (t('Pages updated: {p0}.', { p0: ok })) + why
   }
   if (action === 'change_image') {
-    busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     const id = idOf(args.index)
+    const sl = slides.value[pos(id)]
+    const content = pictures(sl).filter(e => !isBackdrop(e))
+    let image = args.image
+    // "change the picture(s)" means the pictures on the page, not the background, unless the user said background
+    // (a user asked for slide 5's pictures and got its background replaced, 2026-11-10)
+    if (image === 0 && !args.said_background && content.length) {
+      image = content.findIndex((_, k) => !replacedThisTurn.has(`${id}:${k + 1}`)) + 1 || 1
+    }
+    // several pictures and nothing in the message picks one: ask (Quanlai: "if there are multiple choices you should at least ask")
+    if (askedThisTurn) return '' // already asking which picture this message
+    if (image !== 0 && content.length > 1 && !args.picture_named) {
+      const { width: W, height: H } = slideSize()
+      const where = (e: any) => [e.top + e.height / 2 < H / 3 ? t('top') : e.top + e.height / 2 > (2 * H) / 3 ? t('bottom') : t('middle'),
+        e.left + e.width / 2 < W / 3 ? t('left') : e.left + e.width / 2 > (2 * W) / 3 ? t('right') : t('center')].join(', ')
+      return runCall(text, 'ask_user', {
+        question: t('Which picture on page {p0} should I change?', { p0: pos(id) + 1 }),
+        options: [...content.slice(0, 3).map((e, k) => `${t('Picture {p0}', { p0: k + 1 })} (${where(e)})`), t('All of them')],
+      }, ids)
+    }
+    busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     slidesStore.updateSlideIndex(pos(id))
-    const { note, backdrop } = await changeImage(text, id, args.image, args.query, args.source)
-    replacedThisTurn.add(`${id}:${args.image ?? 1}`)
+    const { note, backdrop } = await changeImage(text, id, image, args.query, args.source)
+    replacedThisTurn.add(`${id}:${image ?? 1}`)
     const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     // says WHICH picture changed, so a later reply about this step is grounded in what happened
     const which = backdrop ? (t('the background picture on page {p0}', { p0: pos(id) + 1 })) : (t('the picture on page {p0}', { p0: pos(id) + 1 }))
@@ -1550,6 +1570,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const opts = (args.options || []).filter(Boolean).slice(0, 4)
     s.pending = { request: userText, question: args.question || '', options: opts }
     save()
+    askedThisTurn = true // the answer comes in the next message
     return args.question || (t('Could you say that more specifically?'))
   }
   if (action === 'undo' || action === 'redo') {

@@ -1177,5 +1177,9 @@
   "Yes, delete them": "Да, удалить",
   "No, keep them": "Нет, оставить",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Размер текста изменён в {p0} текстовых блоках на {p1} стр.",
-  "That page has no text to match.": "На этой странице нет текста для сопоставления."
+  "That page has no text to match.": "На этой странице нет текста для сопоставления.",
+  "Which picture on page {p0} should I change?": "Какое изображение на странице {p0} изменить?",
+  "Picture {p0}": "Изображение {p0}",
+  "All of them": "Все",
+  "center": "по центру"
 }

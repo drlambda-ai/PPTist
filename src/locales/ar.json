@@ -1177,5 +1177,9 @@
   "Yes, delete them": "نعم، احذفها",
   "No, keep them": "لا، احتفظ بها",
   "Resized the text in {p0} text boxes across {p1} page(s).": "تم تغيير حجم النص في {p0} مربعات نص عبر {p1} صفحات.",
-  "That page has no text to match.": "لا يوجد نص للمطابقة في هذه الصفحة."
+  "That page has no text to match.": "لا يوجد نص للمطابقة في هذه الصفحة.",
+  "Which picture on page {p0} should I change?": "ما الصورة التي تريد تغييرها في الصفحة {p0}؟",
+  "Picture {p0}": "الصورة {p0}",
+  "All of them": "كلها",
+  "center": "المنتصف"
 }

@@ -1177,5 +1177,9 @@
   "Yes, delete them": "Sí, eliminarlas",
   "No, keep them": "No, conservarlas",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Se cambió el tamaño del texto en {p0} cuadros de texto en {p1} páginas.",
-  "That page has no text to match.": "Esa página no tiene texto para comparar."
+  "That page has no text to match.": "Esa página no tiene texto para comparar.",
+  "Which picture on page {p0} should I change?": "¿Qué imagen de la página {p0} quieres cambiar?",
+  "Picture {p0}": "Imagen {p0}",
+  "All of them": "Todas",
+  "center": "centro"
 }

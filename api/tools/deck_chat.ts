@@ -105,7 +105,8 @@ const TOOLS = [
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
     said_background: { type: 'boolean', description: 'true ONLY if the user\'s words ask for the background picture' },
-  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background']),
+    picture_named: { type: 'boolean', description: 'true if the words pick this picture (its place, its subject, "the second one", an answer naming it) or ask for all of them; false when the page has several and the words do not say which' },
+  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -245,9 +246,11 @@ Rules:
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
    Removing pictures -> remove_images (not edit_page).
-5. A new or different picture -> change_image, ONE call for the one image meant: "the picture/photo" is the image marked "the largest
-   image here" on that page; never an icon or a [logo] unless the user names it. If that page has no image except
-   icons/logos, use add_image instead. Replace several images only when asked. Moving a picture/text to another page -> move_element_to_page.
+5. A new or different picture -> change_image on the pictures on the page, never image 0 (the background) unless the user
+   says background. Never an icon or a [logo] unless the user names it. If that page has no image except icons/logos, use
+   add_image instead. One picture on the page -> that one. Several, and the words do not say which -> ONE change_image,
+   image 1, picture_named false: the editor asks the user which. "The pictures"/"all the images"/"All of them" -> one
+   change_image per picture (image 1, 2, ...), each with its own query, picture_named true. Moving a picture/text to another page -> move_element_to_page.
    Merging/combining pages -> merge_pages (one call for all of them).
    Attached files are listed after the deck. Anything that refers to them ("my PDF", "page 2 of the article", "the table
    in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it

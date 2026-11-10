@@ -1177,5 +1177,9 @@
   "Yes, delete them": "是，刪除",
   "No, keep them": "否，保留",
   "Resized the text in {p0} text boxes across {p1} page(s).": "已調整 {p1} 頁中 {p0} 個文字方塊的文字大小。",
-  "That page has no text to match.": "該頁沒有可比對的文字。"
+  "That page has no text to match.": "該頁沒有可比對的文字。",
+  "Which picture on page {p0} should I change?": "要更改第 {p0} 頁上的哪張圖片？",
+  "Picture {p0}": "圖片 {p0}",
+  "All of them": "全部",
+  "center": "置中"
 }

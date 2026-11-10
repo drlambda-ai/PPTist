@@ -1177,5 +1177,9 @@
   "Yes, delete them": "是，删除",
   "No, keep them": "否，保留",
   "Resized the text in {p0} text boxes across {p1} page(s).": "已调整 {p1} 页中 {p0} 个文本框的文字大小。",
-  "That page has no text to match.": "该页没有可匹配的文本。"
+  "That page has no text to match.": "该页没有可匹配的文本。",
+  "Which picture on page {p0} should I change?": "要更改第 {p0} 页上的哪张图片？",
+  "Picture {p0}": "图片 {p0}",
+  "All of them": "全部",
+  "center": "居中"
 }

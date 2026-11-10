@@ -1177,5 +1177,9 @@
   "Yes, delete them": "Ya, hapus",
   "No, keep them": "Tidak, pertahankan",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Ukuran teks di {p0} kotak teks di {p1} halaman telah diubah.",
-  "That page has no text to match.": "Halaman tersebut tidak memiliki teks untuk dicocokkan."
+  "That page has no text to match.": "Halaman tersebut tidak memiliki teks untuk dicocokkan.",
+  "Which picture on page {p0} should I change?": "Gambar mana di halaman {p0} yang harus saya ubah?",
+  "Picture {p0}": "Gambar {p0}",
+  "All of them": "Semuanya",
+  "center": "tengah"
 }
