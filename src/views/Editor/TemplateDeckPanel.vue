@@ -1915,21 +1915,22 @@ onMounted(() => {
       }
       else {
         const link = await chatslide!.pptx()
-        const loaded = new Promise<boolean>(res => {
+        const blank = slides.value.map(x => x.id).join() // the empty page shown while it loads
+        const loaded = new Promise<void>(res => {
           const stop = watch(slides, () => {
             stop()
-            setTimeout(() => res(true), 1500) // let the import settle
+            setTimeout(res, 1500) // let the import settle
           })
-          setTimeout(() => res(false), 20000)
+          setTimeout(res, 20000)
         })
         await showPptx(link)
-        const imported = await loaded
+        await loaded
         s.edited = true // the editor copy is the deck from now on
         s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
         // saved at once: the saved deck is what makes the project open in this editor next time. Never a failed
         // conversion: a saved blank page would be opened instead of the project's slides from then on
-        if (imported && slides.value.some(sl => sl.elements.length)) save()
+        if (slides.value.map(x => x.id).join() !== blank) save()
       }
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
