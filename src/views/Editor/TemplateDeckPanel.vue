@@ -51,6 +51,7 @@
 </template>
 
 <script lang="ts" setup>
+import { PRESET_THEMES } from '@/configs/theme'
 import { t, direction } from '@/i18n'
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
@@ -1484,7 +1485,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })
   }
   if (action === 'open_design') {
-    if (!isPC()) return t("The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.")
+    if (!isPC()) { // phones have no Design panel: change the design for them (a phone user asked and was turned away, 2026-11-10)
+      const bg = slides.value[0]?.background?.color
+      const pick = PRESET_THEMES.filter(p => p.background !== bg)
+      const th = pick[Math.floor(Math.random() * pick.length)]
+      for (const sl of slides.value) fadeBackdrop(sl.id)
+      applyPresetTheme(th, true)
+      touched(slides.value.map(x => x.id))
+      return t('Applied a new theme to the whole deck.')
+    }
     mainStore.setToolbarState(ToolbarStates.SLIDE_DESIGN)
     return t('I opened the Design panel on the right, where you can change the theme. Template pages are in the arrow next to "Add slide", and they insert as new pages.')
   }
