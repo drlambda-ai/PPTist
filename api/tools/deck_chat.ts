@@ -18,7 +18,7 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
   function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } },
 })
 
-const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name); wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: an illustration, cartoon, diagram-like picture, or something no photo shows, or the user says generate/draw; photo: a generic stock photo (people working, a city at night, food)'
+const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name); wikimedia: a real, named place, person, artwork, species, building, product or event, or the user says Wikimedia/Wikipedia/"real photo"; ai: ONLY when the user says generate/draw/AI/cartoon/illustration (it costs them 10 credits); photo: the default for everything else, a stock photo (people working, a city at night, food, a medical scene); the editor draws one itself when no stock photo matches'
 
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
@@ -96,7 +96,7 @@ const TOOLS = [
     background: { type: 'string', description: 'Slide background #RRGGBB' },
     font_color: { type: 'string', description: 'Text #RRGGBB, readable on that background' },
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
-    font: { type: 'string', description: 'A common font family, or ""' },
+    font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['background', 'font_color', 'colors', 'font']),
   fn('change_image', 'Replace a picture on a page with a new one: a stock photo search, or an AI-generated image.', {
     index: page,
@@ -301,7 +301,7 @@ Rules:
    A change to a chart already on the page (its type "make it a pie chart", numbers, adding/removing a bar, colours,
    size) -> edit_page on that page; add_chart_page only for a NEW chart the deck does not have yet.
    "Change/replace the picture/image" with nothing said about the new one -> change_image on that page with a query
-   about the page's topic; never ask which picture (the user can undo or say what they want).
+   about the page's topic (rule 5 decides which picture).
    Vague dislike with no target ("no me gusta", "bad slides", "不好看"): ask_user with 2-3 concrete options
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
@@ -313,6 +313,9 @@ Rules:
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
    wording only where it is broken; keep the content and design.
+   "The whole deck" / "cả bộ" / "весь" / "all slides" with pictures, backgrounds or effects -> every page: backgrounds ->
+   apply_theme or set_background on all pages, effects/animations -> animate_pages on all pages, pictures -> a picture on
+   EVERY page (change_image where it has one, add_image where it has none), one call per page. Never do one page of it.
    Several wishes in one message ("prettier, remove the table of contents, add more") -> do each CONCRETE wish as its own
    step; for a vague one ("prettier", "more stuff"), end with answer_question asking what exactly, with 2-3 options.
 6. "How do I download / save / get the file?" -> download_deck: do it, never explain where the button is (phones have no
@@ -371,6 +374,8 @@ Rules:
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
    A correction is ALWAYS undo (with "instead") and then the change the user wants; never answer it with words only.
+   "I don't see a change" / "nothing changed" / "не бачу змін" / "没变化" is NOT a correction: never undo. Do the change
+   they asked for last again, on the same target, clearly bigger and visible.
    The editor itself notices when the undone change was already the right one and keeps it.
    When the user's NEW message says your previous change was wrong AND what they wanted instead ("I asked for the image, not the background",
    "wrong page", "not that one"): undo first (one undo reverts your whole previous message), then do what they originally asked, on the
