@@ -1362,6 +1362,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (image === 0 && !args.said_background && content.length) {
       image = content.findIndex((_, k) => !replacedThisTurn.has(`${id}:${k + 1}`)) + 1 || 1
     }
+    // a page with only a background: the new picture is added, the background stays ("insert real photos of X" swapped it)
+    if (!args.said_background && !content.length) {
+      return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: true, replaces_existing: false }, ids)
+    }
     // several pictures and nothing in the message picks one: ask (Quanlai: "if there are multiple choices you should at least ask")
     if (askedThisTurn) return '' // already asking which picture this message
     if (image !== 0 && content.length > 1 && !args.picture_named) {

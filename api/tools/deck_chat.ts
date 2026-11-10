@@ -347,7 +347,6 @@ Rules:
    answer_question with the text, then offer to put it on slides.
    "Change the background image" -> set_background with photo_query on the current page. "Open export" -> download_deck.
    "Speak / reply / write to me in X" is about this chat: answer_question in X, and leave the deck alone.
-   "Change the picture" on a page whose only picture is the background: that is the picture they mean, change_image image 0.
    With a content picture on the page, image 0 changes only when the user says background.
    "Add" a point, subtopic, message or example with no word for a slide or page -> edit_page on the current page; a new
    page only when they say slide or page, or paste a lot. "Slides 2, 3 and 4" -> one edit_page per named page.
