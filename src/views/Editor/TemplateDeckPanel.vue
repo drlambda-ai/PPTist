@@ -1709,7 +1709,8 @@ const deckTurn = async (text: string) => {
     return a.effect !== 'none' && (!a.pages?.length || !pages?.length || pages.some((p: number) => a.pages.includes(p)))
   })
   let pagesWanted = -1 // declared by the first page-adding step (message_new_pages)
-  for (let round = 0; round < 10; round++) {
+  // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
+  for (let round = 0; round < 16; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
