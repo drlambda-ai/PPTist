@@ -1189,5 +1189,6 @@
   "There is no such text to resize there.": "那里没有可调整大小的文本。",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "重新设计此页面需要高级模型，且仅限付费方案。没有它，我可以应用新主题或把文字放大。",
   "Apply a new theme to the deck": "为幻灯片应用新主题",
-  "Make the text bigger": "把文字放大"
+  "Make the text bigger": "把文字放大",
+  "Something went wrong on our side; nothing was changed. Please try again.": "我们这边出了点问题；没有任何更改。请再试一次。"
 }

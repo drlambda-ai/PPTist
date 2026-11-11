@@ -262,6 +262,8 @@ const run = async (label: string, fn: () => Promise<void>) => {
   catch (e) {
     if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }))
     else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
+    // a bug of ours, never shown raw to the user (it is in the turn record with its stack)
+    else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) say('assistant', t('Something went wrong on our side; nothing was changed. Please try again.'))
     else say('assistant', t('That failed: ') + ((e as Error).message || e))
   }
   busy.value = ''
@@ -1945,7 +1947,9 @@ const deckTurn = async (text: string) => {
   lastTurnCalls = turnCalls
   // Only this page changed and the message named no page: done here, the rest offered as one tap (Quanlai, 2026-11-11:
   // "we can change and ask a follow-up question"). "Add historical images" / "too much text" changed one page silently.
-  const perPage = ['edit_page', 'add_image', 'change_image', 'set_font_size', 'set_font', 'remove_images'] // set_background: one pass per message
+  // edit_page has its own offer (whole_deck_option, set by the router when the request could mean the deck): adding facts
+  // to one slide got a pointless 'the same on the other pages?' (2026-11-11). set_background: one pass per message
+  const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'remove_images']
   let followUp = ''
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
   if ((unfinished || round === rounds) && !askedThisTurn) {
@@ -2018,7 +2022,11 @@ const send = () => {
     }
     catch (e) { // never leave a half-applied operation (e.g. an inserted page that was never rewritten)
       slidesStore.setSlides(before)
-      recordTurn(text, String((e as Error)?.message || e), [], false)
+      // where it broke goes into the record: a user saw a raw "Unexpected non-whitespace character after JSON" and
+      // its source could not be found afterwards (2026-11-11)
+      const err = e as Error
+      const where = err?.stack ? err.stack.split('\n').slice(0, 5).join(' | ') : ''
+      recordTurn(text, String(err?.message || e), [`error: ${err?.name || 'Error'}: ${err?.message || e} @ ${where}`], false)
       throw e
     }
   })

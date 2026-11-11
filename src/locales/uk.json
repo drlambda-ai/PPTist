@@ -1189,5 +1189,6 @@
   "There is no such text to resize there.": "Там немає тексту, розмір якого можна змінити.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Для редизайну цієї сторінки потрібна просунута модель на платних тарифах. Без неї я можу застосувати нову тему або збільшити текст.",
   "Apply a new theme to the deck": "Застосувати нову тему до презентації",
-  "Make the text bigger": "Збільшити текст"
+  "Make the text bigger": "Збільшити текст",
+  "Something went wrong on our side; nothing was changed. Please try again.": "Щось пішло не так з нашого боку; нічого не було змінено. Будь ласка, спробуйте ще раз."
 }

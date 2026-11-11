@@ -1189,5 +1189,6 @@
   "There is no such text to resize there.": "Il n’y a aucun texte à redimensionner à cet endroit.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Une refonte de cette page nécessite le modèle avancé, sur les offres payantes. Sans lui, je peux appliquer un nouveau thème ou agrandir le texte.",
   "Apply a new theme to the deck": "Appliquer un nouveau thème au deck",
-  "Make the text bigger": "Agrandir le texte"
+  "Make the text bigger": "Agrandir le texte",
+  "Something went wrong on our side; nothing was changed. Please try again.": "Une erreur s’est produite de notre côté ; rien n’a été modifié. Veuillez réessayer."
 }
