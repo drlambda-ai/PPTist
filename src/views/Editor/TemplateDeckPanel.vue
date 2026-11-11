@@ -916,6 +916,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
       return alt as string
     }
     pictureNote = t('Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}', { p0: r.title, p1: r.credit, p2: r.license ? t(', {p0}', { p0: r.license }) : '', p3: r.page })
+      + (r.close ? ` ${t('No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.')}` : '')
     return r.src as string
   }
   if (source === 'photo') {
@@ -1127,6 +1128,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
   // calls, the router added one picture and stopped, 2026-11-11)
+  // a medical picture is a real one (Wikimedia, which falls back to a labelled stock photo): asked in prose, the router
+  // still chose stock photos 6 of 6 times for "a picture for each variant of pulmonary hypertension" (2026-11-11)
+  // an AI picture only when the user's words asked for one: it costs them 10 credits each ("сделать картинку на каждый
+  // вариант" drew 4 AI pictures, 40 credits, unasked, 2026-11-11)
+  if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && args.asked_for_ai === false) args = { ...args, source: 'photo' }
+  if ((action === 'add_image' || action === 'change_image') && args.medical && args.source === 'photo') args = { ...args, source: 'wikimedia' }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     const items = args.items.filter(Boolean).slice(0, 4)
     const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
@@ -1270,6 +1277,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'read_file') {
     const doc = s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
+    // an attached picture: its text, read by the vision model ("write what's in my picture into the slides" was
+    // answered "I can't read the attached image", 2026-11-11)
+    const pic = !doc && ((s.images || []).find(m => m.name === args.file) || (s.images?.length === 1 ? s.images[0] : undefined))
+    if (pic) {
+      busy.value = t('Reading {p0}…', { p0: pic.name })
+      const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction: 'Copy all the text in this picture exactly, in its own language, keeping line breaks and numbering. If it has no text, describe what it shows in one sentence. JSON {"text": "..."}', image: pic.url }) })
+      const got = String((await r.json().catch(() => ({})))?.text || '').trim()
+      if (!r.ok || !got) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: pic.name, p1: '' }))
+      memo = `<file-content name="${pic.name.replace(/["<>]/g, '')}">\n${fence(got.slice(0, 12000))}\n</file-content>`
+      return t('Read {p0}{p1}.', { p0: pic.name, p1: '' })
+    }
     if (!doc) {
       fail(s.docs.length ? (t('There is no attached file "{p0}". Attached: {p1}.', { p0: args.file, p1: s.docs.map(d => d.name).join(', ') }))
         : (t('No file is attached yet: attach it with the 📎 icon in the chat box.')))
@@ -1356,6 +1375,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Swapped pages {p0} and {p1}.', { p0: i + 1, p1: j + 1 })
   }
   if (action === 'edit_page') {
+    // text from other pages ("slide 7: the text of slide 10, points 1-3"): the edit sees only its own page, so it
+    // answered "send me slide 10's text" (2026-11-11)
+    const sources = nums(args.source_pages || []).filter((id: string) => id && id !== idOf(args.index))
+    if (sources.length) args = { ...args, instruction: `${args.instruction}\n\n${sources.map((id: string) => `Text of page ${pos(id) + 1} (the source to use):\n${readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')}`).join('\n\n').slice(0, 4000)}` }
     // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
     // after "slide 5: <text>" (2026-11-11)
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
@@ -1412,7 +1435,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
-    if (args.whole_deck_option && args.page_named !== true) { // a named page is not a whole-deck question
+    // a named page is not a whole-deck question; nor is an edit of the selected element ("the selected point 1" on
+    // every page left most pages "not changed", 2026-11-11)
+    if (args.whole_deck_option && args.page_named !== true && !turnSelected) {
       const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
       s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
         repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others }
@@ -2014,6 +2039,9 @@ const deckTurn = async (text: string) => {
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
       || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
+      // a second deck-wide edit is the router re-planning the first ("dark blue, bigger headers" ran twice and ended
+      // in "Not done yet … tap Continue", 2026-11-11); what is really left it names in finish
+      || work.find((c: any) => c.action === 'edit_all_pages' && done.some(d => d.startsWith('edit_all_pages ')))
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
       || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image ?? 1}`))
       // after an Undo in a correction, redoing the very change just undone ("not the background" -> background again)
@@ -2052,6 +2080,7 @@ const deckTurn = async (text: string) => {
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
                 ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
+                : extra.action === 'edit_all_pages' ? 'a deck-wide edit already ran in this message (see Done so far); finish, and put in not_done only a part of the request it did not cover'
                 : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       // a router that keeps proposing what was just refused is done: "khác đi" replanned the same picture for 16 rounds

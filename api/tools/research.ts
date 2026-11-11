@@ -58,29 +58,37 @@ const wikimedia = async (query: string) => {
   // photos AND drawings: maps, flags, diagrams and logos on Commons are mostly SVG (served as a PNG thumbnail)
   const search = async (q: string) => (await commons({ generator: 'search', gsrsearch: `${q} filetype:bitmap|drawing`, gsrnamespace: '6', gsrlimit: '8' }))
     .sort((a, b) => (a.index || 0) - (b.index || 0))
-  let searched = await search(query)
-  // Commons search needs every word to match: a long description ("clinical examples of systemic sclerosis skin
-  // manifestations: ...") found nothing (2026-11-11). Then the 2-4 words that name the thing.
-  if (!searched.length && !known.length && query.split(/\s+/).length > 4) {
-    const kw = (await chat([{ role: 'user', content: `Give 2 to 4 English keywords to search Wikimedia Commons for a picture of: ${query}\nReply with the keywords only.` }], { maxTokens: 2000 }).catch(() => '')).replace(/["\n]/g, ' ').trim().slice(0, 80)
-    if (kw) searched = await search(kw).catch(() => [])
-  }
-  const pages = [...known, ...searched.filter(p => !known.some(k => k.title === p.title))]
-  if (!pages.length) return { src: '' }
   // Search rank alone picked a 1755 colonial map and a night-lights photo for "map of the United States": a small
   // model reads the candidates' titles and descriptions and picks the one that IS the requested thing, or none.
-  let best = pages[0]
-  try {
-    const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
-    const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\nWhich file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)? Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
-    if (out.pick === -1) return { src: '' }
-    if (pages[out.pick]) best = pages[out.pick]
+  // close: the second round takes the nearest real image of the same subject (a plain barium swallow film for "barium
+  // swallow in systemic sclerosis"), still better on a slide than a stock photo of a doctor
+  const pick = async (pages: any[], close = false) => {
+    if (!pages.length) return null
+    try {
+      const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
+      const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\n${close ? 'Which file is the closest real picture of the same subject (same disease, organ, scan type or thing; -1 only if none is)?' : 'Which file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)?'} Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
+      return out.pick === -1 ? null : pages[out.pick] || pages[0]
+    }
+    catch { return pages[0] } // the search's own first result
   }
-  catch { /* the search's own first result */ }
+  const searched = await search(query).catch(() => [] as any[])
+  let best = await pick([...known, ...searched.filter(p => !known.some(k => k.title === p.title))])
+  // Commons search needs every word to match, in Commons' own words: "chest radiograph findings in pulmonary
+  // hypertension" found nothing where "pulmonary hypertension x-ray" finds 7 real films (2026-11-11). Nothing found or
+  // nothing fits: three other short searches, with the common terms and synonyms, then pick again.
+  let close = false
+  if (!best) {
+    const alts = await chat([{ role: 'user', content: `Wikimedia Commons file search found nothing for: ${query}\nGive 3 different short searches (2 to 4 English words each) that Commons file names would use: the common term, synonyms (X-ray for radiograph), the plain name of the thing. JSON {"queries": ["...", "...", "..."]}` }], { jsonMode: true, maxTokens: 2000 })
+      .then(r => (JSON.parse(r).queries || []) as string[]).catch(() => [] as string[])
+    const more = (await Promise.all(alts.slice(0, 3).map(q => search(String(q)).catch(() => [] as any[])))).flat()
+    best = await pick([...searched, ...more].filter((p, k, all) => all.findIndex(x => x.title === p.title) === k).slice(0, 16), true)
+    close = !!best
+  }
+  if (!best) return { src: '' }
   const i = best.imageinfo[0], m = i.extmetadata || {}
   return {
     src: i.thumburl, title: String(best.title).replace(/^File:/, ''), page: i.descriptionurl,
-    credit: plain(m.Artist?.value) || 'Wikimedia Commons', license: plain(m.LicenseShortName?.value),
+    credit: plain(m.Artist?.value) || 'Wikimedia Commons', license: plain(m.LicenseShortName?.value), close,
   }
 }
 

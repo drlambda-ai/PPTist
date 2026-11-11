@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} page(s) ont été restaurée(s) à l’état où elles étaient lorsque vous avez ouvert le diaporama.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "La page {p0} était pleine, donc les images sont sur une nouvelle page {p1}.",
   "Those pictures were already added in this message.": "Ces images ont déjà été ajoutées dans ce message.",
-  "You're out of credits; {p0} of the pictures were added.": "Vous n’avez plus de crédits ; {p0} des images ont été ajoutées."
+  "You're out of credits; {p0} of the pictures were added.": "Vous n’avez plus de crédits ; {p0} des images ont été ajoutées.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Il n’existe pas d’image exacte là-bas, donc c’est la plus proche du même sujet : vérifiez qu’elle convient à votre diapositive."
 }

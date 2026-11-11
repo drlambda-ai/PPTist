@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "Восстановлено {p0} стр.(ниц) до состояния, в котором они были при открытии презентации.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Страница {p0} была заполнена, поэтому картинки на новой странице {p1}.",
   "Those pictures were already added in this message.": "Эти изображения уже были добавлены в это сообщение.",
-  "You're out of credits; {p0} of the pictures were added.": "У вас закончились кредиты; было добавлено {p0} изображений."
+  "You're out of credits; {p0} of the pictures were added.": "У вас закончились кредиты; было добавлено {p0} изображений.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там нет точного изображения, поэтому это ближайшее по той же теме: проверьте, подходит ли оно для вашего слайда."
 }

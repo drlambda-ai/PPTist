@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "Restored {p0} page(s) to how they were when you opened the deck.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Page {p0} was full, so the pictures are on a new page {p1}.",
   "Those pictures were already added in this message.": "Those pictures were already added in this message.",
-  "You're out of credits; {p0} of the pictures were added.": "You're out of credits; {p0} of the pictures were added."
+  "You're out of credits; {p0} of the pictures were added.": "You're out of credits; {p0} of the pictures were added.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide."
 }

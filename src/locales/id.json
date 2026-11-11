@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "Mengembalikan {p0} halaman ke keadaan saat Anda membuka deck.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Halaman {p0} penuh, jadi gambar berada di halaman baru {p1}.",
   "Those pictures were already added in this message.": "Gambar-gambar itu sudah ditambahkan dalam pesan ini.",
-  "You're out of credits; {p0} of the pictures were added.": "Kredit Anda habis; {p0} dari gambar telah ditambahkan."
+  "You're out of credits; {p0} of the pictures were added.": "Kredit Anda habis; {p0} dari gambar telah ditambahkan.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Tidak ada gambar yang persis sama di sana, jadi ini yang paling dekat dengan subjek yang sama: periksa apakah ini cocok untuk slide Anda."
 }

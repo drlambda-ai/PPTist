@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "Đã khôi phục {p0} trang về trạng thái như khi bạn mở bản trình bày.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Trang {p0} đã đầy, nên các hình ảnh ở trên một trang mới {p1}.",
   "Those pictures were already added in this message.": "Những hình ảnh đó đã được thêm trong tin nhắn này.",
-  "You're out of credits; {p0} of the pictures were added.": "Bạn đã hết tín dụng; đã thêm {p0} hình ảnh."
+  "You're out of credits; {p0} of the pictures were added.": "Bạn đã hết tín dụng; đã thêm {p0} hình ảnh.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Không có ảnh chính xác ở đó, nên đây là ảnh gần nhất của cùng chủ đề: hãy kiểm tra xem nó có phù hợp với trang trình chiếu của bạn không."
 }

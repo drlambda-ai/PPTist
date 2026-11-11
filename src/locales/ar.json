@@ -1200,5 +1200,6 @@
   "Restored {p0} page(s) to how they were when you opened the deck.": "تمت استعادة {p0} صفحة إلى حالتها كما كانت عند فتح العرض.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "كانت الصفحة {p0} ممتلئة، لذا فالصور في صفحة جديدة {p1}.",
   "Those pictures were already added in this message.": "تلك الصور أُضيفت بالفعل في هذه الرسالة.",
-  "You're out of credits; {p0} of the pictures were added.": "نفدت رصيدك؛ تمت إضافة {p0} من الصور."
+  "You're out of credits; {p0} of the pictures were added.": "نفدت رصيدك؛ تمت إضافة {p0} من الصور.",
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "لا توجد صورة مطابقة هناك، لذا فهذه هي الأقرب لنفس الموضوع: تحقّق من أنها مناسبة لشريحتك."
 }
