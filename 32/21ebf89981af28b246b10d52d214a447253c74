@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 1ed6ba28 (replaces_existing per item, empty page removed, paid pictures kept, duplicate guard on items, no repeat offer for sets, helper page not a requested page, restore of notes/animations, restore across reloads and for ?pptx= decks)
+Declined: offer-repeat page-number shift (offer now excluded for sets, so moot)
+Declined-By: Claude, 2026-11-11
+Reviewed-At: 2026-11-11T09:36:49Z
