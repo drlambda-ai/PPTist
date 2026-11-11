@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "There is more to do from your message. Tap Continue and I will carry on.",
   "Not done yet: {p0}.": "Not done yet: {p0}.",
   "Continue": "Continue",
-  "There is no such text to resize there.": "There is no such text to resize there."
+  "There is no such text to resize there.": "There is no such text to resize there.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.",
+  "Apply a new theme to the deck": "Apply a new theme to the deck",
+  "Make the text bigger": "Make the text bigger"
 }

@@ -1234,8 +1234,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       chatslide?.offerAdvanced?.()
       return chatslide?.offerAdvanced ? (t('Requests like this work better on our advanced model, on paid plans.')) : ''
     }
+    // "improve the design" with nothing concrete: the standard model moved boxes a few pixels and said it improved the
+    // design (5 of 5 replays of a real user's request, 2026-11-11); the advanced model redesigned the page (2 of 2).
+    // So free users are told plainly and offered what visibly works; paid users get the advanced model.
+    if (args.redesign && !canAdvanced) {
+      s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')] }
+      save()
+      offer() // ChatSlide's paywall, once per session
+      return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
+    }
     let upgradeLine = ''
-    const reply = await editSlide(i, args.instruction, !!args.hard && canAdvanced).catch((e) => {
+    const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced).catch((e) => {
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
       if ((args.hard && canAdvanced) || !(e as any).tooHard) throw e // it already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)

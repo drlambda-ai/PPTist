@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "根據你的訊息，還有更多內容需要處理。點選「繼續」，我會接著完成。",
   "Not done yet: {p0}.": "尚未完成：{p0}。",
   "Continue": "繼續",
-  "There is no such text to resize there.": "那裡沒有可調整大小的文字。"
+  "There is no such text to resize there.": "那裡沒有可調整大小的文字。",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "重新設計此頁面需要進階模型，而且僅限付費方案。沒有它，我可以套用新主題或把文字放大。",
+  "Apply a new theme to the deck": "為簡報套用新主題",
+  "Make the text bigger": "把文字放大"
 }

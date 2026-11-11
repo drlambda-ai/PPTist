@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "Queda más por hacer según tu mensaje. Toca Continuar y seguiré.",
   "Not done yet: {p0}.": "Aún no está listo: {p0}.",
   "Continue": "Continuar",
-  "There is no such text to resize there.": "No hay texto allí cuyo tamaño cambiar."
+  "There is no such text to resize there.": "No hay texto allí cuyo tamaño cambiar.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Un rediseño de esta página necesita el modelo avanzado, en planes de pago. Sin él, puedo aplicar un nuevo tema o hacer el texto más grande.",
+  "Apply a new theme to the deck": "Aplicar un nuevo tema a la presentación",
+  "Make the text bigger": "Hacer el texto más grande"
 }

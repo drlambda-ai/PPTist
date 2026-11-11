@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "Tin nhắn của bạn còn yêu cầu thực hiện thêm. Nhấn Tiếp tục để tôi làm tiếp.",
   "Not done yet: {p0}.": "Chưa xong: {p0}.",
   "Continue": "Tiếp tục",
-  "There is no such text to resize there.": "Ở đó không có văn bản nào để đổi kích thước."
+  "There is no such text to resize there.": "Ở đó không có văn bản nào để đổi kích thước.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Việc thiết kế lại trang này cần mô hình nâng cao, trong các gói trả phí. Không có nó, tôi có thể áp dụng một giao diện mới hoặc làm chữ lớn hơn.",
+  "Apply a new theme to the deck": "Áp dụng giao diện mới cho bài thuyết trình",
+  "Make the text bigger": "Làm chữ lớn hơn"
 }

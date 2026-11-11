@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "ما زال هناك المزيد لإنجازه من رسالتك. اضغط على «متابعة» وسأواصل.",
   "Not done yet: {p0}.": "لم يكتمل بعد: {p0}.",
   "Continue": "متابعة",
-  "There is no such text to resize there.": "لا يوجد نص هناك لتغيير حجمه."
+  "There is no such text to resize there.": "لا يوجد نص هناك لتغيير حجمه.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "إعادة تصميم هذه الصفحة تتطلب النموذج المتقدم في الخطط المدفوعة. بدونه يمكنني تطبيق سمة جديدة أو تكبير النص.",
+  "Apply a new theme to the deck": "تطبيق سمة جديدة على العرض",
+  "Make the text bigger": "تكبير النص"
 }

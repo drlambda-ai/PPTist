@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "По вашему сообщению осталось сделать ещё кое-что. Нажмите «Продолжить», и я продолжу.",
   "Not done yet: {p0}.": "Ещё не готово: {p0}.",
   "Continue": "Продолжить",
-  "There is no such text to resize there.": "Там нет текста, размер которого можно изменить."
+  "There is no such text to resize there.": "Там нет текста, размер которого можно изменить.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Для редизайна этой страницы нужна продвинутая модель на платных тарифах. Без неё я могу применить новую тему или увеличить текст.",
+  "Apply a new theme to the deck": "Применить новую тему к презентации",
+  "Make the text bigger": "Увеличить текст"
 }

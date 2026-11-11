@@ -1186,5 +1186,8 @@
   "There is more to do from your message. Tap Continue and I will carry on.": "طبق پیام شما کارهای بیشتری باقی مانده است. روی «ادامه» بزنید تا ادامه بدهم.",
   "Not done yet: {p0}.": "هنوز انجام نشده است: {p0}.",
   "Continue": "ادامه",
-  "There is no such text to resize there.": "متنی برای تغییر اندازه در آنجا وجود ندارد."
+  "There is no such text to resize there.": "متنی برای تغییر اندازه در آنجا وجود ندارد.",
+  "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "بازطراحی این صفحه به مدل پیشرفته در طرح‌های پولی نیاز دارد. بدون آن می‌توانم یک تم جدید اعمال کنم یا متن را بزرگ‌تر کنم.",
+  "Apply a new theme to the deck": "اعمال تم جدید روی ارائه",
+  "Make the text bigger": "بزرگ‌تر کردن متن"
 }
