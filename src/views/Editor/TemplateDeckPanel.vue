@@ -1306,6 +1306,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         n++
       }
     }
+    if (!n) fail(t('There is no such text to resize there.'))
     touched(targets)
     return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
@@ -1880,11 +1881,11 @@ const deckTurn = async (text: string) => {
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
   if ((unfinished || round === 16) && !askedThisTurn) {
     followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
-    const carried = pendingAtStart?.done ? pendingAtStart : null // a Continue that still did not finish: same request, all steps so far
-    s.pending = { request: carried ? carried.request : text, question: followUp, options: [t('Continue')], done: [...(carried?.done || []), ...done].slice(-30) }
+    // answering an earlier question or offer (Continue included): the request stays the original one, steps accumulate
+    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30) }
     save()
   }
-  else if (!s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
+  else if (changed && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
     && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true)) {
     followUp = t('Done on this page. Want the same on the other pages?')
     s.pending = { request: text, question: followUp, options: [t('Do the same on the other {p0} pages', { p0: slides.value.length - 1 })] }

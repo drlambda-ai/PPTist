@@ -1185,5 +1185,6 @@
   "Do the same on the other {p0} pages": "Haz lo mismo en las otras {p0} páginas",
   "There is more to do from your message. Tap Continue and I will carry on.": "Queda más por hacer según tu mensaje. Toca Continuar y seguiré.",
   "Not done yet: {p0}.": "Aún no está listo: {p0}.",
-  "Continue": "Continuar"
+  "Continue": "Continuar",
+  "There is no such text to resize there.": "No hay texto allí cuyo tamaño cambiar."
 }

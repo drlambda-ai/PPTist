@@ -1185,5 +1185,6 @@
   "Do the same on the other {p0} pages": "在其他 {p0} 个页面执行相同操作",
   "There is more to do from your message. Tap Continue and I will carry on.": "根据你的消息，还有更多内容需要处理。点击“继续”，我会接着完成。",
   "Not done yet: {p0}.": "尚未完成：{p0}。",
-  "Continue": "继续"
+  "Continue": "继续",
+  "There is no such text to resize there.": "那里没有可调整大小的文本。"
 }

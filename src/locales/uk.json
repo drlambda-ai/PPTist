@@ -1185,5 +1185,6 @@
   "Do the same on the other {p0} pages": "Зроби те саме на інших {p0} сторінках",
   "There is more to do from your message. Tap Continue and I will carry on.": "За вашим повідомленням залишилося ще дещо зробити. Натисніть «Продовжити», і я продовжу.",
   "Not done yet: {p0}.": "Ще не завершено: {p0}.",
-  "Continue": "Продовжити"
+  "Continue": "Продовжити",
+  "There is no such text to resize there.": "Там немає тексту, розмір якого можна змінити."
 }
