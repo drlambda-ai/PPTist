@@ -1590,7 +1590,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'set_background') {
     // "the same background as the rest": copied from the nearest other page, never a photo search for "same style"
     // (the doctor's slide 5 got a stock photo first, then four more calls to undo it, 2026-11-11)
-    if (args.like_other_pages && args.pages?.length) return runCall(text, 'copy_page_style', { from: args.pages[0], page_named: false, pages: args.pages }, ids)
+    if (args.like_other_pages) { // no page named: this page (never every page, which would leave nothing to copy from)
+      const pages = args.pages?.length ? args.pages : [slideIndex.value + 1]
+      return runCall(text, 'copy_page_style', { from: pages[0], page_named: false, pages }, ids)
+    }
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     let background: any = { type: 'solid', color: args.color }
     if (args.photo_query) {
