@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude), fallback: the Codex workspace was out of credits
+Fixed: table import rows clamped to the first row's height -> 621a948d
+Declined-By: Claude Code
+Declined: table vertical resize keeps content-tall rows (users can drag rows); rowRefs order after row insert (Vue keeps v-for ref order in practice, no report); .pptx export rowH from minimum heights (PowerPoint grows rows to fit text); 10px bound line from an anchor (cosmetic); STAR_5/8 keypoint drift (cosmetic); start/end-only updateElement on a bound line (no caller does that); per-frame O(n) line-binding passes (no slowness reported). All upstream PPTist code.
+Reviewed-At: 2026-11-11T01:05:03Z
