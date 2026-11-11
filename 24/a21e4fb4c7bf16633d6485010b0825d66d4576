@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 4a305437 (skips counted in a row; same-pages only for actions that require pages)
+Reviewed-At: 2026-11-11T14:48:49Z
