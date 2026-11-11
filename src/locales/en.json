@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.",
   "Apply a new theme to the deck": "Apply a new theme to the deck",
   "Make the text bigger": "Make the text bigger",
-  "Something went wrong on our side; nothing was changed. Please try again.": "Something went wrong on our side; nothing was changed. Please try again."
+  "Something went wrong on our side; nothing was changed. Please try again.": "Something went wrong on our side; nothing was changed. Please try again.",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again."
 }

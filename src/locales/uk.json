@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Для редизайну цієї сторінки потрібна просунута модель на платних тарифах. Без неї я можу застосувати нову тему або збільшити текст.",
   "Apply a new theme to the deck": "Застосувати нову тему до презентації",
   "Make the text bigger": "Збільшити текст",
-  "Something went wrong on our side; nothing was changed. Please try again.": "Щось пішло не так з нашого боку; нічого не було змінено. Будь ласка, спробуйте ще раз."
+  "Something went wrong on our side; nothing was changed. Please try again.": "Щось пішло не так з нашого боку; нічого не було змінено. Будь ласка, спробуйте ще раз.",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "На Wikimedia Commons не було зображення «{p0}», тож це стокове фото.",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "На нашому боці щось пішло не так у процесі; зміни, внесені до цього моменту, збережено. Будь ласка, запитайте решту ще раз."
 }

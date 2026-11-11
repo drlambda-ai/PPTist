@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "بازطراحی این صفحه به مدل پیشرفته در طرح‌های پولی نیاز دارد. بدون آن می‌توانم یک تم جدید اعمال کنم یا متن را بزرگ‌تر کنم.",
   "Apply a new theme to the deck": "اعمال تم جدید روی ارائه",
   "Make the text bigger": "بزرگ‌تر کردن متن",
-  "Something went wrong on our side; nothing was changed. Please try again.": "از سمت ما مشکلی پیش آمد؛ هیچ چیزی تغییر نکرد. لطفاً دوباره تلاش کنید."
+  "Something went wrong on our side; nothing was changed. Please try again.": "از سمت ما مشکلی پیش آمد؛ هیچ چیزی تغییر نکرد. لطفاً دوباره تلاش کنید.",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "ویکی‌مدیا کامنز هیچ عکسی از «{p0}» نداشت، بنابراین این یک عکس استوک است.",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "در میانهٔ کار از سمت ما مشکلی پیش آمد؛ تغییرات انجام‌شده تا آن لحظه حفظ شده‌اند. لطفاً بقیه را دوباره درخواست کنید."
 }

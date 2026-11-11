@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "重新设计此页面需要高级模型，且仅限付费方案。没有它，我可以应用新主题或把文字放大。",
   "Apply a new theme to the deck": "为幻灯片应用新主题",
   "Make the text bigger": "把文字放大",
-  "Something went wrong on our side; nothing was changed. Please try again.": "我们这边出了点问题；没有任何更改。请再试一次。"
+  "Something went wrong on our side; nothing was changed. Please try again.": "我们这边出了点问题；没有任何更改。请再试一次。",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "维基共享资源上没有“{p0}”的图片，所以这是张素材照片。",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "处理中途我们这边出了点问题；之前所做的更改已保留。请再请求剩余部分。"
 }

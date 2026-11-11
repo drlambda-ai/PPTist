@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "إعادة تصميم هذه الصفحة تتطلب النموذج المتقدم في الخطط المدفوعة. بدونه يمكنني تطبيق سمة جديدة أو تكبير النص.",
   "Apply a new theme to the deck": "تطبيق سمة جديدة على العرض",
   "Make the text bigger": "تكبير النص",
-  "Something went wrong on our side; nothing was changed. Please try again.": "حدث خطأ من جانبنا؛ لم يتم تغيير أي شيء. يُرجى المحاولة مرة أخرى."
+  "Something went wrong on our side; nothing was changed. Please try again.": "حدث خطأ من جانبنا؛ لم يتم تغيير أي شيء. يُرجى المحاولة مرة أخرى.",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "لم تكن هناك صورة على ويكيميديا كومنز لـ \"{p0}\"، لذا فهذه صورة مخزنة.",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "حدث خطأ من جانبنا في منتصف العملية؛ تم الاحتفاظ بالتغييرات التي أُجريت قبل ذلك. يُرجى طلب الباقي مرة أخرى."
 }

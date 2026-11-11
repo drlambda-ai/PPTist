@@ -263,7 +263,11 @@ const run = async (label: string, fn: () => Promise<void>) => {
     if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }))
     else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
     // a bug of ours, never shown raw to the user (it is in the turn record with its stack)
-    else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) say('assistant', t('Something went wrong on our side; nothing was changed. Please try again.'))
+    else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) {
+      say('assistant', (e as any).keptSteps
+        ? t('Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.')
+        : t('Something went wrong on our side; nothing was changed. Please try again.'))
+    }
     else say('assistant', t('That failed: ') + ((e as Error).message || e))
   }
   busy.value = ''
@@ -459,7 +463,10 @@ let userText = '' // the message being handled: replies are written in its langu
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
-const picturedThisTurn = new Set<string>() // pages that got a NEW picture in the current message
+// page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
+// adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
+const picturedThisTurn = new Set<string>()
+const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
 let currentAtSend = '' // id of the page the user was on when they sent the message
 const createdThisMessage = new Set<string>() // pages added since the message was sent
@@ -858,7 +865,14 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
   }
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
-    if (!r.src) fail(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
+    if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
+      const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))
+      const alt = (sp.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u))
+      if (!alt) fail(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
+      pictureSource = 'photo'
+      pictureNote = t('Wikimedia Commons had no picture of "{p0}", so this is a stock photo.', { p0: query.slice(0, 60) })
+      return alt as string
+    }
     pictureNote = t('Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}', { p0: r.title, p1: r.credit, p2: r.license ? t(', {p0}', { p0: r.license }) : '', p3: r.page })
     return r.src as string
   }
@@ -1095,7 +1109,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     touched([id])
-    picturedThisTurn.add(id)
+    picturedThisTurn.add(picKey(id, args.query))
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
@@ -1245,6 +1259,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Swapped pages {p0} and {p1}.', { p0: i + 1, p1: j + 1 })
   }
   if (action === 'edit_page') {
+    // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
+    // after "slide 5: <text>" (2026-11-11)
+    if (args.page_named === true) args.whole_deck_option = ''
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
     const target = args.page_named === false && !turnKeepPages && !turnSelected && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
@@ -1723,6 +1740,9 @@ let advancedOffered = false // the paid-model offer, shown once per session
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN
 const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
+// the deck after the last step that finished: a crash in a later step keeps the finished steps (a user lost a whole
+// turn's slide edit to one failing picture step, 2026-11-11)
+let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
   // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
@@ -1839,7 +1859,7 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
-      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(landsOn(c)))
+      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
       || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
@@ -1884,7 +1904,7 @@ const deckTurn = async (text: string) => {
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
                 ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
-                : extra.action === 'add_image' ? 'that page already got a new picture in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
+                : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       continue
     }
@@ -1928,6 +1948,7 @@ const deckTurn = async (text: string) => {
       }
       replies.push(reply)
       ran.push(c)
+      lastGoodSlides = JSON.parse(JSON.stringify(slides.value)) // what a later step's crash rolls back to
       if (c.action === 'undo') pendingInstead = String(c.args?.instead || '').trim()
       else if (!['answer_question', 'ask_user', 'redo', 'go_to_page', 'read_file', 'web_search', 'find_papers', 'read_link'].includes(c.action)) pendingInstead = ''
       turnCalls.push(stepKey(c.action, c.args))
@@ -1938,7 +1959,7 @@ const deckTurn = async (text: string) => {
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
-    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option)) break // a question is asked/answered once; showing a page ends the turn
+    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option && c.args?.page_named !== true)) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
@@ -2015,13 +2036,16 @@ const send = () => {
   // every message goes through the router and edits the deck in the editor; only an explicit request for a new
   // presentation builds one (create_deck), and that stays undoable
   const before = JSON.parse(JSON.stringify(slides.value))
+  lastGoodSlides = null
   return run(t('Working…'), async () => {
     try {
       await deckTurn(text)
       save()
     }
     catch (e) { // never leave a half-applied operation (e.g. an inserted page that was never rewritten)
-      slidesStore.setSlides(before)
+      const kept = !!lastGoodSlides
+      slidesStore.setSlides(lastGoodSlides || before)
+      if (kept) { (e as any).keptSteps = true; save() }
       // where it broke goes into the record: a user saw a raw "Unexpected non-whitespace character after JSON" and
       // its source could not be found afterwards (2026-11-11)
       const err = e as Error

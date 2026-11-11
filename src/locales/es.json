@@ -1190,5 +1190,7 @@
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Un rediseño de esta página necesita el modelo avanzado, en planes de pago. Sin él, puedo aplicar un nuevo tema o hacer el texto más grande.",
   "Apply a new theme to the deck": "Aplicar un nuevo tema a la presentación",
   "Make the text bigger": "Hacer el texto más grande",
-  "Something went wrong on our side; nothing was changed. Please try again.": "Algo salió mal de nuestro lado; no se cambió nada. Inténtalo de nuevo."
+  "Something went wrong on our side; nothing was changed. Please try again.": "Algo salió mal de nuestro lado; no se cambió nada. Inténtalo de nuevo.",
+  "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "Wikimedia Commons no tenía ninguna imagen de \"{p0}\", así que esta es una foto de archivo.",
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Algo salió mal de nuestra parte a mitad de camino; los cambios realizados antes de eso se conservan. Por favor, pide de nuevo el resto."
 }
