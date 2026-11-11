@@ -4,6 +4,8 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 // What each request cost us, for ChatSlide to charge credits by (Quanlai, 2026-11-10: "charge based on the real cost
 // on our side"). $ per 1M tokens [input, cached input, output], read off our OpenAI bill for 2026-11-03..10 and
 // rounded up; Claude from its price list. A model not listed is priced as the dearest, never as free.
+// what a call without a model runs on (gpt-4o until 2026-11-10: the reply translation and ask_json still used it)
+const DEFAULT_MODEL = 'gpt-6-luna'
 const PRICES: [string, [number, number, number]][] = [
   ['gpt-6-luna', [0.15, 0.03, 0.6]], ['gpt-5.6-luna', [0.15, 0.03, 1.2]],
   ['gpt-6.1-sol', [2.5, 0.5, 10]], ['gpt-6.1-terra', [2.5, 0.5, 10]], ['gpt-5.6-terra', [2.5, 0.5, 10]],
@@ -110,15 +112,15 @@ export async function chat(messages: any[], opts: ChatOpts = {}): Promise<string
       Authorization: `Bearer ${getKey()}`,
     },
     body: JSON.stringify({
-      model: opts.model || 'gpt-4o',
-      ...params(opts, opts.model || 'gpt-4o', 0.4),
+      model: opts.model || DEFAULT_MODEL,
+      ...params(opts, opts.model || DEFAULT_MODEL, 0.4),
       messages,
       ...(opts.jsonMode ? { response_format: { type: 'json_object' } } : {}),
     }),
   })
   if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`)
   const data = await res.json()
-  addUsage(opts.model || 'gpt-4o', data.usage)
+  addUsage(opts.model || DEFAULT_MODEL, data.usage)
   return data.choices?.[0]?.message?.content ?? ''
 }
 
@@ -135,8 +137,8 @@ export async function chatStream(
       Authorization: `Bearer ${getKey()}`,
     },
     body: JSON.stringify({
-      model: opts.model || 'gpt-4o',
-      ...params(opts, opts.model || 'gpt-4o', 0.6),
+      model: opts.model || DEFAULT_MODEL,
+      ...params(opts, opts.model || DEFAULT_MODEL, 0.6),
       stream: true,
       messages,
     }),
