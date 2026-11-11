@@ -1246,7 +1246,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let upgradeLine = ''
     const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced).catch((e) => {
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
-      if ((args.hard && canAdvanced) || !(e as any).tooHard) throw e // it already had its try, or nothing was needed
+      if (((args.hard || args.redesign) && canAdvanced) || !(e as any).tooHard) throw e // it already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)
       const line = offer()
       throw line ? new NoChange(`${e.message} ${line}`) : e
