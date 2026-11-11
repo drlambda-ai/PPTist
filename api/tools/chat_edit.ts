@@ -56,7 +56,7 @@ async function handler(req: any, res: any) {
 
     // patch mode (AI panel): the model writes only what changes, a fraction of the tokens of the whole slide
     const sys = SYSTEM.replaceAll('{W}', String(W)).replaceAll('{H}', String(H)).replace(/Respond ONLY with JSON:[\s\S]*$/, patch
-      ? 'Respond ONLY with JSON: {"reply": "<one short sentence to the user>", "changes": [{"id": "<existing id>", <only the fields you change, each with its full new value>}], "added": [<new text/shape elements, complete>], "removed": ["<id>", ...]}. Never repeat an unchanged element or field.'
+      ? 'Respond ONLY with JSON: {"reply": "<one short sentence to the user>", "changes": [{"id": "<existing id>", <only the fields you change, each with its full new value>}], "added": [<new text/shape elements, complete>], "removed": ["<id>", ...]}. To stack an element above or below the others ("put the text on top of the box", "a box behind the title"), give its change or the added element "layer": "front" or "back"; an added box with no text goes behind the text unless you say "front". Never repeat an unchanged element or field.'
       : 'Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the language of the instruction>", "elements": [ ...full updated array... ]}.')
     const messages = [
       { role: 'system', content: sys },

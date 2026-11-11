@@ -539,6 +539,7 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   // the editor draws them (a shape's text, or a plain text box when it has no outline)
   const unflat = (e0: any) => {
     const e = { ...e0, ...Object.fromEntries(GEOMETRY.filter(k => k in e0).map(k => [k, Number.isFinite(toNum(e0[k])) ? toNum(e0[k]) : 0])) }
+    delete e.layer // a stacking instruction, applied by the merge
     if (e.type !== 'shape' || e.content === undefined) return e
     const { content, defaultColor, defaultFontName, ...rest } = e
     if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
@@ -564,8 +565,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     ...live.elements.filter(e => !removed.has(e.id)).map((e: any) => {
       const c = changes[e.id]
       if (!c) return e
-      const { src: _src, path, ...rest } = c // image sources and tokenised paths are never taken from the model
-      void _src
+      const { src: _src, path, layer: _layer, ...rest } = c // image sources and tokenised paths are never taken from the model
+      void _src; void _layer // layer is a stacking instruction, applied below, not an element field
       // a position or size that is not a number is dropped: top ":" from the model threw a heading into the corner
       // of the slide (2026-11-11, a user's "improve the design")
       for (const k of GEOMETRY) {
@@ -584,6 +585,31 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     // an added element without a real position and size is dropped rather than drawn at 0,0
     ...(ret.patch.added || []).filter((e: any) => e?.id && GEOMETRY.slice(0, 4).every(k => Number.isFinite(toNum(e[k]))) && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
   ]
+  // stacking order: "layer" front/back on a change moves that element (a user asked six times to put the title on top
+  // of a white box; the merge kept the old order every time, 2026-11-11). Backdrops stay at the bottom.
+  // an added element may carry layer too; an added shape without words (a box, a band) goes behind the text by default:
+  // "add a white rectangle behind the title" put it on top of the title
+  const addedLayer: Record<string, string> = Object.fromEntries((ret.patch.added || []).filter((e: any) => e?.id).map((e: any) =>
+    [e.id, e.layer || (e.type === 'shape' && !String(e.content ?? e.text?.content ?? '').replace(/<[^>]+>/g, '').trim() ? 'back' : '')]))
+  const layer = (id: string) => changes[id]?.layer || addedLayer[id]
+  if (merged.some((e: any) => layer(e.id) === 'front' || layer(e.id) === 'back')) {
+    const keep = merged.filter((e: any) => layer(e.id) !== 'front' && layer(e.id) !== 'back')
+    const back = merged.filter((e: any) => layer(e.id) === 'back'), front = merged.filter((e: any) => layer(e.id) === 'front')
+    const backdrops = keep.filter((e: any) => e.type === 'image' && isBackdrop(e))
+    const rest = keep.filter((e: any) => !(e.type === 'image' && isBackdrop(e)))
+    // a box put behind text covers that text: the model drew a 90px square behind a 340px title (2026-11-11)
+    const texts = rest.filter((e: any) => elText(e) && e.type !== 'image')
+    const backed = back.map((b: any) => {
+      if (!addedLayer[b.id] || elText(b)) return b
+      const under = texts.filter((t: any) => Math.min(b.left + b.width, t.left + t.width) > Math.max(b.left, t.left) && Math.min(b.top + b.height, t.top + t.height) > Math.max(b.top, t.top))
+      if (!under.length) return b
+      const pad = 12
+      const l = Math.min(b.left, ...under.map((t: any) => t.left - pad)), tp = Math.min(b.top, ...under.map((t: any) => t.top - pad))
+      const r = Math.max(b.left + b.width, ...under.map((t: any) => t.left + t.width + pad)), bt = Math.max(b.top + b.height, ...under.map((t: any) => t.top + t.height + pad))
+      return { ...b, left: l, top: tp, width: r - l, height: bt - tp }
+    })
+    merged.splice(0, merged.length, ...backdrops, ...backed, ...rest, ...front)
+  }
   // a reply that describes changes the merge did not make is never shown as done
   if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))
@@ -1627,7 +1653,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Slide shape set to {p0}:{p1}.', { p0: args.width, p1: args.height })
   }
   if (action === 'copy_page_style') {
-    const src = args.page_named === false ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
+    // "this slide" is the source only when it is not the page being changed: "make slide 5's background like the rest"
+    // on slide 5 copied slide 5 onto itself ("applied to 0 slides") and the router fell back to a stock photo (2026-11-11)
+    const here = slideIndex.value + 1
+    const src = args.page_named === false && !(args.pages || []).map(Number).includes(here) ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
     const html = (e: any) => String(e?.content ?? e?.text?.content ?? '')
     const first: any = readingOrder(src).find((e: any) => elText(e))
     const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
@@ -1923,6 +1952,9 @@ const deckTurn = async (text: string) => {
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
+    // the same step on the same pages again is the router repeating itself, not a second request: the turn just ends
+    // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
+    if (again && done.some(d => d.startsWith(`${again.action} `) && d.includes(`"pages":${JSON.stringify(again.args?.pages ?? [])}`))) break
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
       const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
@@ -2034,7 +2066,7 @@ const recordTurn = (message: string, reply: string, steps: string[], ok: boolean
 // router's own sentences (say_unable, ask_user) came back in Chinese for English messages without this step.
 const finalize = async (instruction: string, reply: string) => {
   try {
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction }) })).json()
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
     return r.reply || reply
   }
   catch {
