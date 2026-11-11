@@ -985,6 +985,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const copied = new Set(source.elements.map(elText).filter(Boolean))
       const stale = slides.value[after + k].elements.map(elText).filter(t => t && copied.has(t))
       if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
+      // pictures still the copied page's (a new "coffee prices" page kept slide 2's barista photos, 2026-11-11): a stock
+      // photo for this page's topic in the same frame, so the layout stays and nothing repeats
+      const copiedPics = new Set(source.elements.filter((e: any) => e.type === 'image' && !isBackdrop(e)).map((e: any) => e.src))
+      const page = slides.value[after + k]
+      const { width: SW, height: SH } = slideSize()
+      for (const [n, e] of pictures(page).entries()) {
+        if (isBackdrop(e) || !copiedPics.has(e.src) || e.width * e.height < 0.02 * SW * SH) continue // keep backdrops and logos
+        await changeImage(text, page.id, n + 1, String(Array.isArray(args.topics) ? args.topics[k] : args.instruction).slice(0, 80), 'photo').catch(() => undefined)
+      }
     }
     const capped = (args.count || 1) > 10 ? (t(' (10 is the most per request; ask again for more)')) : ''
     return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: count, p1: after, p2: newTitles(after, count) })) + capped
