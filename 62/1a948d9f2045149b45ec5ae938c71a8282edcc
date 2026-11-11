@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: fix commit for the /code-review finding on 4f942c96; logic checked by hand, vue-tsc and eslint clean
+Reviewed-At: 2026-11-11T01:05:03Z
