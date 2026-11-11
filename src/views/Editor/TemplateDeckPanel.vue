@@ -1218,6 +1218,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // credits and is on paid plans; anyone else gets the standard result and, when it mattered, the upgrade offer
     const canAdvanced = !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced) // the eval's paid user
     const offer = () => {
+      // once per session: a frustrated user got the line and the paywall on two turns in a row (2026-11-11)
+      if (advancedOffered) return ''
+      advancedOffered = true
       chatslide?.offerAdvanced?.()
       return chatslide?.offerAdvanced ? (t('Requests like this work better on our advanced model, on paid plans.')) : ''
     }
@@ -1664,6 +1667,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let askedThisTurn = false // a question for the user ends the message
 let turnSelected = '' // what was selected on the canvas when the message was sent
+let advancedOffered = false // the paid-model offer, shown once per session
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
   // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion

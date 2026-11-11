@@ -186,7 +186,7 @@ const TOOLS = [
     width: { type: 'number', description: 'Relative width, e.g. 16, 4, 3 (feet) or 210 (mm)' },
     height: { type: 'number', description: 'Relative height, e.g. 9, 3, 4 (feet) or 297 (mm)' },
   }, ['width', 'height']),
-  fn('copy_page_style', 'Apply one page\'s background and text colour to other pages, only when the user names that source ("use this slide\'s colours on all slides"). "Keep it consistent" alone is set_background on every page.', {
+  fn('copy_page_style', 'Apply one page\'s background and text colour to other pages, only when the user names that source ("use this slide\'s colours on all slides") or asks for "the same background as the other slides" (from = the nearest other page; a user was told it could not be done). "Keep it consistent" alone is set_background on every page.', {
     from: page,
     page_named: { type: 'boolean', description: 'true ONLY if the user named the source page; false for "this slide"' },
     pages: { ...pages, description: 'Pages to change; empty = every other page' },
@@ -255,7 +255,9 @@ Rules:
    Attached files are listed after the deck. Anything that refers to them ("my PDF", "page 2 of the article", "the table
    in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it
    returned. Several files and the message does not say which -> answer_question asking which file (name them).
-   The user mentions a file but none is attached -> answer_question: ask them to attach it with the 📎 icon.
+   The user mentions a file but none is attached -> answer_question: ask them to attach it with the 📎 icon. Except
+   "this PDF / my document / the slides from my PDF" about improving the slides: the deck was made from that file, so
+   act on the deck itself (a user was told to attach the PDF the deck already came from).
    What a read_file or web_search step returned goes on the page the user is looking at (edit_page on that page), or
    on the page they named; never on some other page.
    Academic/medical/scientific citations, references, studies, "peer-reviewed", "APA/Vancouver sources", a bibliography
