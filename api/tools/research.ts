@@ -56,8 +56,15 @@ const wikimedia = async (query: string) => {
   const files = await wikidataFiles(query).catch(() => [] as string[])
   const known = files.length ? await commons({ titles: files.map(f => `File:${f}`).join('|') }).catch(() => []) : []
   // photos AND drawings: maps, flags, diagrams and logos on Commons are mostly SVG (served as a PNG thumbnail)
-  const searched = (await commons({ generator: 'search', gsrsearch: `${query} filetype:bitmap|drawing`, gsrnamespace: '6', gsrlimit: '8' }))
+  const search = async (q: string) => (await commons({ generator: 'search', gsrsearch: `${q} filetype:bitmap|drawing`, gsrnamespace: '6', gsrlimit: '8' }))
     .sort((a, b) => (a.index || 0) - (b.index || 0))
+  let searched = await search(query)
+  // Commons search needs every word to match: a long description ("clinical examples of systemic sclerosis skin
+  // manifestations: ...") found nothing (2026-11-11). Then the 2-4 words that name the thing.
+  if (!searched.length && !known.length && query.split(/\s+/).length > 4) {
+    const kw = (await chat([{ role: 'user', content: `Give 2 to 4 English keywords to search Wikimedia Commons for a picture of: ${query}\nReply with the keywords only.` }], { maxTokens: 2000 }).catch(() => '')).replace(/["\n]/g, ' ').trim().slice(0, 80)
+    if (kw) searched = await search(kw).catch(() => [])
+  }
   const pages = [...known, ...searched.filter(p => !known.some(k => k.title === p.title))]
   if (!pages.length) return { src: '' }
   // Search rank alone picked a 1755 colonial map and a night-lights photo for "map of the United States": a small
