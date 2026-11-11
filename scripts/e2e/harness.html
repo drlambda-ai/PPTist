@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,iframe{margin:0;border:0;width:100%;height:100%}</style></head><body>
+<script>
+const q = new URLSearchParams(location.search)
+window.__ev = []
+window.__chatslide = {
+  projectId: 'test', title: 'Test deck', token: async () => 'x',
+  canExport: () => { window.__ev.push('canExport'); return q.get('paid') === '1' },
+  canUseAdvanced: () => q.get('paid') === '1',
+  offerAdvanced: () => window.__ev.push('offerAdvanced'),
+  outOfCredits: () => window.__ev.push('outOfCredits'),
+  load: async () => { const f = q.get('deck'); return f ? await (await fetch('decks/' + f)).json() : null },
+  save: async () => {}, sync: async () => ({}), pptx: async () => '',
+  share: async () => { window.__ev.push('share'); return { url: location.origin + '/shared/test', copied: false } },
+  goto: async (s) => window.__ev.push('goto:' + s),
+}
+</script>
+<iframe src="index.html"></iframe></body></html>
