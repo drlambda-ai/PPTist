@@ -313,6 +313,10 @@ Rules:
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
    wording only where it is broken; keep the content and design.
+   Text the user wrote per slide, numbered ("Слайд 1. …", "Slide 2: …", "第3页…") -> edit_page on EACH numbered page,
+   page N = their slide N exactly (never shifted past a title or contents page), new_content false, page_named true,
+   instruction: put this text on the page word for word, title and body as given, replacing the page's text. Every
+   numbered slide in one turn; a number past the end of the deck -> add_page with that text. Never only the first.
    "The whole deck" / "cả bộ" / "весь" / "all slides" with pictures, backgrounds or effects -> every page: backgrounds ->
    apply_theme or set_background on all pages, effects/animations -> animate_pages on all pages, pictures -> a picture on
    EVERY page (change_image on each picture it has, as rule 5; add_image where it has none). Never do one page of it.
