@@ -486,13 +486,20 @@ const overlapNote = (sl: Slide) => {
 }
 
 // Out of credits for the advanced model: the standard one (no credit) does the edit, without the paywall.
-const editSlide = async (index: number, instruction: string, advanced = false) => {
+// fallback: out of credits for the advanced model, use the standard one. Off for a redesign: the standard model's
+// "redesign" is a few pixels (backtest 2026-11-11), so the user is told about the credits instead.
+let lastEditAdvanced = false // the model the last editSlide actually ran: callers decide retries on this, not re-derive it
+const editSlide = async (index: number, instruction: string, advanced = false, fallback = true) => {
+  lastEditAdvanced = false
   if (advanced) {
     try {
-      return await editSlideWith(index, instruction, true)
+      const r = await editSlideWith(index, instruction, true)
+      lastEditAdvanced = true
+      return r
     }
     catch (e) {
-      if (!(e instanceof OutOfCredits)) throw e
+      if (!(e instanceof OutOfCredits)) { lastEditAdvanced = true; throw e }
+      if (!fallback) throw e
     }
   }
   return editSlideWith(index, instruction, false)
@@ -1244,9 +1251,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
     }
     let upgradeLine = ''
-    const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced).catch((e) => {
+    const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced, !args.redesign).catch((e) => {
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
-      if (((args.hard || args.redesign) && canAdvanced) || !(e as any).tooHard) throw e // it already had its try, or nothing was needed
+      if (lastEditAdvanced || !(e as any).tooHard) throw e // the advanced model already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)
       const line = offer()
       throw line ? new NoChange(`${e.message} ${line}`) : e
@@ -1267,8 +1274,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // Measured after the page renders, since text boxes grow to fit their text then.
     await nextTick(); await new Promise(r => setTimeout(r, 300))
     const hadBefore = textOnPictures(was)
+    const paidLayout = lastEditAdvanced // the cheaper model must not rework a layout the user paid for
     if ([...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))) {
-      await editSlide(i, 'Fix the layout only: no text may overlap or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.').catch(() => undefined)
+      await editSlide(i, 'Fix the layout only: no text may overlap or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
     if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option] }
