@@ -1191,7 +1191,9 @@ export default () => {
   
               const allWidth = el.colWidths.reduce((a, b) => a + b, 0)
               const colWidths: number[] = el.colWidths.map(item => item / allWidth)
-              const cellMinHeight = el.rowHeights[0] ? el.rowHeights[0] * ratio : 36
+              // the floor is the shortest row: the first row's height made every body row as tall as a 2-line header
+              const heights = el.rowHeights.slice(0, row).filter((h: number) => h > 0)
+              const cellMinHeight = heights.length ? Math.min(...heights) * ratio : 36
               const rowHeights = el.rowHeights.slice(0, row).map(height => Math.max(height * ratio, cellMinHeight))
 
               const isVisibleBorder = (b?: { borderColor?: string; borderWidth?: number }) => {
