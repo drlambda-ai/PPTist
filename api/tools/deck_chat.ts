@@ -490,7 +490,7 @@ async function handler(req: any, res: any) {
         { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. Return JSON {"user_language": "<language of the user\'s message>", "reply": "<the reply in that language>"}.' },
         // a short or accent-less message ("VIDEO DC HCX", "DC R") reads as English: the user's earlier messages say
         // which language they write in (a Vietnamese user got four English replies, 2026-11-11)
-        { role: 'user', content: `${Array.isArray(body.earlier) && body.earlier.length ? `The user's earlier messages (same language): ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
+        { role: 'user', content: `${Array.isArray(body.earlier) && body.earlier.length ? `The user's earlier messages (the language they have been writing in; a message clearly in another language wins): ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
       ], { model: process.env.FINALIZE_MODEL || 'gpt-6-luna', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
       let reply = ''
       try { reply = String(JSON.parse(raw).reply || '') }

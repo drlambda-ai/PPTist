@@ -585,30 +585,39 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     // an added element without a real position and size is dropped rather than drawn at 0,0
     ...(ret.patch.added || []).filter((e: any) => e?.id && GEOMETRY.slice(0, 4).every(k => Number.isFinite(toNum(e[k]))) && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
   ]
-  // stacking order: "layer" front/back on a change moves that element (a user asked six times to put the title on top
-  // of a white box; the merge kept the old order every time, 2026-11-11). Backdrops stay at the bottom.
-  // an added element may carry layer too; an added shape without words (a box, a band) goes behind the text by default:
-  // "add a white rectangle behind the title" put it on top of the title
-  const addedLayer: Record<string, string> = Object.fromEntries((ret.patch.added || []).filter((e: any) => e?.id).map((e: any) =>
-    [e.id, e.layer || (e.type === 'shape' && !String(e.content ?? e.text?.content ?? '').replace(/<[^>]+>/g, '').trim() ? 'back' : '')]))
+  // stacking order: "layer" front/back moves that element (a user asked six times to put the title on top of a white
+  // box; the merge kept the old order every time, 2026-11-11). Only the layered elements move; everything else keeps
+  // its order. "back" lands just above the slide's background layers (backdrop pictures, full-slide shapes).
+  const { width: SW, height: SH } = slideSize()
+  const fullSlide = (e: any) => (e.type === 'image' && isBackdrop(e)) || (e.type === 'shape' && !elText(e) && e.width >= SW * 0.95 && e.height >= SH * 0.95)
+  const isBox = (e: any) => e.type === 'shape' && !String(e.content ?? e.text?.content ?? '').replace(/<[^>]+>/g, '').trim() && e.width >= 20 && e.height >= 20
+  // a NEW box without words goes behind the text by default ("a white rectangle behind the title" landed on top of it);
+  // lines, arrows and icons (thinner than 20px) and anything already on the slide keep their place
+  const liveIds = new Set(live.elements.map(e => e.id))
+  const addedLayer: Record<string, string> = Object.fromEntries((ret.patch.added || []).filter((e: any) => e?.id && !liveIds.has(e.id))
+    .map((e: any) => [e.id, e.layer || (isBox(e) ? 'back' : '')]))
   const layer = (id: string) => changes[id]?.layer || addedLayer[id]
   if (merged.some((e: any) => layer(e.id) === 'front' || layer(e.id) === 'back')) {
-    const keep = merged.filter((e: any) => layer(e.id) !== 'front' && layer(e.id) !== 'back')
-    const back = merged.filter((e: any) => layer(e.id) === 'back'), front = merged.filter((e: any) => layer(e.id) === 'front')
-    const backdrops = keep.filter((e: any) => e.type === 'image' && isBackdrop(e))
-    const rest = keep.filter((e: any) => !(e.type === 'image' && isBackdrop(e)))
-    // a box put behind text covers that text: the model drew a 90px square behind a 340px title (2026-11-11)
-    const texts = rest.filter((e: any) => elText(e) && e.type !== 'image')
-    const backed = back.map((b: any) => {
-      if (!addedLayer[b.id] || elText(b)) return b
-      const under = texts.filter((t: any) => Math.min(b.left + b.width, t.left + t.width) > Math.max(b.left, t.left) && Math.min(b.top + b.height, t.top + t.height) > Math.max(b.top, t.top))
+    const moved = (e: any) => layer(e.id) === 'front' || layer(e.id) === 'back'
+    const texts = merged.filter((e: any) => elText(e) && e.type !== 'image')
+    // a new box behind text covers the text it mostly sits under (30%+ of that text's area): the model drew a 90px
+    // square behind a 340px title. Kept inside the slide.
+    const fit = (b: any) => {
+      if (!addedLayer[b.id] || layer(b.id) !== 'back' || !isBox(b)) return b
+      const area = (x: any) => x.width * x.height
+      const ov = (t: any) => Math.max(0, Math.min(b.left + b.width, t.left + t.width) - Math.max(b.left, t.left)) * Math.max(0, Math.min(b.top + b.height, t.top + t.height) - Math.max(b.top, t.top))
+      const under = texts.filter((t: any) => ov(t) >= 0.3 * area(t))
       if (!under.length) return b
       const pad = 12
-      const l = Math.min(b.left, ...under.map((t: any) => t.left - pad)), tp = Math.min(b.top, ...under.map((t: any) => t.top - pad))
-      const r = Math.max(b.left + b.width, ...under.map((t: any) => t.left + t.width + pad)), bt = Math.max(b.top + b.height, ...under.map((t: any) => t.top + t.height + pad))
+      const l = Math.max(0, Math.min(b.left, ...under.map((t: any) => t.left - pad))), tp = Math.max(0, Math.min(b.top, ...under.map((t: any) => t.top - pad)))
+      const r = Math.min(SW, Math.max(b.left + b.width, ...under.map((t: any) => t.left + t.width + pad))), bt = Math.min(SH, Math.max(b.top + b.height, ...under.map((t: any) => t.top + t.height + pad)))
       return { ...b, left: l, top: tp, width: r - l, height: bt - tp }
-    })
-    merged.splice(0, merged.length, ...backdrops, ...backed, ...rest, ...front)
+    }
+    const stay = merged.filter((e: any) => !moved(e))
+    const back = merged.filter((e: any) => layer(e.id) === 'back').map(fit), front = merged.filter((e: any) => layer(e.id) === 'front')
+    let at = 0 // just above the background layers at the bottom of the stack
+    while (at < stay.length && fullSlide(stay[at])) at++
+    merged.splice(0, merged.length, ...stay.slice(0, at), ...back, ...stay.slice(at), ...front)
   }
   // a reply that describes changes the merge did not make is never shown as done
   if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
@@ -1656,7 +1665,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // "this slide" is the source only when it is not the page being changed: "make slide 5's background like the rest"
     // on slide 5 copied slide 5 onto itself ("applied to 0 slides") and the router fell back to a stock photo (2026-11-11)
     const here = slideIndex.value + 1
-    const src = args.page_named === false && !(args.pages || []).map(Number).includes(here) ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
+    const targetsAsked = (args.pages || []).map(Number)
+    let src = args.page_named === false && !targetsAsked.includes(here) ? slides.value[slideIndex.value] : slides.value[pos(idOf(args.from))]
+    if (targetsAsked.includes(pos(src.id) + 1)) { // the source is one of the pages being changed: the nearest page that is not
+      const k = slides.value.map((_, j) => j + 1).filter(j => !targetsAsked.includes(j)).sort((x, y) => Math.abs(x - here) - Math.abs(y - here))[0]
+      if (k) src = slides.value[k - 1]
+    }
     const html = (e: any) => String(e?.content ?? e?.text?.content ?? '')
     const first: any = readingOrder(src).find((e: any) => elText(e))
     const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
@@ -1954,7 +1968,7 @@ const deckTurn = async (text: string) => {
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
     // the same step on the same pages again is the router repeating itself, not a second request: the turn just ends
     // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
-    if (again && done.some(d => d.startsWith(`${again.action} `) && d.includes(`"pages":${JSON.stringify(again.args?.pages ?? [])}`))) break
+    if (again && done.some(d => d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`))) break // the identical step
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
       const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
