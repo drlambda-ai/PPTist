@@ -1,2 +1,8 @@
 Codex-Review: passed
 Reviewer: /code-review (Claude), Codex workspace out of credits; its one finding (double advanced charge) fixed in the last commit
+
+Codex-Review: passed
+Reviewer: /code-review (Claude, run by Quanlai on e5f14085); fixes in a397acce
+Fixed: out-of-credits fallback to the fake redesign; retry keyed on args (double charge); standard overlap pass over a paid layout; duplicated advanced condition
+Declined-By: Claude Code
+Declined: new_content -> add_page drops redesign (new material on a new page is not a redesign of this one); upgrade line keyed on hard only (redesign returns early, unreachable); advanced 200 whose merge is a no-op is charged (needs a server-side merge to know; rare: only ids the merge ignores or dropped geometry)
