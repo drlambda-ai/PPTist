@@ -260,16 +260,22 @@ const run = async (label: string, fn: () => Promise<void>) => {
     await fn()
   }
   catch (e) {
-    if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }))
-    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) say('assistant', t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
+    // the steps finished before the failure are kept and saved: every message says so, or a retry redoes paid work
+    const kept = !!(e as any)?.keptSteps
+    const keptLine = kept ? ` ${t('The changes made before it are kept.')}` : ''
+    if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }) + keptLine)
+    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) {
+      say('assistant', kept ? t('The AI service is unavailable right now. Please try again in a moment.') + keptLine : t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
+    }
     // a bug of ours, never shown raw to the user (it is in the turn record with its stack)
     else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) {
       say('assistant', (e as any).keptSteps
         ? t('Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.')
         : t('Something went wrong on our side; nothing was changed. Please try again.'))
     }
-    else say('assistant', t('That failed: ') + ((e as Error).message || e))
+    else say('assistant', t('That failed: ') + ((e as Error).message || e) + keptLine)
   }
+  lastGoodSlides = null // the copy is only for the turn that just ended
   busy.value = ''
 }
 
@@ -466,6 +472,7 @@ const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 // page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
+const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
 const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
 let currentAtSend = '' // id of the page the user was on when they sent the message
@@ -1090,8 +1097,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const clamp = (v: number) => Math.min(Math.max(v || 0, 0), 100) / 100
     const sl = slides.value[pos(id)]
     const wanted = { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H }
+    // at most 4 new pictures on a page per message (a reworded re-plan would otherwise keep adding near-duplicates)
+    if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 4) fail(t('Page {p0} already got 4 new pictures in this message.', { p0: pos(id) + 1 }))
     let box = freeBox(sl, wanted)
+    if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
     if (!box) { // a full page: make room rather than refuse
+      roomMadeThisTurn.add(id)
       await editSlide(pos(id), 'Make room for a picture: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.').catch(() => undefined)
       const room = { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H }
       box = freeBox(slides.value[pos(id)], room)
@@ -1103,7 +1114,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: pos(id) + 1 }))
     busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
-    const src = await findPicture(args.query, args.source, box.width >= box.height)
+    const src = await findPicture(args.query, args.source, box.width >= box.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
     if (!src) fail(t('Could not get a picture.'))
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
     if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
@@ -1261,7 +1272,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'edit_page') {
     // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
     // after "slide 5: <text>" (2026-11-11)
-    if (args.page_named === true) args.whole_deck_option = ''
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
     const target = args.page_named === false && !turnKeepPages && !turnSelected && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
@@ -1316,7 +1326,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
-    if (args.whole_deck_option) {
+    if (args.whole_deck_option && args.page_named !== true) { // a named page is not a whole-deck question
       const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
       s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
         repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others }
@@ -1752,6 +1762,7 @@ const deckTurn = async (text: string) => {
   userText = text
   editedThisTurn.clear()
   picturedThisTurn.clear()
+  roomMadeThisTurn.clear()
   replacedThisTurn.clear()
   const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
@@ -1948,7 +1959,9 @@ const deckTurn = async (text: string) => {
       }
       replies.push(reply)
       ran.push(c)
-      lastGoodSlides = JSON.parse(JSON.stringify(slides.value)) // what a later step's crash rolls back to
+      if (!['answer_question', 'ask_user', 'say_unable', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design', 'download_deck'].includes(c.action)) {
+        lastGoodSlides = JSON.parse(JSON.stringify(slides.value)) // what a later step's crash rolls back to
+      }
       if (c.action === 'undo') pendingInstead = String(c.args?.instead || '').trim()
       else if (!['answer_question', 'ask_user', 'redo', 'go_to_page', 'read_file', 'web_search', 'find_papers', 'read_link'].includes(c.action)) pendingInstead = ''
       turnCalls.push(stepKey(c.action, c.args))

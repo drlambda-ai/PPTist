@@ -1192,5 +1192,8 @@
   "Make the text bigger": "Make the text bigger",
   "Something went wrong on our side; nothing was changed. Please try again.": "Something went wrong on our side; nothing was changed. Please try again.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.",
+  "The changes made before it are kept.": "The changes made before it are kept.",
+  "The AI service is unavailable right now. Please try again in a moment.": "The AI service is unavailable right now. Please try again in a moment.",
+  "Page {p0} already got 4 new pictures in this message.": "Page {p0} already got 4 new pictures in this message."
 }

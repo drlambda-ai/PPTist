@@ -1192,5 +1192,8 @@
   "Make the text bigger": "Aumentar o texto",
   "Something went wrong on our side; nothing was changed. Please try again.": "Algo deu errado do nosso lado; nada foi alterado. Tente novamente.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "O Wikimedia Commons não tinha nenhuma imagem de \"{p0}\", então esta é uma foto de banco de imagens.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Algo deu errado do nosso lado no meio do processo; as alterações feitas antes disso foram mantidas. Peça o restante novamente."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Algo deu errado do nosso lado no meio do processo; as alterações feitas antes disso foram mantidas. Peça o restante novamente.",
+  "The changes made before it are kept.": "As alterações feitas antes dele são mantidas.",
+  "The AI service is unavailable right now. Please try again in a moment.": "O serviço de IA não está disponível no momento. Tente novamente daqui a pouco.",
+  "Page {p0} already got 4 new pictures in this message.": "A página {p0} já recebeu 4 novas imagens nesta mensagem."
 }

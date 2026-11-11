@@ -1192,5 +1192,8 @@
   "Make the text bigger": "بزرگ‌تر کردن متن",
   "Something went wrong on our side; nothing was changed. Please try again.": "از سمت ما مشکلی پیش آمد؛ هیچ چیزی تغییر نکرد. لطفاً دوباره تلاش کنید.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "ویکی‌مدیا کامنز هیچ عکسی از «{p0}» نداشت، بنابراین این یک عکس استوک است.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "در میانهٔ کار از سمت ما مشکلی پیش آمد؛ تغییرات انجام‌شده تا آن لحظه حفظ شده‌اند. لطفاً بقیه را دوباره درخواست کنید."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "در میانهٔ کار از سمت ما مشکلی پیش آمد؛ تغییرات انجام‌شده تا آن لحظه حفظ شده‌اند. لطفاً بقیه را دوباره درخواست کنید.",
+  "The changes made before it are kept.": "تغییرات انجام‌شده قبل از آن حفظ می‌شوند.",
+  "The AI service is unavailable right now. Please try again in a moment.": "سرویس هوش مصنوعی در حال حاضر در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.",
+  "Page {p0} already got 4 new pictures in this message.": "صفحهٔ {p0} در این پیام از قبل ۴ تصویر جدید گرفته است."
 }

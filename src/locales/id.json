@@ -1192,5 +1192,8 @@
   "Make the text bigger": "Perbesar teks",
   "Something went wrong on our side; nothing was changed. Please try again.": "Terjadi kesalahan di pihak kami; tidak ada yang diubah. Silakan coba lagi.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "Wikimedia Commons tidak memiliki gambar \"{p0}\", jadi ini adalah foto stok.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Terjadi kesalahan di pihak kami di tengah proses; perubahan yang sudah dibuat sebelumnya tetap disimpan. Silakan minta sisanya lagi."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Terjadi kesalahan di pihak kami di tengah proses; perubahan yang sudah dibuat sebelumnya tetap disimpan. Silakan minta sisanya lagi.",
+  "The changes made before it are kept.": "Perubahan yang dibuat sebelumnya tetap disimpan.",
+  "The AI service is unavailable right now. Please try again in a moment.": "Layanan AI sedang tidak tersedia saat ini. Silakan coba lagi sebentar lagi.",
+  "Page {p0} already got 4 new pictures in this message.": "Halaman {p0} sudah mendapat 4 gambar baru di pesan ini."
 }

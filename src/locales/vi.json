@@ -1192,5 +1192,8 @@
   "Make the text bigger": "Làm chữ lớn hơn",
   "Something went wrong on our side; nothing was changed. Please try again.": "Đã xảy ra lỗi từ phía chúng tôi; không có gì được thay đổi. Vui lòng thử lại.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "Wikimedia Commons không có hình của \"{p0}\", nên đây là ảnh stock.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Đã có lỗi xảy ra từ phía chúng tôi ở giữa chừng; các thay đổi đã thực hiện trước đó vẫn được giữ lại. Vui lòng yêu cầu phần còn lại مرة nữa."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Đã có lỗi xảy ra từ phía chúng tôi ở giữa chừng; các thay đổi đã thực hiện trước đó vẫn được giữ lại. Vui lòng yêu cầu phần còn lại مرة nữa.",
+  "The changes made before it are kept.": "Các thay đổi được thực hiện trước đó sẽ được giữ lại.",
+  "The AI service is unavailable right now. Please try again in a moment.": "Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau ít phút.",
+  "Page {p0} already got 4 new pictures in this message.": "Trang {p0} đã có 4 hình ảnh mới trong tin nhắn này."
 }

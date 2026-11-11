@@ -1192,5 +1192,8 @@
   "Make the text bigger": "把文字放大",
   "Something went wrong on our side; nothing was changed. Please try again.": "我们这边出了点问题；没有任何更改。请再试一次。",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "维基共享资源上没有“{p0}”的图片，所以这是张素材照片。",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "处理中途我们这边出了点问题；之前所做的更改已保留。请再请求剩余部分。"
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "处理中途我们这边出了点问题；之前所做的更改已保留。请再请求剩余部分。",
+  "The changes made before it are kept.": "在此之前所做的更改会保留。",
+  "The AI service is unavailable right now. Please try again in a moment.": "AI 服务当前不可用。请稍后再试。",
+  "Page {p0} already got 4 new pictures in this message.": "第 {p0} 页在此消息中已经有 4 张新图片。"
 }

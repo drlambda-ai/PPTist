@@ -1192,5 +1192,8 @@
   "Make the text bigger": "Збільшити текст",
   "Something went wrong on our side; nothing was changed. Please try again.": "Щось пішло не так з нашого боку; нічого не було змінено. Будь ласка, спробуйте ще раз.",
   "Wikimedia Commons had no picture of \"{p0}\", so this is a stock photo.": "На Wikimedia Commons не було зображення «{p0}», тож це стокове фото.",
-  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "На нашому боці щось пішло не так у процесі; зміни, внесені до цього моменту, збережено. Будь ласка, запитайте решту ще раз."
+  "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "На нашому боці щось пішло не так у процесі; зміни, внесені до цього моменту, збережено. Будь ласка, запитайте решту ще раз.",
+  "The changes made before it are kept.": "Зміни, внесені до нього, зберігаються.",
+  "The AI service is unavailable right now. Please try again in a moment.": "Сервіс ШІ зараз недоступний. Будь ласка, спробуйте ще раз за мить.",
+  "Page {p0} already got 4 new pictures in this message.": "Сторінка {p0} уже отримала 4 нові зображення в цьому повідомленні."
 }
