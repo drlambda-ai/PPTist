@@ -505,7 +505,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   const flat = (e: any) => (e.type === 'shape' && e.text ? (({ text, ...r }) => ({ ...r, content: text.content, defaultColor: text.defaultColor, defaultFontName: text.defaultFontName }))(e) : e)
   // the model copies what it sees, so a new box often comes back as a "shape" with "content": put the words where
   // the editor draws them (a shape's text, or a plain text box when it has no outline)
-  const unflat = (e: any) => {
+  const unflat = (e0: any) => {
+    const e = { ...e0, ...Object.fromEntries(GEOMETRY.filter(k => k in e0).map(k => [k, Number(e0[k]) || 0])) }
     if (e.type !== 'shape' || e.content === undefined) return e
     const { content, defaultColor, defaultFontName, ...rest } = e
     if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
@@ -533,6 +534,14 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
       if (!c) return e
       const { src: _src, path, ...rest } = c // image sources and tokenised paths are never taken from the model
       void _src
+      // a position or size that is not a number is dropped: top ":" from the model threw a heading into the corner
+      // of the slide (2026-11-11, a user's "improve the design")
+      for (const k of GEOMETRY) {
+        if (!(k in rest)) continue
+        const v = typeof rest[k] === 'string' && rest[k].trim() !== '' ? Number(rest[k]) : rest[k] // "190" is 190
+        if (Number.isFinite(v)) rest[k] = v
+        else delete rest[k]
+      }
       if (e.type === 'shape' && e.text) {
         const { content, defaultColor, defaultFontName, text, ...shape } = rest
         const t = { ...e.text, ...(text || {}), ...(content !== undefined ? { content } : {}), ...(defaultColor ? { defaultColor } : {}), ...(defaultFontName ? { defaultFontName } : {}) }
@@ -540,7 +549,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
       }
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
-    ...(ret.patch.added || []).filter((e: any) => e?.id && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
+    // an added element without a real position and size is dropped rather than drawn at 0,0
+    ...(ret.patch.added || []).filter((e: any) => e?.id && GEOMETRY.slice(0, 4).every(k => Number.isFinite(Number(e[k]))) && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
   ]
   // a reply that describes changes the merge did not make is never shown as done
   if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
@@ -1668,6 +1678,7 @@ let deleteConfirmable: string[] = [] // pages the previous message asked about: 
 let askedThisTurn = false // a question for the user ends the message
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let advancedOffered = false // the paid-model offer, shown once per session
+const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 const deckTurn = async (text: string) => {
   newTurn() // a new message: charged on its own
   // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
