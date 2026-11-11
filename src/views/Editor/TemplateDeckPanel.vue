@@ -105,7 +105,9 @@ interface Session {
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
-  pending?: { request: string, question: string, options?: string[], done?: string[] } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
+  // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[] } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
 }
 
@@ -463,14 +465,21 @@ let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: wh
 // a step's TARGET (action + where), not its wording: a redo of the undone change rarely repeats the query word for word
 const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Object.fromEntries(Object.entries(args || {})
   .filter(([k]) => !['answer', 'source'].includes(k)).sort()))}` // what to change stays in: "no, red instead" is a new step
-// text boxes that run into a picture, as "text|picture" keys
+// text boxes that run into a picture or into another plain text box (a paid redesign left a heading on top of the
+// card text, 2026-11-11), as "a|b" keys. Text on a card shape is a design, not a collision.
 const textOnPictures = (els: any[]) => {
-  const pics = els.filter((e: any) => e.type === 'image' && !isBackdrop(e))
-  return new Set(els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
+  const pics = els.filter((e: any) => (e.type === 'image' && !isBackdrop(e)))
+  const texts = els.filter((e: any) => e.type === 'text' && elText(e))
+  const tt = texts.flatMap((a: any, i: number) => texts.slice(i + 1).filter((b: any) => {
+    const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+    const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+    return w > 0 && h > 0 && w * h > 0.15 * Math.min(a.width * a.height, b.width * b.height)
+  }).map((b: any) => `${a.id}|${b.id}`))
+  return new Set([...tt, ...els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
     const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
     const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
     return w > 0 && h > 0 && w * h > 0.05 * Math.min(a.width * a.height, b.width * b.height)
-  }).map((b: any) => `${a.id}|${b.id}`)))
+  }).map((b: any) => `${a.id}|${b.id}`))])
 }
 // what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
 const overlapNote = (sl: Slide) => {
@@ -1006,7 +1015,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Added a table page "{p0}".', { p0: titleAt(after) })
   }
   // with a selection sent, the router's page is the one it was on (the user may have moved on since)
-  if (args.page_named === false && !turnSelected && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
+  if (args.page_named === false && !turnSelected && !turnKeepPages && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
     if (!file) {
@@ -1227,7 +1236,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'edit_page') {
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
-    const target = args.page_named === false && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
+    const target = args.page_named === false && !turnKeepPages && !turnSelected && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
@@ -1245,7 +1254,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // design (5 of 5 replays of a real user's request, 2026-11-11); the advanced model redesigned the page (2 of 2).
     // So free users are told plainly and offered what visibly works; paid users get the advanced model.
     if (args.redesign && !canAdvanced) {
-      s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')] }
+      s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')], offer: true }
       save()
       offer() // ChatSlide's paywall, once per session
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
@@ -1276,10 +1285,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const hadBefore = textOnPictures(was)
     const paidLayout = lastEditAdvanced // the cheaper model must not rework a layout the user paid for
     if ([...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))) {
-      await editSlide(i, 'Fix the layout only: no text may overlap or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
+      await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture; remove a duplicated line. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
-    if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option] }
+    if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option], offer: true }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
@@ -1694,6 +1703,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let askedThisTurn = false // a question for the user ends the message
 let turnSelected = '' // what was selected on the canvas when the message was sent
+let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN
@@ -1710,7 +1720,10 @@ const deckTurn = async (text: string) => {
   replacedThisTurn.clear()
   const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
+  // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
+  if (s.pending?.offer && !s.pending.options?.includes(text)) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
+  turnKeepPages = !!pendingAtStart?.offer // the router names the pages for an accepted offer: keep its numbers
   const done: string[] = []
   const replies: string[] = []
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
@@ -1747,15 +1760,21 @@ const deckTurn = async (text: string) => {
   })
   let pagesWanted = -1 // declared by the first page-adding step (message_new_pages)
   // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
+  // "Do the same on the other pages": the editor repeats the steps that ran on the first page, page by page, without
+  // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
+  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.includes(text)
+    ? [...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.map(c => ({ action: c.action,
+        args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
+    : []
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
-  for (; round < 16; round++) {
-    const { calls, error } = await (await fetch('/api/tools/deck_chat', {
+  for (; round < 16 + repeat.length; round++) {
+    const { calls, error } = repeat.length ? { calls: [repeat.shift()], error: '' } : await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
         // "this page" stays the page the user was on when they sent the message: steps that show a new page moved it,
         // and "add a page after this one" then re-ran after each new page (30 -> 36)
         instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
-        pending: s.pending || undefined,
+        pending: pendingAtStart || undefined,
         selected: selected || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
         pictures: (s.images || []).map(m => m.name),
@@ -1916,13 +1935,17 @@ const deckTurn = async (text: string) => {
   if ((unfinished || round === 16) && !askedThisTurn) {
     followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
     // answering an earlier question or offer (Continue included): the request stays the original one, steps accumulate
-    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30) }
+    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30), offer: true }
     save()
   }
-  else if (changed && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
+  else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
     && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true)) {
     followUp = t('Done on this page. Want the same on the other pages?')
-    s.pending = { request: text, question: followUp, options: [t('Do the same on the other {p0} pages', { p0: slides.value.length - 1 })] }
+    const here = slides.value.findIndex(x => x.id === startPageId) + 1
+    const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
+    // the router learns which pages are left and what was done here, so it neither redoes this page nor skips one
+    s.pending = { request: text, question: `${followUp} (the other pages: ${others.join(', ')})`, options: [t('Do the same on the other {p0} pages', { p0: others.length })], done: done.slice(-30), offer: true,
+      repeat: ran.map(c => ({ action: c.action, args: c.args })), pages: others }
     save()
   }
   if (changed) {
