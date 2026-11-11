@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Hình ảnh {p0}",
   "All of them": "Tất cả",
   "center": "giữa",
-  "Not done yet: {p0}. Send it as its own message.": "Chưa thực hiện: {p0}. Hãy gửi thành một tin nhắn riêng."
+  "Done on this page. Want the same on the other pages?": "Đã xong ở trang này. Bạn có muốn làm tương tự ở các trang khác không?",
+  "Do the same on the other {p0} pages": "Làm tương tự ở {p0} trang còn lại",
+  "There is more to do from your message. Tap Continue and I will carry on.": "Tin nhắn của bạn còn yêu cầu thực hiện thêm. Nhấn Tiếp tục để tôi làm tiếp.",
+  "Not done yet: {p0}.": "Chưa xong: {p0}.",
+  "Continue": "Tiếp tục"
 }

@@ -332,7 +332,9 @@ Rules:
    Hello/thanks/small talk -> answer_question, briefly. "Help me create a new project" with no topic -> open_step dashboard.
    A topic the deck does not cover is never a reason to ask or refuse: the user's words are the brief.
    A change that does not say where and could mean this slide or the whole deck ("make this more persuasive", "make it
-   shorter", "fix it", "try a different layout") -> edit_page on the current page with
+   shorter", "too much text", "add (historical) images", "fix it", "try a different layout"), plural or not -> the
+   CURRENT page only; the editor then offers the other pages as one tap. Only "all slides"/"every page"/"the whole
+   deck" (or the answer to that offer) means every page. For edit_page, set
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
@@ -502,7 +504,8 @@ async function handler(req: any, res: any) {
       : ''}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
-    const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 500)}". You asked: "${String(body.pending.question).slice(0, 300)}"]` : ''
+    const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 4000)}". You asked: "${String(body.pending.question).slice(0, 300)}"${Array.isArray(body.pending.done) && body.pending.done.length
+      ? `. Already done for it (do not repeat; do what is left): ${body.pending.done.map((d: unknown) => String(d).slice(0, 200)).join(' | ').slice(0, 4000)}` : ''}]` : ''
     const user = instruction + pending + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
     const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
       : m.startsWith('gpt-6') ? viaResponses(m, context, history, user) : viaOpenAI(m, context, history, user)

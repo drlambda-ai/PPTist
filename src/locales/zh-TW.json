@@ -1181,5 +1181,9 @@
   "Picture {p0}": "圖片 {p0}",
   "All of them": "全部",
   "center": "置中",
-  "Not done yet: {p0}. Send it as its own message.": "尚未完成：{p0}。請單獨傳送這項內容。"
+  "Done on this page. Want the same on the other pages?": "此頁面已完成。要在其他頁面也執行相同操作嗎？",
+  "Do the same on the other {p0} pages": "在其他 {p0} 個頁面執行相同操作",
+  "There is more to do from your message. Tap Continue and I will carry on.": "根據你的訊息，還有更多內容需要處理。點選「繼續」，我會接著完成。",
+  "Not done yet: {p0}.": "尚未完成：{p0}。",
+  "Continue": "繼續"
 }

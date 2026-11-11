@@ -1181,5 +1181,9 @@
   "Picture {p0}": "الصورة {p0}",
   "All of them": "كلها",
   "center": "المنتصف",
-  "Not done yet: {p0}. Send it as its own message.": "لم يتم ذلك بعد: {p0}. أرسله في رسالة منفصلة."
+  "Done on this page. Want the same on the other pages?": "تم في هذه الصفحة. هل تريد تطبيق الشيء نفسه على الصفحات الأخرى؟",
+  "Do the same on the other {p0} pages": "افعل الشيء نفسه في الصفحات الأخرى وعددها {p0}",
+  "There is more to do from your message. Tap Continue and I will carry on.": "ما زال هناك المزيد لإنجازه من رسالتك. اضغط على «متابعة» وسأواصل.",
+  "Not done yet: {p0}.": "لم يكتمل بعد: {p0}.",
+  "Continue": "متابعة"
 }

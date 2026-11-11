@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Зображення {p0}",
   "All of them": "Усі",
   "center": "по центру",
-  "Not done yet: {p0}. Send it as its own message.": "Ще не виконано: {p0}. Надішліть це окремим повідомленням."
+  "Done on this page. Want the same on the other pages?": "На цій сторінці готово. Зробити те саме на інших сторінках?",
+  "Do the same on the other {p0} pages": "Зроби те саме на інших {p0} сторінках",
+  "There is more to do from your message. Tap Continue and I will carry on.": "За вашим повідомленням залишилося ще дещо зробити. Натисніть «Продовжити», і я продовжу.",
+  "Not done yet: {p0}.": "Ще не завершено: {p0}.",
+  "Continue": "Продовжити"
 }

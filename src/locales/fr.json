@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Image {p0}",
   "All of them": "Toutes",
   "center": "centre",
-  "Not done yet: {p0}. Send it as its own message.": "Pas encore fait : {p0}. Envoyez-le dans un message séparé."
+  "Done on this page. Want the same on the other pages?": "C’est fait sur cette page. Voulez-vous faire la même chose sur les autres pages ?",
+  "Do the same on the other {p0} pages": "Fais la même chose sur les {p0} autres pages",
+  "There is more to do from your message. Tap Continue and I will carry on.": "Il reste des choses à faire d’après votre message. Appuyez sur Continuer et je poursuivrai.",
+  "Not done yet: {p0}.": "Pas encore terminé : {p0}.",
+  "Continue": "Continuer"
 }

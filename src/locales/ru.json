@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Изображение {p0}",
   "All of them": "Все",
   "center": "по центру",
-  "Not done yet: {p0}. Send it as its own message.": "Ещё не выполнено: {p0}. Отправьте это отдельным сообщением."
+  "Done on this page. Want the same on the other pages?": "На этой странице готово. Сделать то же самое на остальных страницах?",
+  "Do the same on the other {p0} pages": "Сделай то же самое на остальных страницах: {p0}",
+  "There is more to do from your message. Tap Continue and I will carry on.": "По вашему сообщению осталось сделать ещё кое-что. Нажмите «Продолжить», и я продолжу.",
+  "Not done yet: {p0}.": "Ещё не готово: {p0}.",
+  "Continue": "Продолжить"
 }

@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Gambar {p0}",
   "All of them": "Semuanya",
   "center": "tengah",
-  "Not done yet: {p0}. Send it as its own message.": "Belum dilakukan: {p0}. Kirim sebagai pesan tersendiri."
+  "Done on this page. Want the same on the other pages?": "Selesai di halaman ini. Ingin melakukan hal yang sama di halaman lainnya?",
+  "Do the same on the other {p0} pages": "Lakukan hal yang sama di {p0} halaman lainnya",
+  "There is more to do from your message. Tap Continue and I will carry on.": "Masih ada yang perlu dikerjakan dari pesan Anda. Ketuk Lanjutkan dan saya akan meneruskannya.",
+  "Not done yet: {p0}.": "Belum selesai: {p0}.",
+  "Continue": "Lanjut"
 }

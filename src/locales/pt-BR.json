@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Imagem {p0}",
   "All of them": "Todas",
   "center": "centro",
-  "Not done yet: {p0}. Send it as its own message.": "Ainda não foi feito: {p0}. Envie em uma mensagem separada."
+  "Done on this page. Want the same on the other pages?": "Concluído nesta página. Quer fazer o mesmo nas outras páginas?",
+  "Do the same on the other {p0} pages": "Faça o mesmo nas outras {p0} páginas",
+  "There is more to do from your message. Tap Continue and I will carry on.": "Ainda há mais coisas a fazer com base na sua mensagem. Toque em Continuar e eu prossigo.",
+  "Not done yet: {p0}.": "Ainda não concluído: {p0}.",
+  "Continue": "Continuar"
 }

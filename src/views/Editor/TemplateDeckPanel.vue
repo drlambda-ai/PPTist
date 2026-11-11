@@ -105,7 +105,7 @@ interface Session {
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
-  pending?: { request: string, question: string, options?: string[] } | null // an ask_user waiting for the user's answer
+  pending?: { request: string, question: string, options?: string[], done?: string[] } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
 }
 
@@ -1681,6 +1681,8 @@ const deckTurn = async (text: string) => {
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   let changed = false
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
+  const ran: any[] = [] // the calls that ran
+  let unfinished = false // a deck-wide step had to wait for the next message
   const turnExact: string[] = [] // action + exact arguments of each step that ran in this message
   const startPageId = slides.value[slideIndex.value]?.id
   // what the user has selected on the canvas when they send: "this picture" / "make it bigger" means it
@@ -1710,7 +1712,8 @@ const deckTurn = async (text: string) => {
   })
   let pagesWanted = -1 // declared by the first page-adding step (message_new_pages)
   // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
-  for (let round = 0; round < 16; round++) {
+  let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
+  for (; round < 16; round++) {
     const { calls, error } = await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
@@ -1819,8 +1822,9 @@ const deckTurn = async (text: string) => {
     // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
     if (again) {
-      // names what is left: "I made one change" read as wrong after a theme, pictures and an edit (2026-11-10)
-      const line = t('Not done yet: {p0}. Send it as its own message.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
+      // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
+      const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
+      unfinished = true
       replies.push(line)
       terse.push(line)
       break
@@ -1851,6 +1855,7 @@ const deckTurn = async (text: string) => {
         break
       }
       replies.push(reply)
+      ran.push(c)
       if (c.action === 'undo') pendingInstead = String(c.args?.instead || '').trim()
       else if (!['answer_question', 'ask_user', 'redo', 'go_to_page', 'read_file', 'web_search', 'find_papers', 'read_link'].includes(c.action)) pendingInstead = ''
       turnCalls.push(stepKey(c.action, c.args))
@@ -1868,6 +1873,23 @@ const deckTurn = async (text: string) => {
     save()
   }
   lastTurnCalls = turnCalls
+  // Only this page changed and the message named no page: done here, the rest offered as one tap (Quanlai, 2026-11-11:
+  // "we can change and ask a follow-up question"). "Add historical images" / "too much text" changed one page silently.
+  const perPage = ['edit_page', 'add_image', 'change_image', 'set_font_size', 'set_font', 'set_background', 'remove_images']
+  let followUp = ''
+  // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
+  if ((unfinished || round === 16) && !askedThisTurn) {
+    followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
+    const carried = pendingAtStart?.done ? pendingAtStart : null // a Continue that still did not finish: same request, all steps so far
+    s.pending = { request: carried ? carried.request : text, question: followUp, options: [t('Continue')], done: [...(carried?.done || []), ...done].slice(-30) }
+    save()
+  }
+  else if (!s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
+    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true)) {
+    followUp = t('Done on this page. Want the same on the other pages?')
+    s.pending = { request: text, question: followUp, options: [t('Do the same on the other {p0} pages', { p0: slides.value.length - 1 })] }
+    save()
+  }
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
     renumber()
@@ -1877,6 +1899,7 @@ const deckTurn = async (text: string) => {
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
   if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
+  if (followUp) lines.push(followUp)
   const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''

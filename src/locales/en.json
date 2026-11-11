@@ -1181,5 +1181,9 @@
   "Picture {p0}": "Picture {p0}",
   "All of them": "All of them",
   "center": "center",
-  "Not done yet: {p0}. Send it as its own message.": "Not done yet: {p0}. Send it as its own message."
+  "Done on this page. Want the same on the other pages?": "Done on this page. Want the same on the other pages?",
+  "Do the same on the other {p0} pages": "Do the same on the other {p0} pages",
+  "There is more to do from your message. Tap Continue and I will carry on.": "There is more to do from your message. Tap Continue and I will carry on.",
+  "Not done yet: {p0}.": "Not done yet: {p0}.",
+  "Continue": "Continue"
 }

@@ -1181,5 +1181,9 @@
   "Picture {p0}": "تصویر {p0}",
   "All of them": "همهٔ آن‌ها",
   "center": "مرکز",
-  "Not done yet: {p0}. Send it as its own message.": "هنوز انجام نشده است: {p0}. آن را در پیامی جداگانه بفرستید."
+  "Done on this page. Want the same on the other pages?": "در این صفحه انجام شد. می‌خواهید همین کار را در صفحه‌های دیگر هم انجام دهم؟",
+  "Do the same on the other {p0} pages": "همین کار را در {p0} صفحهٔ دیگر انجام بده",
+  "There is more to do from your message. Tap Continue and I will carry on.": "طبق پیام شما کارهای بیشتری باقی مانده است. روی «ادامه» بزنید تا ادامه بدهم.",
+  "Not done yet: {p0}.": "هنوز انجام نشده است: {p0}.",
+  "Continue": "ادامه"
 }
