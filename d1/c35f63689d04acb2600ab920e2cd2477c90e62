@@ -1,0 +1,2 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude), Codex workspace out of credits; 10 findings: 6 fixed in ed20f003; declined: lost fee/reply lines on a crash (minor), stock fallback relevance (the note says it is a stock photo), keyword-retry cost (under a cent), snapshot memory (now only after changing steps, freed at turn end)
