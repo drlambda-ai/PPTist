@@ -1854,8 +1854,9 @@ let advancedOffered = false // the paid-model offer, shown once per session
 let openedSlides: Record<string, any> = {} // slide id -> the page as it was when this project was first opened here
 const helperPages = new Set<string>() // pages the editor added for pictures: not "new pages the user asked for"
 // the first-opened version per project, kept across reloads (after a reload "the original" was the edited deck)
-const ORIGINAL_KEY = () => `pptist-original-${chatslide?.projectId || 'local'}`
+const ORIGINAL_KEY = () => `pptist-original-${chatslide?.projectId}`
 const rememberOriginal = () => {
+  if (!chatslide?.projectId) { openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))])); return } // no project: this session only, never another deck's copy
   try {
     const kept = localStorage.getItem(ORIGINAL_KEY())
     if (kept) { openedSlides = JSON.parse(kept); return }
