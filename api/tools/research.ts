@@ -51,7 +51,7 @@ const wikidataFiles = async (query: string) => {
     .map((c: any) => c.mainsnak?.datavalue?.value).filter((v: unknown) => typeof v === 'string').slice(0, 8) as string[]
 }
 
-const wikimedia = async (query: string) => {
+const wikimedia = async (query: string, nearest = false) => {
   const plain = (h = '') => String(h).replace(/<[^>]+>/g, '').trim()
   const files = await wikidataFiles(query).catch(() => [] as string[])
   const known = files.length ? await commons({ titles: files.map(f => `File:${f}`).join('|') }).catch(() => []) : []
@@ -77,7 +77,7 @@ const wikimedia = async (query: string) => {
   // hypertension" found nothing where "pulmonary hypertension x-ray" finds 7 real films (2026-11-11). Nothing found or
   // nothing fits: three other short searches, with the common terms and synonyms, then pick again.
   let close = false
-  if (!best) {
+  if (!best && nearest) { // medical pictures only: elsewhere a near match (a 1755 map for the US map) is worse than a stock photo
     const alts = await chat([{ role: 'user', content: `Wikimedia Commons file search found nothing for: ${query}\nGive 3 different short searches (2 to 4 English words each) that Commons file names would use: the common term, synonyms (X-ray for radiograph), the plain name of the thing. JSON {"queries": ["...", "...", "..."]}` }], { jsonMode: true, maxTokens: 2000 })
       .then(r => (JSON.parse(r).queries || []) as string[]).catch(() => [] as string[])
     const more = (await Promise.all(alts.slice(0, 3).map(q => search(String(q)).catch(() => [] as any[])))).flat()
@@ -127,12 +127,12 @@ const readUrl = async (url: string) => {
 async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { kind = '', query = '' } = await readBody(req)
+    const { kind = '', query = '', nearest = false } = await readBody(req)
     if (!String(query).trim()) { res.status(400).json({ error: 'query required' }); return }
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
     else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))
     else if (kind === 'url') res.status(200).json(await readUrl(String(query).trim().slice(0, 2000)))
-    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200)))
+    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200), nearest === true))
     else res.status(400).json({ error: 'kind must be web, scholar, url or wikimedia' })
   }
   catch (e: any) {

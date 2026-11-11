@@ -11,6 +11,7 @@ async function handler(req: any, res: any) {
     const { instruction = '', strong = false, model: asked = '', image = '' } = await readBody(req)
     // a picture to read (the user's attached picture: "copy the text in my image"); only an https link or a picture
     const pic = /^(https:\/\/|data:image\/(png|jpeg|webp);base64,)/.test(String(image)) ? String(image) : ''
+    if (image && !pic) { res.status(400).json({ error: 'image must be an https link or a png/jpeg/webp picture' }); return } // never a text-only "read this picture"
     const raw = await chat([
       { role: 'system', content: 'Answer with one JSON object only, exactly in the shape the instruction asks for.' },
       { role: 'user', content: pic ? [{ type: 'text', text: String(instruction).slice(0, 30000) }, { type: 'image_url', image_url: { url: pic } }] : String(instruction).slice(0, 30000) },

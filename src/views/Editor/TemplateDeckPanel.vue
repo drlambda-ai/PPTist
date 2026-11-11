@@ -894,6 +894,8 @@ let pictureNote = ''
 let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
 const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = []) => {
   pictureNote = ''
+  const nearest = source === 'medical' // a medical picture may be the nearest real one of the same subject
+  if (nearest) source = 'wikimedia'
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   if (source === 'attached') { // the query names one of the user's attached pictures
     const pics = s.images || []
@@ -906,7 +908,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     return pic.url
   }
   if (source === 'wikimedia') {
-    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query }) })).json()
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest }) })).json()
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
       const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))
       const alt = (sp.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u))
@@ -1132,8 +1134,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // still chose stock photos 6 of 6 times for "a picture for each variant of pulmonary hypertension" (2026-11-11)
   // an AI picture only when the user's words asked for one: it costs them 10 credits each ("сделать картинку на каждый
   // вариант" drew 4 AI pictures, 40 credits, unasked, 2026-11-11)
-  if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && args.asked_for_ai === false) args = { ...args, source: 'photo' }
-  if ((action === 'add_image' || action === 'change_image') && args.medical && args.source === 'photo') args = { ...args, source: 'wikimedia' }
+  if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && !args.asked_for_ai) args = { ...args, source: 'photo' }
+  if ((action === 'add_image' || action === 'change_image') && args.medical && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'medical' }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     const items = args.items.filter(Boolean).slice(0, 4)
     const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
@@ -1276,10 +1278,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
   if (action === 'read_file') {
-    const doc = s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
+    const named = (s.images || []).find(m => m.name === args.file)
+    const doc = named ? undefined : s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
     // an attached picture: its text, read by the vision model ("write what's in my picture into the slides" was
     // answered "I can't read the attached image", 2026-11-11)
-    const pic = !doc && ((s.images || []).find(m => m.name === args.file) || (s.images?.length === 1 ? s.images[0] : undefined))
+    const pic = named || (!doc && s.images?.length === 1 && !/\.(pdf|docx?|pptx?|xlsx?|csv|txt|md)$/i.test(String(args.file || '')) ? s.images[0] : undefined)
     if (pic) {
       busy.value = t('Reading {p0}…', { p0: pic.name })
       const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1377,8 +1380,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'edit_page') {
     // text from other pages ("slide 7: the text of slide 10, points 1-3"): the edit sees only its own page, so it
     // answered "send me slide 10's text" (2026-11-11)
-    const sources = nums(args.source_pages || []).filter((id: string) => id && id !== idOf(args.index))
-    if (sources.length) args = { ...args, instruction: `${args.instruction}\n\n${sources.map((id: string) => `Text of page ${pos(id) + 1} (the source to use):\n${readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')}`).join('\n\n').slice(0, 4000)}` }
+    const editing = args.page_named === false && !turnKeepPages && !turnSelected ? slideIndex.value + 1 : Number(args.index)
+    const sources = nums((args.source_pages || []).map(Number).filter((n: number) => n >= 1 && n <= slides.value.length && n !== editing))
+    if (sources.length) args = { ...args, whole_deck_option: '', instruction: `${args.instruction}\n\n${sources.map((id: string) => `Text of page ${pos(id) + 1} (the source to use):\n${readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')}`).join('\n\n').slice(0, 4000)}` }
     // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
     // after "slide 5: <text>" (2026-11-11)
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
@@ -1437,7 +1441,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
     // a named page is not a whole-deck question; nor is an edit of the selected element ("the selected point 1" on
     // every page left most pages "not changed", 2026-11-11)
-    if (args.whole_deck_option && args.page_named !== true && !turnSelected) {
+    if (args.whole_deck_option && args.page_named !== true && !turnSelected) { // (none for an edit using another page's text)
       const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
       s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
         repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others }
@@ -2146,7 +2150,7 @@ const deckTurn = async (text: string) => {
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
-    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option && c.args?.page_named !== true)) break // a question is asked/answered once; showing a page ends the turn
+    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option && c.args?.page_named !== true && !turnSelected && !c.args?.source_pages?.length)) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
