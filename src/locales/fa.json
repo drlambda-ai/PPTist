@@ -1195,5 +1195,8 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "در میانهٔ کار از سمت ما مشکلی پیش آمد؛ تغییرات انجام‌شده تا آن لحظه حفظ شده‌اند. لطفاً بقیه را دوباره درخواست کنید.",
   "The changes made before it are kept.": "تغییرات انجام‌شده قبل از آن حفظ می‌شوند.",
   "The AI service is unavailable right now. Please try again in a moment.": "سرویس هوش مصنوعی در حال حاضر در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.",
-  "Page {p0} already got 4 new pictures in this message.": "صفحهٔ {p0} در این پیام از قبل ۴ تصویر جدید گرفته است."
+  "Page {p0} already got 4 new pictures in this message.": "صفحهٔ {p0} در این پیام از قبل ۴ تصویر جدید گرفته است.",
+  "This page was added after the deck was opened, so there is no earlier version of it.": "این صفحه پس از باز شدن مجموعه اسلایدها اضافه شد، بنابراین نسخهٔ قبلی‌ای از آن وجود ندارد.",
+  "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} صفحه به حالتی که هنگام باز کردن مجموعه اسلایدها داشتند، بازیابی شد.",
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "صفحهٔ {p0} پر بود، بنابراین تصاویر در صفحهٔ جدید {p1} هستند."
 }

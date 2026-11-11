@@ -1195,5 +1195,8 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Un problème est survenu de notre côté en cours de route ; les changements effectués avant cela ont été conservés. Veuillez redemander le reste.",
   "The changes made before it are kept.": "Les modifications faites avant sont conservées.",
   "The AI service is unavailable right now. Please try again in a moment.": "Le service d’IA est indisponible pour le moment. Veuillez réessayer dans un instant.",
-  "Page {p0} already got 4 new pictures in this message.": "La page {p0} a déjà reçu 4 nouvelles images dans ce message."
+  "Page {p0} already got 4 new pictures in this message.": "La page {p0} a déjà reçu 4 nouvelles images dans ce message.",
+  "This page was added after the deck was opened, so there is no earlier version of it.": "Cette page a été ajoutée après l’ouverture du diaporama, il n’existe donc aucune version antérieure.",
+  "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} page(s) ont été restaurée(s) à l’état où elles étaient lorsque vous avez ouvert le diaporama.",
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "La page {p0} était pleine, donc les images sont sur une nouvelle page {p1}."
 }

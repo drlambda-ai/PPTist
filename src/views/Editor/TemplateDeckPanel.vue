@@ -1125,6 +1125,42 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const sl = slides.value[pos(idOf(args.page_named === false ? slideIndex.value + 1 : args.index))]
     if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: false }, ids)
   }
+  // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
+  // calls, the router added one picture and stopped, 2026-11-11)
+  if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
+    const items = args.items.filter(Boolean).slice(0, 4)
+    const lines: string[] = []
+    const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
+    const at = pos(idOf(pg))
+    const { width: W, height: H } = slideSize()
+    const row = { left: 0.05 * W, top: 0.6 * H, width: 0.9 * W, height: 0.3 * H }
+    const fb = freeBox(slides.value[at], row)
+    if (fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8) { // room for a row on the page itself
+      for (const [k, q] of items.entries()) {
+        const w = 90 / items.length
+        lines.push(await runCall(text, 'add_image', { ...args, items: [], index: pg, page_named: true, query: q, box: { x: 5 + k * w, y: 62, w: w - 2, h: 33 } }, ids)
+          .catch((e: any) => { if (!(e instanceof StepFailed)) throw e; return e.message }))
+      }
+      return lines.join(' ')
+    }
+    // a full page: the pictures go on a new page right after it, in a grid, under that page's title (on a full slide
+    // four pictures landed in the corners and off the edge, 2026-11-11)
+    const src = slides.value[at]
+    const title: any = readingOrder(src).find((e: any) => elText(e))
+    const page: any = { id: nanoid(10), background: JSON.parse(JSON.stringify(src.background || {})), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
+    const list = [...slides.value]
+    list.splice(at + 1, 0, page)
+    slidesStore.setSlides(list)
+    ids.splice(0, ids.length, ...slides.value.map(x => x.id))
+    const cols = items.length <= 2 ? items.length : 2, rows = Math.ceil(items.length / cols)
+    for (const [k, q] of items.entries()) {
+      const c = k % cols, r = Math.floor(k / cols)
+      lines.push(await runCall(text, 'add_image', { ...args, items: [], index: at + 2, page_named: true, query: q,
+        box: { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 } }, ids)
+        .catch((e: any) => { if (!(e instanceof StepFailed)) throw e; return e.message }))
+    }
+    return t('Page {p0} was full, so the pictures are on a new page {p1}.', { p0: at + 1, p1: at + 2 }) + ' ' + lines.join(' ')
+  }
   if (action === 'add_image') {
     const id = idOf(args.index)
     const { width: W, height: H } = slideSize()
@@ -1719,6 +1755,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     askedThisTurn = true // the answer comes in the next message
     return args.question || (t('Could you say that more specifically?'))
   }
+  // "back to how it was at first": one step to the page as opened, not a chain of undos (a user needed five, 2026-11-11)
+  if (action === 'restore_original') {
+    const targets = (args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
+    const back = targets.filter((id: string) => openedSlides[id])
+    if (!back.length) fail(t('This page was added after the deck was opened, so there is no earlier version of it.'))
+    for (const id of back) slidesStore.updateSlide({ elements: JSON.parse(JSON.stringify(openedSlides[id].elements)), background: JSON.parse(JSON.stringify(openedSlides[id].background || {})) } as any, id)
+    touched(back)
+    slidesStore.updateSlideIndex(pos(back[0]))
+    return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: back.length })
+  }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
       if (restoreDeckBeforeCreate()) { /* a replaced deck is back */ }
@@ -1790,6 +1836,7 @@ let askedThisTurn = false // a question for the user ends the message
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
+let openedSlides: Record<string, any> = {} // slide id -> the page as it was when the editor opened this deck
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN
 const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
@@ -2286,6 +2333,8 @@ onMounted(() => {
         // conversion: a saved blank page would be opened instead of the project's slides from then on
         save()
       }
+      // each page as it was when the deck was opened: "back to how it was at first" restores from this
+      openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))]))
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
       await snapshotStore.initSnapshotDatabase()
