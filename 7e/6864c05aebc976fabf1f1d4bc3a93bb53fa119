@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 0904ea9c (like_other_pages with no pages wiped every background)
+Declined: copy_page_style from a target page - wrong, copy_page_style picks the nearest non-target page (lines 1724-1726); browser 2/2 matched
+Declined: same-language shortcut keeps foreign model text - today's logs show router text (answer_question, ask_user) arrives in the user's language and the English came from the localize step rewriting it; the shortcut removes that failure
+Declined: lang as a ref - wrong, @/i18n exports a plain string (export let lang)
+Declined-By: Claude, 2026-11-11
+Reviewed-At: 2026-11-11T14:58:03Z
