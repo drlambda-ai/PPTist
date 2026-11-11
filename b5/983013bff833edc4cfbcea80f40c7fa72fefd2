@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 43d5b79d (read_file order and fallback, asked_for_ai default, nearest only for medical, ask_json 400, source_pages, offer loop break)
+Declined: photo -> AI fallback when no stock photo matches - pre-existing behaviour, not introduced here; medical pictures go to Wikimedia whose fallback is stock only, never AI
+Declined: a second edit_all_pages skipped - a distinct second deck-wide edit in one message is hypothetical; the false Continue it replaces happened twice on 2026-11-11, and the skip tells the router to name an uncovered part in not_done
+Declined: claude() stringifies the image content - claude models are allowed in ask_json outside production only
+Declined-By: Claude, 2026-11-11
+Reviewed-At: 2026-11-11T15:47:42Z
