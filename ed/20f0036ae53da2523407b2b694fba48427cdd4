@@ -1,0 +1,2 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude), Codex workspace out of credits; 1 suspected finding checked and not a bug (keptSteps reads the snapshot, null-safe rollback)
