@@ -1129,37 +1129,52 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // calls, the router added one picture and stopped, 2026-11-11)
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     const items = args.items.filter(Boolean).slice(0, 4)
-    const lines: string[] = []
     const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
     const at = pos(idOf(pg))
+    const setKey = picKey(ids[at], items.join('|'))
+    if (picturedThisTurn.has(setKey)) fail(t('Those pictures were already added in this message.'))
     const { width: W, height: H } = slideSize()
     const row = { left: 0.05 * W, top: 0.6 * H, width: 0.9 * W, height: 0.3 * H }
     const fb = freeBox(slides.value[at], row)
-    if (fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8) { // room for a row on the page itself
-      for (const [k, q] of items.entries()) {
-        const w = 90 / items.length
-        lines.push(await runCall(text, 'add_image', { ...args, items: [], index: pg, page_named: true, query: q, box: { x: 5 + k * w, y: 62, w: w - 2, h: 33 } }, ids)
-          .catch((e: any) => { if (!(e instanceof StepFailed)) throw e; return e.message }))
-      }
-      return lines.join(' ')
-    }
+    const roomy = !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8
     // a full page: the pictures go on a new page right after it, in a grid, under that page's title (on a full slide
     // four pictures landed in the corners and off the edge, 2026-11-11)
-    const src = slides.value[at]
-    const title: any = readingOrder(src).find((e: any) => elText(e))
-    const page: any = { id: nanoid(10), background: JSON.parse(JSON.stringify(src.background || {})), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
-    const list = [...slides.value]
-    list.splice(at + 1, 0, page)
-    slidesStore.setSlides(list)
-    ids.splice(0, ids.length, ...slides.value.map(x => x.id))
-    const cols = items.length <= 2 ? items.length : 2, rows = Math.ceil(items.length / cols)
+    let pageId = ''
+    if (!roomy) {
+      const src = slides.value[at]
+      const title: any = readingOrder(src).find((e: any) => elText(e))
+      const page: any = { id: nanoid(10), background: JSON.parse(JSON.stringify(src.background || {})), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
+      const list = [...slides.value]
+      list.splice(at + 1, 0, page)
+      slidesStore.setSlides(list)
+      ids.splice(0, ids.length, ...slides.value.map(x => x.id))
+      pageId = page.id
+      helperPages.add(page.id) // not a page the user asked for: it must not satisfy "new content goes on the new page"
+    }
+    const cols = roomy ? items.length : items.length <= 2 ? items.length : 2, rows = Math.ceil(items.length / cols)
+    const lines: string[] = []
+    let added = 0
     for (const [k, q] of items.entries()) {
       const c = k % cols, r = Math.floor(k / cols)
-      lines.push(await runCall(text, 'add_image', { ...args, items: [], index: at + 2, page_named: true, query: q,
-        box: { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 } }, ids)
-        .catch((e: any) => { if (!(e instanceof StepFailed)) throw e; return e.message }))
+      const box = roomy ? { x: 5 + k * (90 / items.length), y: 62, w: 90 / items.length - 2, h: 33 }
+        : { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 }
+      try {
+        // each item is a new picture of its own: never "replace", which overwrote the previous item
+        lines.push(await runCall(text, 'add_image', { ...args, items: [], replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
+        added++
+      }
+      catch (e: any) {
+        if (e instanceof OutOfCredits && added) { lines.push(t("You're out of credits; {p0} of the pictures were added.", { p0: added })); break } // keep what was paid for
+        if (!(e instanceof StepFailed)) throw e
+        lines.push(e.message)
+      }
     }
-    return t('Page {p0} was full, so the pictures are on a new page {p1}.', { p0: at + 1, p1: at + 2 }) + ' ' + lines.join(' ')
+    if (!added) { // nothing came: no empty picture page, and a failure, not a success
+      if (pageId) { slidesStore.setSlides(slides.value.filter(x => x.id !== pageId)); ids.splice(0, ids.length, ...slides.value.map(x => x.id)) }
+      fail(lines.join(' ') || t('Could not get a picture.'))
+    }
+    picturedThisTurn.add(setKey)
+    return (pageId ? `${t('Page {p0} was full, so the pictures are on a new page {p1}.', { p0: at + 1, p1: at + 2 })} ` : '') + lines.join(' ')
   }
   if (action === 'add_image') {
     const id = idOf(args.index)
@@ -1760,7 +1775,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const targets = (args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
     const back = targets.filter((id: string) => openedSlides[id])
     if (!back.length) fail(t('This page was added after the deck was opened, so there is no earlier version of it.'))
-    for (const id of back) slidesStore.updateSlide({ elements: JSON.parse(JSON.stringify(openedSlides[id].elements)), background: JSON.parse(JSON.stringify(openedSlides[id].background || {})) } as any, id)
+    for (const id of back) { const { id: _id, ...page } = JSON.parse(JSON.stringify(openedSlides[id])); void _id; slidesStore.updateSlide(page, id) } // notes, animations and transition too
     touched(back)
     slidesStore.updateSlideIndex(pos(back[0]))
     return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: back.length })
@@ -1836,7 +1851,23 @@ let askedThisTurn = false // a question for the user ends the message
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
-let openedSlides: Record<string, any> = {} // slide id -> the page as it was when the editor opened this deck
+let openedSlides: Record<string, any> = {} // slide id -> the page as it was when this project was first opened here
+const helperPages = new Set<string>() // pages the editor added for pictures: not "new pages the user asked for"
+// the first-opened version per project, kept across reloads (after a reload "the original" was the edited deck)
+const ORIGINAL_KEY = () => `pptist-original-${chatslide?.projectId || 'local'}`
+const rememberOriginal = () => {
+  try {
+    const kept = localStorage.getItem(ORIGINAL_KEY())
+    if (kept) { openedSlides = JSON.parse(kept); return }
+  }
+  catch { /* storage unreadable: this session's copy below */ }
+  openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))]))
+  try {
+    const json = JSON.stringify(openedSlides)
+    if (json.length < 2_000_000) localStorage.setItem(ORIGINAL_KEY(), json) // pictures are links; a huge deck stays per session
+  }
+  catch { /* quota: this session's copy only */ }
+}
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN
 const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
@@ -1844,6 +1875,7 @@ const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && 
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
+  if (!Object.keys(openedSlides).length) rememberOriginal() // a deck opened another way (?pptx=, a local session): its state before the first change
   newTurn() // a new message: charged on its own
   // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
@@ -1886,7 +1918,7 @@ const deckTurn = async (text: string) => {
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
-  const created = () => slides.value.filter(x => !idsAtStart.has(x.id)).length
+  const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
   // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
   const animatedThisTurn = (pages?: number[]) => done.some((d) => {
@@ -1960,7 +1992,7 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
-      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.query)))
+      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 4).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
       || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
@@ -2086,7 +2118,7 @@ const deckTurn = async (text: string) => {
     save()
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
-    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true)) {
+    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1))) { // a picture set may add pages: not repeated
     followUp = t('Done on this page. Want the same on the other pages?')
     const here = slides.value.findIndex(x => x.id === startPageId) + 1
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
@@ -2334,7 +2366,7 @@ onMounted(() => {
         save()
       }
       // each page as it was when the deck was opened: "back to how it was at first" restores from this
-      openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))]))
+      rememberOriginal()
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
       await snapshotStore.initSnapshotDatabase()

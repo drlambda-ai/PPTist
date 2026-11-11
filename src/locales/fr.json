@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "La page {p0} a déjà reçu 4 nouvelles images dans ce message.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Cette page a été ajoutée après l’ouverture du diaporama, il n’existe donc aucune version antérieure.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} page(s) ont été restaurée(s) à l’état où elles étaient lorsque vous avez ouvert le diaporama.",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "La page {p0} était pleine, donc les images sont sur une nouvelle page {p1}."
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "La page {p0} était pleine, donc les images sont sur une nouvelle page {p1}.",
+  "Those pictures were already added in this message.": "Ces images ont déjà été ajoutées dans ce message.",
+  "You're out of credits; {p0} of the pictures were added.": "Vous n’avez plus de crédits ; {p0} des images ont été ajoutées."
 }

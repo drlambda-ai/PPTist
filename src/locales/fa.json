@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "صفحهٔ {p0} در این پیام از قبل ۴ تصویر جدید گرفته است.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "این صفحه پس از باز شدن مجموعه اسلایدها اضافه شد، بنابراین نسخهٔ قبلی‌ای از آن وجود ندارد.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} صفحه به حالتی که هنگام باز کردن مجموعه اسلایدها داشتند، بازیابی شد.",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "صفحهٔ {p0} پر بود، بنابراین تصاویر در صفحهٔ جدید {p1} هستند."
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "صفحهٔ {p0} پر بود، بنابراین تصاویر در صفحهٔ جدید {p1} هستند.",
+  "Those pictures were already added in this message.": "آن تصاویر قبلاً در این پیام اضافه شده بودند.",
+  "You're out of credits; {p0} of the pictures were added.": "اعتبارتان تمام شده است؛ {p0} تا از تصاویر اضافه شدند."
 }

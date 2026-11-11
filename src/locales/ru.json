@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "Страница {p0} уже получила 4 новых изображения в этом сообщении.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Эта страница была добавлена после открытия презентации, поэтому более ранней версии нет.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Восстановлено {p0} стр.(ниц) до состояния, в котором они были при открытии презентации.",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "Страница {p0} была заполнена, поэтому картинки на новой странице {p1}."
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "Страница {p0} была заполнена, поэтому картинки на новой странице {p1}.",
+  "Those pictures were already added in this message.": "Эти изображения уже были добавлены в это сообщение.",
+  "You're out of credits; {p0} of the pictures were added.": "У вас закончились кредиты; было добавлено {p0} изображений."
 }

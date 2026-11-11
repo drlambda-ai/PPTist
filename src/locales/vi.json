@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "Trang {p0} đã có 4 hình ảnh mới trong tin nhắn này.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Trang này được thêm sau khi bản trình bày được mở, nên không có phiên bản trước đó.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Đã khôi phục {p0} trang về trạng thái như khi bạn mở bản trình bày.",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "Trang {p0} đã đầy, nên các hình ảnh ở trên một trang mới {p1}."
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "Trang {p0} đã đầy, nên các hình ảnh ở trên một trang mới {p1}.",
+  "Those pictures were already added in this message.": "Những hình ảnh đó đã được thêm trong tin nhắn này.",
+  "You're out of credits; {p0} of the pictures were added.": "Bạn đã hết tín dụng; đã thêm {p0} hình ảnh."
 }

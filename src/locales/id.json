@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "Halaman {p0} sudah mendapat 4 gambar baru di pesan ini.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Halaman ini ditambahkan setelah deck dibuka, jadi tidak ada versi sebelumnya.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Mengembalikan {p0} halaman ke keadaan saat Anda membuka deck.",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "Halaman {p0} penuh, jadi gambar berada di halaman baru {p1}."
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "Halaman {p0} penuh, jadi gambar berada di halaman baru {p1}.",
+  "Those pictures were already added in this message.": "Gambar-gambar itu sudah ditambahkan dalam pesan ini.",
+  "You're out of credits; {p0} of the pictures were added.": "Kredit Anda habis; {p0} dari gambar telah ditambahkan."
 }

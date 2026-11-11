@@ -1198,5 +1198,7 @@
   "Page {p0} already got 4 new pictures in this message.": "第 {p0} 頁在這則訊息中已經有 4 張新圖片。",
   "This page was added after the deck was opened, so there is no earlier version of it.": "此頁面是在開啟簡報後新增的，因此沒有較早的版本。",
   "Restored {p0} page(s) to how they were when you opened the deck.": "已將 {p0} 個頁面還原為您開啟簡報時的狀態。",
-  "Page {p0} was full, so the pictures are on a new page {p1}.": "第 {p0} 頁已滿，所以圖片在新的一頁 {p1} 上。"
+  "Page {p0} was full, so the pictures are on a new page {p1}.": "第 {p0} 頁已滿，所以圖片在新的一頁 {p1} 上。",
+  "Those pictures were already added in this message.": "那些圖片已經新增到這則訊息中。",
+  "You're out of credits; {p0} of the pictures were added.": "你的點數已用完；已新增了 {p0} 張圖片。"
 }
