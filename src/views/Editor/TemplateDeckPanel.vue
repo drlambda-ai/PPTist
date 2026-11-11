@@ -2040,6 +2040,8 @@ const deckTurn = async (text: string) => {
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
                 : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
+      // a router that keeps proposing what was just refused is done: "khác đi" replanned the same picture for 16 rounds
+      if (done.filter(d => d.includes(' -> skipped: ')).length >= 2) break
       continue
     }
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
@@ -2048,7 +2050,9 @@ const deckTurn = async (text: string) => {
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
     // the same step on the same pages again is the router repeating itself, not a second request: the turn just ends
     // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
-    if (again && done.some(d => d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`))) break // the identical step
+    // the same step on the same pages, even with other words ("nền khác": a second photo search for the same page)
+    const samePages = (d: string) => { try { return JSON.stringify(JSON.parse(d.slice(again!.action.length + 1, d.indexOf(' -> '))).pages || []) === JSON.stringify(again!.args?.pages || []) } catch { return false } }
+    if (again && done.some(d => d.startsWith(`${again.action} `) && samePages(d))) break
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
       const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
