@@ -53,7 +53,7 @@
 
 <script lang="ts" setup>
 import { PRESET_THEMES } from '@/configs/theme'
-import { t, direction } from '@/i18n'
+import { t, direction, lang } from '@/i18n'
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
 // The chat opens at the right edge, over the Design sidebar: in the middle it covered half the slide on a laptop and
@@ -1588,6 +1588,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return args.copy ? (t('Copied.')) : (t('Moved.'))
   }
   if (action === 'set_background') {
+    // "the same background as the rest": copied from the nearest other page, never a photo search for "same style"
+    // (the doctor's slide 5 got a stock photo first, then four more calls to undo it, 2026-11-11)
+    if (args.like_other_pages && args.pages?.length) return runCall(text, 'copy_page_style', { from: args.pages[0], page_named: false, pages: args.pages }, ids)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     let background: any = { type: 'solid', color: args.color }
     if (args.photo_query) {
@@ -1772,7 +1775,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // "back to how it was at first": one step to the page as opened, not a chain of undos (a user needed five, 2026-11-11)
   if (action === 'restore_original') {
-    const targets = (args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
+    // "everything back": the deck as opened, its deleted pages back and pages added since gone (Undo reverses it)
+    if (args.whole_deck && Object.keys(openedSlides).length) {
+      slidesStore.setSlides(JSON.parse(JSON.stringify(Object.values(openedSlides))))
+      ids.splice(0, ids.length, ...slides.value.map(x => x.id))
+      touched(slides.value.map(x => x.id))
+      slidesStore.updateSlideIndex(0)
+      return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: slides.value.length })
+    }
+    const targets = (args.whole_deck ? slides.value.map(x => x.id) : args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
     const back = targets.filter((id: string) => openedSlides[id])
     if (!back.length) fail(t('This page was added after the deck was opened, so there is no earlier version of it.'))
     for (const id of back) { const { id: _id, ...page } = JSON.parse(JSON.stringify(openedSlides[id])); void _id; slidesStore.updateSlide(page, id) } // notes, animations and transition too
@@ -2165,7 +2176,7 @@ const recordTurn = (message: string, reply: string, steps: string[], ok: boolean
 // router's own sentences (say_unable, ask_user) came back in Chinese for English messages without this step.
 const finalize = async (instruction: string, reply: string) => {
   try {
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
     return r.reply || reply
   }
   catch {

@@ -135,7 +135,8 @@ const TOOLS = [
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
     photo_query: { type: 'string', description: 'Stock photo search words (English) for a background photo, or ""' },
-  }, ['pages', 'color', 'photo_query']),
+    like_other_pages: { type: 'boolean', description: 'true when the user wants these pages to have the SAME background as the rest of the deck ("как для всей презентации", "giống các trang khác", "like the other slides"); color and photo_query are then ""' },
+  }, ['pages', 'color', 'photo_query', 'like_other_pages']),
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
     pages: { ...pages, description: 'The current page unless the user names pages or says all; empty = every page, only when they say all' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
@@ -208,8 +209,9 @@ const TOOLS = [
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
   }, ['user_language', 'question', 'options']),
   fn('restore_original', 'Put pages back to how they were when the deck was opened ("back to the original", "như ban đầu", "как было", "恢复原样"), in one step.', {
-    pages: { ...pages, description: 'Pages; empty = the current page; every page when the user says the whole deck' },
-  }, ['pages']),
+    pages: { ...pages, description: 'The pages named; empty = the current page' },
+    whole_deck: { type: 'boolean', description: 'true when the user means everything / all pages / the whole deck ("mọi thứ", "всё", "todo", "全部")' },
+  }, ['pages', 'whole_deck']),
   fn('undo', 'Undo the last change.', {
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
@@ -492,15 +494,19 @@ async function handler(req: any, res: any) {
     if (body.localize) { // the turn's reply, written by code in English, said in the language of the user's message
       const raw = await chat([
         // the language is named first: asked to translate in one step, gpt-6-luna answered an English message in Spanish
-        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. Return JSON {"user_language": "<language of the user\'s message>", "reply": "<the reply in that language>"}.' },
+        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. Return JSON {"user_language": "<language of the user\'s message>", "code": "<its ISO 639-1 code, lowercase; zh-CN or zh-TW for Chinese>", "reply": "<the reply in that language>"}.' },
         // a short or accent-less message ("VIDEO DC HCX", "DC R") reads as English: the user's earlier messages say
         // which language they write in (a Vietnamese user got four English replies, 2026-11-11)
         { role: 'user', content: `${Array.isArray(body.earlier) && body.earlier.length ? `The user's earlier messages (the language they have been writing in; a message clearly in another language wins): ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}User's message: ${String(body.instruction || '').slice(0, 2000)}\n\nAssistant reply:\n${String(body.localize).slice(0, 4000)}` },
       ], { model: process.env.FINALIZE_MODEL || 'gpt-6-luna', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
-      let reply = ''
-      try { reply = String(JSON.parse(raw).reply || '') }
+      let reply = '', code = ''
+      try { const j = JSON.parse(raw); reply = String(j.reply || ''); code = String(j.code || '').toLowerCase() }
       catch { reply = '' }
-      res.status(200).json({ reply: reply.trim() || body.localize }); return
+      // the user writes in the editor's own language: the reply is already in it, kept as written. Asked to
+      // "copy it unchanged", the model still turned a Vietnamese reply into English about 1 time in 30 (2026-11-11)
+      const ui = String(body.ui_language || '').toLowerCase()
+      const sameAsUi = !!ui && !!code && (ui.startsWith('zh') ? code === ui : code.split('-')[0] === ui.split('-')[0])
+      res.status(200).json({ reply: sameAsUi ? body.localize : reply.trim() || body.localize }); return
     }
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
