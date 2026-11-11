@@ -474,7 +474,7 @@ const textOnPictures = (els: any[]) => {
     const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
     const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
     return w > 0 && h > 0 && w * h > 0.15 * Math.min(a.width * a.height, b.width * b.height)
-  }).map((b: any) => `${a.id}|${b.id}`))
+  }).map((b: any) => [a.id, b.id].sort().join('|')))
   return new Set([...tt, ...els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
     const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
     const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
@@ -1285,10 +1285,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const hadBefore = textOnPictures(was)
     const paidLayout = lastEditAdvanced // the cheaper model must not rework a layout the user paid for
     if ([...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))) {
-      await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture; remove a duplicated line. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
+      await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
-    if (args.whole_deck_option) s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option], offer: true }
+    if (args.whole_deck_option) {
+      const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
+      s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
+        repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others }
+    }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
@@ -1721,7 +1725,7 @@ const deckTurn = async (text: string) => {
   const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
-  if (s.pending?.offer && !s.pending.options?.includes(text)) { s.pending = null; save() }
+  if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
   turnKeepPages = !!pendingAtStart?.offer // the router names the pages for an accepted offer: keep its numbers
   const done: string[] = []
@@ -1762,12 +1766,14 @@ const deckTurn = async (text: string) => {
   // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
   // "Do the same on the other pages": the editor repeats the steps that ran on the first page, page by page, without
   // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
-  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.includes(text)
+  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.some(o => o.trim() === text.trim())
     ? [...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.map(c => ({ action: c.action,
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
+  const repeating = repeat.length > 0
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
-  for (; round < 16 + repeat.length; round++) {
+  const rounds = 16 + repeat.length // fixed before the queue drains (re-read each round it ended a long repeat early)
+  for (; round < rounds; round++) {
     const { calls, error } = repeat.length ? { calls: [repeat.shift()], error: '' } : await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
       body: JSON.stringify({
@@ -1905,6 +1911,7 @@ const deckTurn = async (text: string) => {
         if (!(e instanceof StepFailed)) throw e
         replies.push(e.message)
         terse.push(e.message)
+        if (repeating && e instanceof NoChange) continue // one page already as asked: the other pages still get it
         round = 99 // stop: report what could not be done instead of retrying it
         break
       }
@@ -1929,13 +1936,13 @@ const deckTurn = async (text: string) => {
   lastTurnCalls = turnCalls
   // Only this page changed and the message named no page: done here, the rest offered as one tap (Quanlai, 2026-11-11:
   // "we can change and ask a follow-up question"). "Add historical images" / "too much text" changed one page silently.
-  const perPage = ['edit_page', 'add_image', 'change_image', 'set_font_size', 'set_font', 'set_background', 'remove_images']
+  const perPage = ['edit_page', 'add_image', 'change_image', 'set_font_size', 'set_font', 'remove_images'] // set_background: one pass per message
   let followUp = ''
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
-  if ((unfinished || round === 16) && !askedThisTurn) {
+  if ((unfinished || round === rounds) && !askedThisTurn) {
     followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
     // answering an earlier question or offer (Continue included): the request stays the original one, steps accumulate
-    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30), offer: true }
+    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30) } // any reply continues it
     save()
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
