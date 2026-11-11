@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 6563139a (shared local restore key)
+Declined: a ChatSlide-regenerated deck keeping the same slide ids restores the first-ever copy; the editor reopens its saved state, not a regenerated deck, so this path is not reached today
+Declined-By: Claude, 2026-11-11
+Reviewed-At: 2026-11-11T09:36:49Z
