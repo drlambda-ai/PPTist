@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude)
+Fixed-In: c4f440bd (timeout, trailing-dot hosts, protocol, malformed URL)
+Reviewed-At: 2026-11-12T13:48:07Z
