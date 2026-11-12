@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: ee9327fd (typed confirmation needs an explicit yes field)
+Declined: redirect skipped after an ignored delete question - only right after a delete question; the router's page is then used, usually the current one
+Reviewed-At: 2026-11-12T04:54:06Z
