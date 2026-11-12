@@ -11,7 +11,9 @@ code, test it in the real editor, review, push. Report as not fixable only what 
 genuinely cannot do (a picture no source holds), with the reason in one line.
 
 1. Read the turns: `scripts/editor-turns.sql` (prod, read-only). A turn is unhappy when the user
-   repeats or rephrases, complains, or the reply says nothing changed.
+   repeats or rephrases, complains, or the reply says nothing changed. Run the query alone in its
+   call, with one `-f` and no `<` anywhere in the command: a second input makes the DB guard open
+   the approval window (unattended, that is a denial).
 2. Reproduce and verify in the browser: `scripts/e2e/serve.sh`, then Playwright on
    `http://[::1]:3001/harness.html?deck=<file>` (`&paid=1` for a paid user). A user's deck is
    rebuilt only in `/tmp`, never committed.

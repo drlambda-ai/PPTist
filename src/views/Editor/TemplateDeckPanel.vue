@@ -1587,7 +1587,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     void earlier
     if (!ok && !failed.length) return t('No page was changed. {p0}', { p0: noChangeWhy })
     if (!ok) fail((t('I could not make that change on any page: "{p0}".', { p0: what })) + why)
-    return (t('Pages updated: {p0}.', { p0: ok })) + why
+    return (t('Number of pages updated: {p0}.', { p0: ok })) + why
   }
   if (action === 'change_image') {
     const id = idOf(args.index)
@@ -1654,8 +1654,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let background: any = { type: 'solid', color: args.color }
     if (args.photo_query) {
       busy.value = t('Finding a picture…')
-      const src = await findPicture(args.photo_query, 'photo', true)
+      // never the photo already there ("change the background", then "again", gave the same one, 2026-11-12)
+      const src = await findPicture(args.photo_query, 'photo', true, [...usedBackgrounds, ...slides.value.map(x => x.background?.image?.src).filter(Boolean) as string[]])
       if (!src) fail(t('Could not get a background picture.'))
+      usedBackgrounds.add(src)
       background = { type: 'image', image: { src, size: 'cover' } }
     }
     else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(t('Which background colour?'))
@@ -1968,6 +1970,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let deleteAnswered: string[] = [] // the same, answered in words: deletable when the router asks for exactly them again
 let askedThisTurn = false // a question for the user ends the message
+const usedBackgrounds = new Set<string>() // background photos already tried in this session: "again" never brings one back
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let turnKeepPages = false // answering an offer: the router's page numbers stand
@@ -2048,6 +2051,8 @@ const deckTurn = async (text: string) => {
   }).join('; ') : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
+  const failures: { message: string, ran: number, pages: number[] }[] = [] // steps that failed, and how many steps had run by then
+  const pagesOf = (c: any): number[] => (c.args?.pages?.length ? c.args.pages : c.args?.index != null ? [c.args.index] : []).map(Number)
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -2238,11 +2243,21 @@ const deckTurn = async (text: string) => {
       }
       catch (e) {
         if (!(e instanceof StepFailed)) throw e
-        replies.push(e.message)
-        terse.push(e.message)
-        if (repeating && e instanceof NoChange) continue // one page already as asked: the other pages still get it
-        round = 99 // stop: report what could not be done instead of retrying it
-        break
+        if (repeating) { // "the same on the other pages": one page already as asked, the others still get it
+          replies.push(e.message)
+          terse.push(e.message)
+          if (e instanceof NoChange) continue
+          round = 99
+          break
+        }
+        // The router sees the failure as that step's result and may do that part another way once, or go on with
+        // the rest of the message: "change the photo on slide 1 to a plainer one, and the photo on slide 3" ended at
+        // "there is no picture to remove" with slide 3 untouched (2026-11-12). Two failures end the message.
+        failures.push({ message: e.message, ran: ran.length, pages: pagesOf(c) })
+        done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed: ${e.message} (Do this part another way once if there is one, and go on with the other parts of the request.)`)
+        turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
+        if (failures.length >= 2) { round = 99; break }
+        continue
       }
       replies.push(reply)
       ran.push(c)
@@ -2266,6 +2281,11 @@ const deckTurn = async (text: string) => {
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
     if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
+  }
+  // a failed part is said, unless a later step did it another way (a step that ran afterwards on the same pages)
+  for (const f of failures) {
+    const redone = ran.slice(f.ran).some((c: any) => { const p = pagesOf(c); return !p.length || !f.pages.length || p.some(x => f.pages.includes(x)) })
+    if (!redone) { replies.push(f.message); terse.push(f.message) }
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null

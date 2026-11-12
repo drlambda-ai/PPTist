@@ -1144,7 +1144,6 @@
   "Send": "Send",
   "Start a new deck": "Start a new deck",
   "That failed: ": "That failed: ",
-  "Pages updated: {p0}.": "Pages updated: {p0}.",
   "\n(Credits used: {p0}{p1})": "\n(Credits used: {p0}{p1})",
   "That edit could not be applied.": "That edit could not be applied.",
   "the Video step": "the Video step",
@@ -1213,5 +1212,6 @@
   "There is no earlier saved version that differs from the deck you have now.": "There is no earlier saved version that differs from the deck you have now.",
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.",
   "That version could not be loaded.": "That version could not be loaded.",
-  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had."
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.",
+  "Number of pages updated: {p0}.": "Number of pages updated: {p0}."
 }

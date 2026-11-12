@@ -18,7 +18,7 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
   function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } },
 })
 
-const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name); wikimedia: a real, named place, person, artwork, species, building, product or event, or ANY medical subject (a disease or its types/variants, a sign, symptom, organ, anatomy, X-ray, CT, MRI, ultrasound, ECG, histology, endoscopy: Wikimedia has real medical images and diagrams; query = the medical term itself, never "medical illustration"), or the user says Wikimedia/Wikipedia/"real photo"; ai: ONLY when the user says generate/draw/AI/cartoon/illustration (it costs them 10 credits); photo: the default for everything else, a stock photo (people working, a city at night, food, a doctor with a patient); symptoms, diseases and clinical signs are wikimedia; the editor draws one itself when no stock photo matches'
+const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name), also whenever a picture is attached and the user says "this", "this picture", "the one I sent/gave", "add this"; wikimedia: a real, named place, person, artwork, species, building, product or event, or ANY medical subject (a disease or its types/variants, a sign, symptom, organ, anatomy, X-ray, CT, MRI, ultrasound, ECG, histology, endoscopy: Wikimedia has real medical images and diagrams; query = the medical term itself, never "medical illustration"), or the user says Wikimedia/Wikipedia/"real photo"; ai: ONLY when the user says generate/draw/AI/cartoon/illustration (it costs them 10 credits); photo: the default for everything else, a stock photo (people working, a city at night, food, a doctor with a patient); symptoms, diseases and clinical signs are wikimedia; the editor draws one itself when no stock photo matches'
 
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
@@ -77,7 +77,7 @@ const TOOLS = [
     page_named: { type: 'boolean', description: 'true if the user named or clearly identified the page: a number, "the cover", "the last slide", a title, "the other / remaining slides", "these slides" when the question they answer listed them, or a plan that lists pages; false ONLY when they mean the page they are looking at ("this slide", "here", or nothing about pages)' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
-    redesign: { type: 'boolean', description: 'true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },
+    redesign: { type: 'boolean', description: 'A named arrangement ("horizontal", "side by side", "two columns", "text on the left") is a concrete change: false. true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },
     new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides, in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
@@ -277,7 +277,8 @@ Rules:
    Merging/combining pages -> merge_pages (one call for all of them).
    Attached files are listed after the deck. Anything that refers to them ("my PDF", "page 2 of the article", "the table
    in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it
-   returned. Several files and the message does not say which -> answer_question asking which file (name them).
+   returned. Exactly one file attached = that file, whatever the user calls it ("the Word file", "my table"): read it,
+   never ask which. Several files and the message does not say which -> answer_question asking which file (name them).
    "What is in my picture / the image / the photo" with ONE attached picture -> read_file on that picture (it reads
    its text), then write it onto the slides; never ask which picture or whether to read it.
    The user mentions a file but none is attached -> ask_user (options []): ask them to attach it with the 📎 icon, so
@@ -414,6 +415,8 @@ Rules:
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
    "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
+   "Keep / leave / don't touch slide N" ("оставь первый слайд", "giữ nguyên trang 1") -> that page gets no step at all in
+   this message: no edit, no restyle, no added subtitle, however much the rest of the deck is redone.
    "The previous version / go back / как было / предыдущий вариант / revert" -> undo, never restore_original.
    An older saved version ("yesterday's version", "the 21-page one", "version history", lost work) -> version_history.
    Never restore_original for it.
