@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: display-only strip (template + CSS + 2 strings in 12 locales), no logic; verified by vue-tsc, check-i18n and a browser run for a free and a paid user
+Reviewed-At: 2026-11-12T13:56:54Z
