@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: none (the single-call index risk was not seen in 32 editor cases; kept)
+Reviewed-At: 2026-11-12T19:03:31Z
