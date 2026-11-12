@@ -54,7 +54,8 @@ const TOOLS = [
   }, ['instruction', 'after']),
   fn('delete_pages', 'Delete one or more pages.', {
     pages, user_asked_to_cut: { type: 'boolean', description: 'true ONLY if the user\'s words ask to delete, remove or cut pages, or to reduce the deck' },
-  }, ['pages', 'user_asked_to_cut']),
+    yes_to_delete_question: { type: 'boolean', description: 'true ONLY when the user\'s latest message answers the question "Delete N pages?" with a yes ("да", "yes, replace them", "можешь их заменить"); false for a no, a refusal, or any other message' },
+  }, ['pages', 'user_asked_to_cut', 'yes_to_delete_question']),
   fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', {
     pages, copies: { type: 'integer', description: 'How many copies of each page, usually 1' },
   }, ['pages', 'copies']),
