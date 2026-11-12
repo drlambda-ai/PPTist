@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "Bạn đã hết tín dụng; đã thêm {p0} hình ảnh.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Không có ảnh chính xác ở đó, nên đây là ảnh gần nhất của cùng chủ đề: hãy kiểm tra xem nó có phù hợp với trang trình chiếu của bạn không.",
   "Restore the whole deck": "Khôi phục toàn bộ bài trình chiếu",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Thao tác này đưa toàn bộ deck về trạng thái như khi bạn mở trình chỉnh sửa lần này: {p0} trang (hiện bạn có {p1}). Mọi thay đổi từ đó đến nay sẽ bị xóa; Hoàn tác sẽ đưa nó trở lại. Chạm để khôi phục."
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Thao tác này đưa toàn bộ deck về trạng thái như khi bạn mở trình chỉnh sửa lần này: {p0} trang (hiện bạn có {p1}). Mọi thay đổi từ đó đến nay sẽ bị xóa; Hoàn tác sẽ đưa nó trở lại. Chạm để khôi phục.",
+  "Restore these pages": "Khôi phục các trang này",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Thao tác này đưa các trang {p0} trở lại như khi bạn mở trình chỉnh sửa lần này. Mọi thay đổi trên chúng kể từ đó sẽ bị xóa; Hoàn tác sẽ đưa chúng trở lại. Chạm để khôi phục."
 }

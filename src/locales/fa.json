@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "اعتبارتان تمام شده است؛ {p0} تا از تصاویر اضافه شدند.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "در آنجا تصویر دقیقی وجود ندارد، پس این نزدیک‌ترین تصویر با همان موضوع است: بررسی کنید که برای اسلاید شما مناسب باشد.",
   "Restore the whole deck": "بازیابی کل ارائه",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "این کل ارائه را به همان حالتی برمی‌گرداند که این بار ویرایشگر را باز کردید: {p0} صفحه (الان {p1} صفحه دارید). هر تغییری از آن زمان به بعد حذف می‌شود؛ بازگردانی آن را برمی‌گرداند. برای بازیابی بزنید."
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "این کل ارائه را به همان حالتی برمی‌گرداند که این بار ویرایشگر را باز کردید: {p0} صفحه (الان {p1} صفحه دارید). هر تغییری از آن زمان به بعد حذف می‌شود؛ بازگردانی آن را برمی‌گرداند. برای بازیابی بزنید.",
+  "Restore these pages": "بازگردانی این صفحه‌ها",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "این کار صفحه‌های {p0} را به همان حالتی که وقتی این‌بار ویرایشگر را باز کردید بودند برمی‌گرداند. هر تغییری که از آن زمان روی آن‌ها انجام شده حذف می‌شود؛ «واگرد» آن را برمی‌گرداند. برای بازگردانی بزنید."
 }

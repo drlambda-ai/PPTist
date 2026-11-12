@@ -1090,7 +1090,7 @@
   "an AI-generated picture for \"{p0}\"": "изображение, созданное ИИ, для «{p0}»",
   "a stock photo for \"{p0}\"": "стоковое фото для «{p0}»",
   "colour {p0}": "цвет {p0}",
-  "Background of {p0} page(s) set to {p1}.": "Для слайдов {p0} задан фон: {p1}.",
+  "Background of {p0} page(s) set to {p1}.": "Фон задан на {p0} слайд(ах): {p1}.",
   "Cleared the speaker notes on {p0} page(s).": "Заметки докладчика удалены со слайдов: {p0}.",
   "The speaker notes could not be written.": "Не удалось добавить заметки докладчика.",
   "Wrote speaker notes for {p0} page(s).": "Добавлены заметки докладчика для слайдов: {p0}.",
@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "У вас закончились кредиты; было добавлено {p0} изображений.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там нет точного изображения, поэтому это ближайшее по той же теме: проверьте, подходит ли оно для вашего слайда.",
   "Restore the whole deck": "Восстановить всю презентацию",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Это вернёт всю презентацию в состояние, в котором она была, когда вы открыли редактор в этот раз: {p0} страниц (сейчас у вас {p1}). Все изменения с тех пор будут удалены; Отмена вернёт их обратно. Нажмите, чтобы восстановить."
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Это вернёт всю презентацию в состояние, в котором она была, когда вы открыли редактор в этот раз: {p0} страниц (сейчас у вас {p1}). Все изменения с тех пор будут удалены; Отмена вернёт их обратно. Нажмите, чтобы восстановить.",
+  "Restore these pages": "Восстановить эти страницы",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Это вернёт страницы {p0} в состояние, в котором они были, когда вы открыли редактор в этот раз. Все изменения, сделанные с тех пор, будут удалены; Отменить вернёт их обратно. Нажмите, чтобы восстановить."
 }

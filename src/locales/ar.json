@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "نفدت رصيدك؛ تمت إضافة {p0} من الصور.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "لا توجد صورة مطابقة هناك، لذا فهذه هي الأقرب لنفس الموضوع: تحقّق من أنها مناسبة لشريحتك.",
   "Restore the whole deck": "استعادة العرض بالكامل",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "يعيد هذا العرض بالكامل كما كان عندما فتحت المحرر هذه المرة: {p0} صفحة (لديك الآن {p1}). ستُزال كل التغييرات منذ ذلك الحين؛ ويُعيده التراجع. اضغط للاستعادة."
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "يعيد هذا العرض بالكامل كما كان عندما فتحت المحرر هذه المرة: {p0} صفحة (لديك الآن {p1}). ستُزال كل التغييرات منذ ذلك الحين؛ ويُعيده التراجع. اضغط للاستعادة.",
+  "Restore these pages": "استعادة هذه الصفحات",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "يعيد الصفحات {p0} إلى حالتها كما كانت عندما فتحتَ المحرر هذه المرة. ستُزال كل التغييرات التي أُجريت عليها منذ ذلك الحين؛ ويُعيدها التراجع. اضغط للاستعادة."
 }

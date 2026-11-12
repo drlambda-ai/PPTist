@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "Kredit Anda habis; {p0} dari gambar telah ditambahkan.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Tidak ada gambar yang persis sama di sana, jadi ini yang paling dekat dengan subjek yang sama: periksa apakah ini cocok untuk slide Anda.",
   "Restore the whole deck": "Pulihkan seluruh presentasi",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Ini mengembalikan seluruh deck seperti saat Anda membuka editor kali ini: {p0} halaman (sekarang Anda punya {p1}). Semua perubahan sejak saat itu akan dihapus; Urungkan akan mengembalikannya. Ketuk untuk memulihkan."
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Ini mengembalikan seluruh deck seperti saat Anda membuka editor kali ini: {p0} halaman (sekarang Anda punya {p1}). Semua perubahan sejak saat itu akan dihapus; Urungkan akan mengembalikannya. Ketuk untuk memulihkan.",
+  "Restore these pages": "Pulihkan halaman ini",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Ini mengembalikan halaman {p0} seperti saat Anda membuka editor kali ini. Setiap perubahan sejak saat itu akan dihapus; Urungkan akan mengembalikannya. Ketuk untuk memulihkan."
 }

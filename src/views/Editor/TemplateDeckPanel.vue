@@ -1807,14 +1807,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // "back to how it was at first": one step to the page as opened, not a chain of undos (a user needed five, 2026-11-11)
   if (action === 'restore_original') {
+    // only a tap on the confirmation restores more than one page (the router's own flag is never enough)
+    const ok = args.confirmed && tappedRestore
     // "everything back": the deck as opened, its deleted pages back and pages added since gone (Undo reverses it)
     if (args.whole_deck && Object.keys(openedSlides).length) {
-      // the whole deck is replaced only after the user taps to confirm, seeing what it puts back
-      if (!args.confirmed) {
-        const back = Object.keys(openedSlides).length
+      if (!ok) {
         s.pending = { request: text, question: '', options: [t('Restore the whole deck')], offer: true,
           repeat: [{ action: 'restore_original', args: { whole_deck: true, confirmed: true } }], pages: [1] }
-        return t('This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.', { p0: back, p1: slides.value.length })
+        askedThisTurn = true // the turn ends on the confirmation; nothing changed
+        return t('This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.', { p0: Object.keys(openedSlides).length, p1: slides.value.length })
       }
       slidesStore.setSlides(JSON.parse(JSON.stringify(Object.values(openedSlides))))
       ids.splice(0, ids.length, ...slides.value.map(x => x.id))
@@ -1822,9 +1823,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlideIndex(0)
       return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: slides.value.length })
     }
-    const targets = (args.whole_deck ? slides.value.map(x => x.id) : args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
+    const targets = (args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
     const back = targets.filter((id: string) => openedSlides[id])
     if (!back.length) fail(t('This page was added after the deck was opened, so there is no earlier version of it.'))
+    if (back.length > 1 && !ok) { // several pages: the same confirmation, then each page in turn
+      s.pending = { request: text, question: '', options: [t('Restore these pages')], offer: true,
+        repeat: [{ action: 'restore_original', args: { whole_deck: false, confirmed: true } }], pages: back.map((id: string) => pos(id) + 1) }
+      askedThisTurn = true
+      return t('This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.', { p0: back.map((id: string) => pos(id) + 1).join(', ') })
+    }
     for (const id of back) { const { id: _id, ...page } = JSON.parse(JSON.stringify(openedSlides[id])); void _id; slidesStore.updateSlide(page, id) } // notes, animations and transition too
     touched(back)
     slidesStore.updateSlideIndex(pos(back[0]))
@@ -1898,6 +1905,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let askedThisTurn = false // a question for the user ends the message
+let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
@@ -1975,6 +1983,7 @@ const deckTurn = async (text: string) => {
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
   const repeating = repeat.length > 0
+  tappedRestore = repeat.some((c: any) => c.action === 'restore_original')
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
   const rounds = 16 + repeat.length // fixed before the queue drains (re-read each round it ended a long repeat early)
   for (; round < rounds; round++) {
@@ -2001,6 +2010,7 @@ const deckTurn = async (text: string) => {
     }
     if (newDeck && !done.length) {
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
+      openedSlides = {} // "the original" of a new deck is the new deck (taken at the next message)
       busy.value = s.template ? t('Building the deck (about a minute)…') : t('Writing the deck…')
       await (s.template ? templateTurn(text) : generateNative(text))
       addHistorySnapshot() // the new deck is a history step of its own
@@ -2095,7 +2105,15 @@ const deckTurn = async (text: string) => {
     // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
     // the same step on the same pages, even with other words ("nền khác": a second photo search for the same page)
     // (only actions whose schema requires pages; the others repeat only when identical)
-    const samePages = (d: string) => { try { return JSON.stringify(JSON.parse(d.slice(again!.action.length + 1, d.indexOf(' -> '))).pages) === JSON.stringify(again!.args?.pages) } catch { return false } }
+    // or pages that step already did ("slides 1, 2 and 3 yellow", then again for 1 and 2: "Not done yet", 2026-11-12)
+    const samePages = (d: string) => {
+      try {
+        const before: number[] = JSON.parse(d.slice(again!.action.length + 1, d.indexOf(' -> '))).pages || []
+        const now: number[] = again!.args?.pages || []
+        return !before.length || (now.length > 0 && now.every(p => before.includes(p)))
+      }
+      catch { return false }
+    }
     if (again && done.some(d => d.startsWith(`${again.action} `) && (['set_background', 'delete_pages', 'duplicate_pages'].includes(again.action) ? samePages(d) : d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`)))) break
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
@@ -2389,6 +2407,8 @@ onMounted(() => {
       const saved = await chatslide!.load()
       if (saved?.slides?.length) {
         Object.assign(s, blank(), saved.session || {})
+        // a restore confirmation left from another session would restore to this session's baseline, not the one it named
+        if (s.pending?.repeat?.some((c: any) => c.action === 'restore_original')) s.pending = null
         if (saved.theme) slidesStore.setTheme(saved.theme)
         if (saved.viewportRatio) slidesStore.setViewportRatio(saved.viewportRatio)
         slidesStore.setSlides(saved.slides)

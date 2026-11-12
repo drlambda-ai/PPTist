@@ -1203,5 +1203,7 @@
   "You're out of credits; {p0} of the pictures were added.": "你的额度已用完；已添加了 {p0} 张图片。",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "那里没有完全相同的图片，所以这是同一主题中最接近的一张：请检查它是否适合你的幻灯片。",
   "Restore the whole deck": "恢复整个演示文稿",
-  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "这会将整个演示文稿恢复到您这次打开编辑器时的状态：{p0} 页（您现在有 {p1} 页）。从那时起的所有更改都将被移除；撤销可将其找回。点击即可恢复。"
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "这会将整个演示文稿恢复到您这次打开编辑器时的状态：{p0} 页（您现在有 {p1} 页）。从那时起的所有更改都将被移除；撤销可将其找回。点击即可恢复。",
+  "Restore these pages": "恢复这些页面",
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "这会将页面 {p0} 恢复到你这次打开编辑器时的状态。此后对它们所做的所有更改都会被移除；撤销会将其恢复。轻点即可恢复。"
 }
