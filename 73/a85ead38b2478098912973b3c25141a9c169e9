@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: e5a96915 (multi-page restore needs a tap, the confirmation ends the turn and is no change, tap checked by the editor, stale saved offer dropped, new deck resets the original)
+Declined: rule overlap for 'как было' - the router reads the whole phrase; 'в начале' -> restore, bare 'как было' -> undo, both recoverable
+Declined: empty openedSlides at tap time - no path leaves it empty after a confirmation was shown in this session
+Reviewed-At: 2026-11-12T02:27:58Z
