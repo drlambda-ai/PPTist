@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Declined: samePages with an empty earlier page list - for set_background an empty list means every page (its schema), so a later call is covered; delete/duplicate require pages
+Reviewed-At: 2026-11-12T02:27:58Z
