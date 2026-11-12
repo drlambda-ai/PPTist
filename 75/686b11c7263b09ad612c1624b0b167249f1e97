@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: fix commit for the review of 10f5b4e7, verified by type check, 24/24 editor cases twice and the browser version-history run
+Reviewed-At: 2026-11-12T09:48:47Z
