@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude)
+Fixed-In: 75686b11 (version choice per hour and visible-difference signature, text after a step, auto only after a real step, stale offer pages, remove_images fallback, viewportRatio, undo path after a version load, listing not a change)
+Declined: change_image replacing a template's full-slide picture when the router misses wants_additional_picture - measured 6 of 6 add requests keep it (now a regression case, ed-add-keeps-background); the reverse bug was failing 3 replay cases
+Declined-By: Claude, 2026-11-12
+Reviewed-At: 2026-11-12T09:48:47Z
