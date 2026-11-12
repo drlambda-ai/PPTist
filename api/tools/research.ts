@@ -143,12 +143,14 @@ const readUrl = async (url: string) => {
 // page) renders the page, so script-loaded pictures are found: 91 / 85 / 91 on three brand sites where the Supadata
 // markdown had 31 / 6 (2026-11-12). Supadata stays as the fallback.
 const pagePictures = async (page: string): Promise<{ title: string, pictures: { src: string, alt: string }[] }> => {
-  const host = new URL(page).hostname.toLowerCase()
-  if (/^[\d.]+$|^\[|:|^localhost$|\.(local|internal|localhost|lan)$/.test(host) || !host.includes('.')) throw new Error('only public web links can be read')
+  let host = ''
+  try { const u = new URL(page); host = /^https?:$/.test(u.protocol) ? u.hostname.toLowerCase().replace(/\.$/, '') : '' }
+  catch { /* not a URL: refused below */ }
+  if (!host || /^[\d.]+$|^\[|:|^localhost$|\.(local|internal|localhost|lan)$/.test(host) || !host.includes('.')) throw new Error('only public web links can be read')
   const key = process.env.BRANDDEV_API_KEY
   if (key) {
     try {
-      const r = await fetch(`https://api.context.dev/v1/web/scrape/images?${new URLSearchParams({ url: page })}`, { headers: { Authorization: `Bearer ${key}` } })
+      const r = await fetch(`https://api.context.dev/v1/web/scrape/images?${new URLSearchParams({ url: page })}`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(45_000) }) // a slow render falls back
       const d = r.ok ? await r.json() : null
       const pictures = ((d?.images || []) as any[]).filter(x => x.type === 'url' && /^https:\/\//.test(String(x.src)))
         .map(x => ({ src: String(x.src), alt: String(x.alt || '').replace(/<[^>]+>/g, ' ').trim().slice(0, 120) }))
