@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude)
+Fixed-In: 0e61348a (direct source gated, free path as a failed step, empty result not charged, dedupe by proxied file, avoid pictures on the deck, load check, guarded JSON)
+Declined: 402 advanced_plan shown as out-of-credits when a plan lapses mid-session - the client gate runs first; edge of a lapsed tab
+Declined: a same-named larger brand's site - the reply names the domain; the user can give the URL
+Declined-By: Claude, 2026-11-12
+Reviewed-At: 2026-11-12T13:34:15Z
