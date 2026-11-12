@@ -24,7 +24,8 @@ const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
     topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message, or of the request it answers when that request asked for slides ("make slides from my paper" -> "attach it" -> "here it is"); "" otherwise' },
-  }, ['instruction', 'topic_in_this_message']),
+    from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
+  }, ['instruction', 'topic_in_this_message', 'from_users_file']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
     instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
     count: { type: 'integer', description: 'How many new pages, usually 1' },
@@ -35,7 +36,8 @@ const TOOLS = [
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language']),
+    from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
@@ -70,7 +72,7 @@ const TOOLS = [
     pages: { ...pages, description: 'The pages to combine; the first keeps its place ("combine 9-11" -> [9, 10, 11])' },
     instruction: { type: 'string', description: 'Anything the user said about how to combine; empty if nothing' },
   }, ['pages', 'instruction']),
-  fn('edit_page', 'Never adds pictures (that is add_image). Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
+  fn('edit_page', 'Never adds pictures (that is add_image). Never for a question put to you ("tell me…", "what is…", "explain…": that is answer_question, in the chat, not on the slide). Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
     page_named: { type: 'boolean', description: 'true if the user named or clearly identified the page: a number, "the cover", "the last slide", a title, "the other / remaining slides", "these slides" when the question they answer listed them, or a plan that lists pages; false ONLY when they mean the page they are looking at ("this slide", "here", or nothing about pages)' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
@@ -104,7 +106,7 @@ const TOOLS = [
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['background', 'font_color', 'colors', 'font']),
-  fn('change_image', 'Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
+  fn('change_image', 'No subject named ("change the image", "refresh this picture") -> choose one that fits the page, never ask what to change it to. Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
     index: page,
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
@@ -500,6 +502,8 @@ const viaResponses = async (model: string, context: string, history: any[], user
   // model may answer in plain text, which ends the message. As a "Done so far" text list with a tool call forced every
   // round, the router proposed a step it had just run in 34 of 100 replayed real conversations (client guards then
   // skipped it); this way in 1-2 of 100, same pass rate, a quarter less waiting (deck-eval, 2026-11-12).
+  // plain text may end the message only after a step that really ran (never after only skipped steps or a nudge)
+  const ranSomething = done.some((d) => { const c = asCall(d); return !!c && !c.result.startsWith('skipped:') })
   const steps = done.flatMap((d, i): any[] => {
     const c = asCall(d)
     return c ? [{ type: 'function_call', call_id: `step_${i}`, name: c.name, arguments: c.args }, { type: 'function_call_output', call_id: `step_${i}`, output: c.result }]
@@ -509,7 +513,7 @@ const viaResponses = async (model: string, context: string, history: any[], user
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
-      model, reasoning: { effort: 'low' }, tool_choice: done.length ? 'auto' : 'required', parallel_tool_calls: false,
+      model, reasoning: { effort: 'low' }, tool_choice: ranSomething ? 'auto' : 'required', parallel_tool_calls: false,
       tools: TOOLS.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
       input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }, ...steps],
     }),
@@ -518,8 +522,11 @@ const viaResponses = async (model: string, context: string, history: any[], user
   const data = await r.json()
   addUsage(model, data.usage)
   const calls = (data.output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
-  // after a step, plain text and no tool call = the model is done (the end of a tool loop)
-  return !calls.length && done.length ? [{ action: 'finish', args: { not_done: '' } }] : calls
+  if (calls.length || !ranSomething) return calls
+  // after a step, plain text and no tool call = the model is done (the end of a tool loop). "DONE" says nothing is
+  // left; any other text is for the user (an answer from the file it read, what it could not do)
+  const said = (data.output || []).filter((o: any) => o.type === 'message').flatMap((o: any) => o.content || []).map((x: any) => x.text || '').join('\n').trim()
+  return [{ action: 'finish', args: { not_done: /^(done[\s.!]*)+$/i.test(said) ? '' : said } }]
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
@@ -601,7 +608,7 @@ async function handler(req: any, res: any) {
     const doneText = done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : ''
     const user = instruction + pending + doneText
     const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
-      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Call the next tool only for a part of the request that is still not done. When nothing is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
+      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Go through the message part by part (every change asked for, and every question asked): call the next tool for the first part that no step below has done or answered yet (a question is answered with answer_question). Only when no part is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
       : viaOpenAI(m, context, history, user)
     // routing fallback when Anthropic is unavailable: the cheap model by default (Quanlai, 2026-11-02: cost first);
     // ROUTER_FALLBACK_MODEL=gpt-6.1-sol routes better (164/220 vs Haiku 157 on the real-prompt eval) at ~10x the price

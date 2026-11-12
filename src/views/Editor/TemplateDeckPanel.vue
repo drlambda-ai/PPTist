@@ -1017,6 +1017,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   const n = slides.value.length
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.after) > slides.value.length) args.after = slides.value.length
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.layout_from) > slides.value.length) args.layout_from = slides.value.length
+  // pages from the user's own file, and none is attached: ask for it (the request waits for the file), never invent
+  // the content ("buatkan ppt terkait makalah ini" generated a deck about nothing, 2026-11-12)
+  if ((action === 'add_page' || action === 'create_deck') && args.from_users_file && !s.docs.length && !(s.images || []).length) {
+    return runCall(text, 'ask_user', { question: t('No file is attached yet: attach it with the 📎 icon in the chat box.'), options: [] }, ids)
+  }
   if (action === 'add_page') {
     // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
     if (args.after_named === false && currentAtSend) {
@@ -1252,7 +1257,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     // nothing but a background photo on the named pages: that is the picture meant ("remove that background from
     // slide 1" answered "there is no picture to remove", 2026-11-11)
-    if (!n && args.pages?.length) {
+    if (!n && args.pages?.length && (!args.images?.length || args.images.includes(0))) {
       const photo = targets.filter(id => slides.value[pos(id)].background?.type === 'image')
       for (const id of photo) slidesStore.updateSlide({ background: { type: 'solid', color: '#ffffff' } }, id)
       if (photo.length) { touched(photo); return t('Removed {p0} picture(s).', { p0: photo.length }) }
@@ -1834,23 +1839,33 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'version_history') {
     if (!chatslide?.versions) fail(t('Version history is not available here. Undo goes back through the changes of this session.'))
     busy.value = t('Looking up the saved versions…')
-    const all = (await chatslide.versions()).slice(0, 60)
-    const sig = (d: any[]) => `${d.length}|${d.map(x => (x.elements || []).map((e: any) => String(e.content ?? e.text?.content ?? e.src ?? '').length).join(',')).join(';')}`
+    // one candidate per hour, newest first: the copies of the last minutes are steps Undo already covers, and listed
+    // first they would hide yesterday's version
+    const hours = new Set<string>()
+    const all = (await chatslide.versions()).filter(v => { const h = String(v.at).slice(0, 13); if (hours.has(h)) return false; hours.add(h); return true }).slice(0, 24)
+    const sig = (d: any[]) => { // content, places, colours, backgrounds, notes
+      // what a person would see as a difference; not the fields the editor fills in on load
+      const j = JSON.stringify(d.map(x => [x.background?.color || x.background?.image?.src || x.background?.type || '', x.remark || '',
+        (x.elements || []).map((e: any) => [e.type, e.content ?? e.text?.content ?? e.src ?? '', Math.round(e.left || 0), Math.round(e.top || 0), Math.round(e.width || 0), e.type === 'text' ? 0 : Math.round(e.height || 0), e.fill || '', e.defaultColor || ''])])) // (a text box's height is refitted when it is shown)
+      let h = 0
+      for (let i = 0; i < j.length; i++) h = (h * 31 + j.charCodeAt(i)) | 0
+      return `${d.length}|${j.length}|${h}`
+    }
     const seen = new Set([sig(slides.value)]) // versions that differ from the deck on screen, one per distinct state
     const choices: Record<string, string> = {}
-    for (let k = 0; k < all.length && Object.keys(choices).length < 5; k += 8) {
+    for (let k = 0; k < all.length && Object.keys(choices).length < 6; k += 8) {
       const batch = await Promise.all(all.slice(k, k + 8).map(v => fetch(v.url, { cache: 'no-store' }).then(r => r.json()).then(d => ({ v, d })).catch(() => null)))
       for (const x of batch) {
-        if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 5) continue
+        if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 6) continue
         seen.add(sig(x.d.slides))
         const when = new Date(x.v.at).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         choices[`${when} · ${t('{p0} pages', { p0: x.d.slides.length })}`] = x.v.url
       }
     }
+    askedThisTurn = true // an answer either way: the turn ends here and nothing changed
     if (!Object.keys(choices).length) return t('There is no earlier saved version that differs from the deck you have now.')
     s.savedVersions = choices
     s.pending = { request: text, question: '', options: Object.keys(choices), offer: true }
-    askedThisTurn = true
     return t('These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.', { p0: slides.value.length })
   }
   if (action === 'restore_original') {
@@ -1979,8 +1994,11 @@ const deckTurn = async (text: string) => {
     const saved = await (await fetch(versionUrl, { cache: 'no-store' })).json()
     if (!saved?.slides?.length) fail(t('That version could not be loaded.'))
     if (saved.theme) slidesStore.setTheme(saved.theme)
+    if (saved.viewportRatio) slidesStore.setViewportRatio(saved.viewportRatio)
     slidesStore.setSlides(saved.slides)
     slidesStore.updateSlideIndex(0)
+    deckBeforeCreate = null // Undo steps back to the deck that was on screen, by the snapshot
+    s.edited = true
     addHistorySnapshot()
     const line = t('Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.', { p0: text.trim().split(' · ')[0], p1: saved.slides.length })
     say('assistant', line)
@@ -2029,6 +2047,7 @@ const deckTurn = async (text: string) => {
     return tx ? `the text "${tx.slice(0, 80)}"` : `a ${e.type}`
   }).join('; ') : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
+  let offerOrder = '' // the page order when a whole-deck offer was made in this message
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -2077,6 +2096,12 @@ const deckTurn = async (text: string) => {
     // after steps that only read material (the attached paper, the web): the deck is built from it, with the router's
     // full instruction ("here is my paper" read the file and stopped, 2026-11-12)
     const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d))
+    if (newDeck?.args?.from_users_file && !s.docs.length && !(s.images || []).length) { // no file to build it from: ask for it
+      const ask = await runCall(text, 'create_deck', newDeck.args, slides.value.map(x => x.id))
+      replies.push(ask)
+      terse.push(ask)
+      break
+    }
     if (newDeck && onlyRead) {
       const brief = done.length ? String(newDeck.args?.instruction || text) : text
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
@@ -2234,6 +2259,8 @@ const deckTurn = async (text: string) => {
       // after the title (2026-11-12). The router is told, so it neither applies it itself nor stops there.
       const offered = c.action === 'edit_page' && s.pending?.offer && s.pending.options?.[0] === String(c.args?.whole_deck_option || '').trim()
         ? ' (The user now has a button to apply this to the whole deck: never do that yourself. Go on only with a different part of the request, if there is one.)' : ''
+      if (offered) offerOrder = slides.value.map(x => x.id).join()
+      else if (offerOrder && s.pending?.offer && offerOrder !== slides.value.map(x => x.id).join()) { s.pending = null; offerOrder = '' } // pages added, deleted or moved since: its numbers are stale
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
