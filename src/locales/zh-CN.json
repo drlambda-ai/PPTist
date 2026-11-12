@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "来自品牌或公司网站的真实图片是付费功能。升级您的方案，我会从网站上提取它们。",
   "Reading the website for pictures…": "正在读取网站中的图片…",
   "I could not get pictures from that website ({p0}).": "我无法从该网站 ({p0}) 获取图片。",
-  "Added {p0} picture(s) from {p1}.": "已从 {p1} 添加 {p0} 张图片。"
+  "Added {p0} picture(s) from {p1}.": "已从 {p1} 添加 {p0} 张图片。",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "付费方案：高级 AI 模型 · 来自您品牌网站的真实图片 · 可下载为 PowerPoint 或 PDF",
+  "Upgrade": "升级"
 }

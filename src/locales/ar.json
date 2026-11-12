@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "الصور الحقيقية من موقع علامة تجارية أو شركة هي ميزة مدفوعة. قم بترقية خطتك وسأجلبها من الموقع.",
   "Reading the website for pictures…": "جارٍ قراءة الموقع لاستخراج الصور…",
   "I could not get pictures from that website ({p0}).": "تعذّر عليّ الحصول على صور من ذلك الموقع ({p0}).",
-  "Added {p0} picture(s) from {p1}.": "تمت إضافة {p0} من الصور من {p1}."
+  "Added {p0} picture(s) from {p1}.": "تمت إضافة {p0} من الصور من {p1}.",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "الخطط المدفوعة: نموذج ذكاء اصطناعي متقدم · صور حقيقية من موقع علامتك التجارية · تنزيل كملف PowerPoint أو PDF",
+  "Upgrade": "ترقية"
 }

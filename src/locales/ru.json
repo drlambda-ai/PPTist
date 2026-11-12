@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Реальные изображения с сайта бренда или компании — это платная функция. Обновите тариф, и я возьму их с сайта.",
   "Reading the website for pictures…": "Читаю сайт в поиске изображений…",
   "I could not get pictures from that website ({p0}).": "Не удалось получить изображения с этого сайта ({p0}).",
-  "Added {p0} picture(s) from {p1}.": "Добавлено {p0} изображение(я) с {p1}."
+  "Added {p0} picture(s) from {p1}.": "Добавлено {p0} изображение(я) с {p1}.",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Платные тарифы: продвинутая модель ИИ · реальные изображения с сайта вашего бренда · скачать в PowerPoint или PDF",
+  "Upgrade": "Улучшить тариф"
 }

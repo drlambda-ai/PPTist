@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Foto asli dari situs web merek atau perusahaan adalah fitur berbayar. Tingkatkan paket Anda dan saya akan mengambilnya dari situs.",
   "Reading the website for pictures…": "Membaca situs web untuk mencari gambar…",
   "I could not get pictures from that website ({p0}).": "Saya tidak bisa mendapatkan gambar dari situs web itu ({p0}).",
-  "Added {p0} picture(s) from {p1}.": "{p0} gambar dari {p1} telah ditambahkan."
+  "Added {p0} picture(s) from {p1}.": "{p0} gambar dari {p1} telah ditambahkan.",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Paket berbayar: model AI canggih · gambar asli dari situs web merek Anda · unduh sebagai PowerPoint atau PDF",
+  "Upgrade": "Tingkatkan"
 }

@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Ảnh thật từ trang web của một thương hiệu hoặc công ty là tính năng trả phí. Hãy nâng cấp gói của bạn và tôi sẽ lấy chúng từ trang đó.",
   "Reading the website for pictures…": "Đang đọc trang web để tìm ảnh…",
   "I could not get pictures from that website ({p0}).": "Tôi không thể lấy ảnh từ trang web đó ({p0}).",
-  "Added {p0} picture(s) from {p1}.": "Đã thêm {p0} ảnh từ {p1}."
+  "Added {p0} picture(s) from {p1}.": "Đã thêm {p0} ảnh từ {p1}.",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Gói trả phí: mô hình AI nâng cao · hình ảnh thật từ trang web thương hiệu của bạn · tải xuống dưới dạng PowerPoint hoặc PDF",
+  "Upgrade": "Nâng cấp"
 }

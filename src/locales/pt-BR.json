@@ -1217,5 +1217,7 @@
   "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Fotos reais de um site de marca ou empresa são um recurso pago. Faça upgrade do seu plano e eu vou buscá-las no site.",
   "Reading the website for pictures…": "Lendo o site em busca de imagens…",
   "I could not get pictures from that website ({p0}).": "Não consegui obter imagens desse site ({p0}).",
-  "Added {p0} picture(s) from {p1}.": "{p0} imagem(ns) adicionada(s) de {p1}."
+  "Added {p0} picture(s) from {p1}.": "{p0} imagem(ns) adicionada(s) de {p1}.",
+  "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Planos pagos: modelo de IA avançado · imagens reais do site da sua marca · baixar como PowerPoint ou PDF",
+  "Upgrade": "Fazer upgrade"
 }

@@ -39,6 +39,11 @@
             <Button type="primary" size="small" :disabled="!!busy || !input.trim()" @click="send()">{{ t('Send') }}</Button>
           </div>
         </div>
+        <!-- free users see what a paid plan adds; a tap opens ChatSlide's plans -->
+        <div class="paid-strip" v-if="chatslide?.offerPaid && !chatslide.canUseAdvanced?.()" @click="chatslide.offerPaid()">
+          <span>{{ t('Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF') }}</span>
+          <b>{{ t('Upgrade') }}</b>
+        </div>
         <div class="new" v-if="s.mode && !busy"><span @click="restart()">{{ t('Start a new deck') }}</span></div>
       </div>
     </div>
@@ -2775,6 +2780,21 @@ onMounted(() => {
       background-color: rgba($color: $themeColor, $alpha: .08);
     }
   }
+}
+.paid-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #6b4eff;
+  background: #f3f0ff;
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+
+  span { flex: 1; }
+  b { white-space: nowrap; }
 }
 .new {
   font-size: 12px;
