@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "这会将整个演示文稿恢复到您这次打开编辑器时的状态：{p0} 页（您现在有 {p1} 页）。从那时起的所有更改都将被移除；撤销可将其找回。点击即可恢复。",
   "Restore these pages": "恢复这些页面",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "这会将页面 {p0} 恢复到你这次打开编辑器时的状态。此后对它们所做的所有更改都会被移除；撤销会将其恢复。轻点即可恢复。",
-  "Contents": "目录"
+  "Contents": "目录",
+  "Version history is not available here. Undo goes back through the changes of this session.": "此处不可用版本历史。撤销会ย้อน回到本次会话中的更改。",
+  "Looking up the saved versions…": "正在查找已保存的版本…",
+  "{p0} pages": "{p0} 页",
+  "There is no earlier saved version that differs from the deck you have now.": "没有比你现在的演示文稿更早且不同的已保存版本。",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "这是此演示文稿较早保存的版本（你现在有 {p0} 页）。点一个可返回到该版本；“撤销”会带回当前演示文稿。",
+  "That version could not be loaded.": "无法加载该版本。",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "已返回到 {p0} 的版本：{p1} 页。“撤销”会带回你原来的演示文稿。"
 }

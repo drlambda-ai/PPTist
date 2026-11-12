@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Esto devuelve toda la presentación al estado en que estaba cuando abriste el editor esta vez: {p0} páginas (ahora tienes {p1}). Se eliminarán todos los cambios desde entonces; Deshacer la recupera. Toca para restaurar.",
   "Restore these pages": "Restaurar estas páginas",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Esto devuelve las páginas {p0} al estado en que estaban cuando abriste el editor esta vez. Se eliminará cualquier cambio hecho desde entonces; Deshacer lo recupera. Toca para restaurar.",
-  "Contents": "Índice"
+  "Contents": "Índice",
+  "Version history is not available here. Undo goes back through the changes of this session.": "El historial de versiones no está disponible aquí. Deshacer vuelve a través de los cambios de esta sesión.",
+  "Looking up the saved versions…": "Buscando las versiones guardadas…",
+  "{p0} pages": "{p0} páginas",
+  "There is no earlier saved version that differs from the deck you have now.": "No hay ninguna versión guardada anterior que sea diferente de la presentación que tienes ahora.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Estas son las versiones guardadas anteriores de esta presentación (ahora tienes {p0} páginas). Toca una para volver a ella; Deshacer restaura la presentación actual.",
+  "That version could not be loaded.": "No se pudo cargar esa versión.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Se volvió a la versión de {p0}: {p1} páginas. Deshacer restaura la presentación que tenías."
 }

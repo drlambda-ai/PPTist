@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Это вернёт всю презентацию в состояние, в котором она была, когда вы открыли редактор в этот раз: {p0} страниц (сейчас у вас {p1}). Все изменения с тех пор будут удалены; Отмена вернёт их обратно. Нажмите, чтобы восстановить.",
   "Restore these pages": "Восстановить эти страницы",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Это вернёт страницы {p0} в состояние, в котором они были, когда вы открыли редактор в этот раз. Все изменения, сделанные с тех пор, будут удалены; Отменить вернёт их обратно. Нажмите, чтобы восстановить.",
-  "Contents": "Содержание"
+  "Contents": "Содержание",
+  "Version history is not available here. Undo goes back through the changes of this session.": "История версий здесь недоступна. Отменить возвращает изменения этой сессии шаг за шагом.",
+  "Looking up the saved versions…": "Поиск сохранённых версий…",
+  "{p0} pages": "{p0} стр.",
+  "There is no earlier saved version that differs from the deck you have now.": "Нет более ранней сохранённой версии, отличающейся от текущей презентации.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Это более ранние сохранённые версии этой презентации (сейчас у вас {p0} слайдов). Нажмите на одну, чтобы вернуться к ней; «Отменить» вернёт текущую презентацию.",
+  "That version could not be loaded.": "Не удалось загрузить эту версию.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Возврат к версии от {p0}: {p1} слайдов. «Отменить» вернёт презентацию, которая у вас была."
 }

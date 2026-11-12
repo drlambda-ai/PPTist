@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Cela remet tout le deck comme il était quand vous avez ouvert l’éditeur cette fois-ci : {p0} pages (vous en avez {p1} maintenant). Chaque changement depuis est supprimé ; Annuler le rétablit. Appuyez pour restaurer.",
   "Restore these pages": "Restaurer ces pages",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Cela remet les pages {p0} dans l’état où elles étaient lorsque vous avez ouvert l’éditeur cette fois-ci. Toute modification effectuée depuis est supprimée ; Annuler la rétablit. Touchez pour restaurer.",
-  "Contents": "Sommaire"
+  "Contents": "Sommaire",
+  "Version history is not available here. Undo goes back through the changes of this session.": "L’historique des versions n’est pas disponible ici. Annuler revient en arrière dans les changements de cette session.",
+  "Looking up the saved versions…": "Recherche des versions enregistrées…",
+  "{p0} pages": "{p0} pages",
+  "There is no earlier saved version that differs from the deck you have now.": "Il n’existe aucune version enregistrée antérieure différente de la présentation que vous avez maintenant.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Voici les versions enregistrées précédentes de cette présentation (vous avez {p0} pages maintenant). Touchez-en une pour y revenir ; Annuler rétablit la présentation actuelle.",
+  "That version could not be loaded.": "Cette version n’a pas pu être chargée.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Retour à la version du {p0} : {p1} pages. Annuler rétablit la présentation que vous aviez."
 }

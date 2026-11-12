@@ -1202,9 +1202,16 @@
   "Those pictures were already added in this message.": "Essas imagens já foram adicionadas nesta mensagem.",
   "You're out of credits; {p0} of the pictures were added.": "Você ficou sem créditos; {p0} das imagens foram adicionadas.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Não existe uma imagem exata lá, então esta é a mais próxima do mesmo assunto: verifique se ela está certa para o seu slide.",
-  "Restore the whole deck": "Restaurar a apresentação inteira",
+  "Restore the whole deck": "Restaurar toda a apresentação",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Isso coloca o deck inteiro de volta como estava quando você abriu o editor desta vez: {p0} páginas (você tem {p1} agora). Todas as mudanças desde então são removidas; Desfazer traz de volta. Toque para restaurar.",
   "Restore these pages": "Restaurar estas páginas",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Isso coloca as páginas {p0} de volta como estavam quando você abriu o editor desta vez. Toda alteração feita nelas desde então será removida; Desfazer traz de volta. Toque para restaurar.",
-  "Contents": "Sumário"
+  "Contents": "Sumário",
+  "Version history is not available here. Undo goes back through the changes of this session.": "O histórico de versões não está disponível aqui. Desfazer volta pelas mudanças desta sessão.",
+  "Looking up the saved versions…": "Procurando as versões salvas…",
+  "{p0} pages": "{p0} páginas",
+  "There is no earlier saved version that differs from the deck you have now.": "Não há nenhuma versão salva anterior que seja diferente da apresentação que você tem agora.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Estas são as versões salvas anteriores desta apresentação (você tem {p0} páginas agora). Toque em uma para voltar a ela; Desfazer traz de volta a apresentação atual.",
+  "That version could not be loaded.": "Não foi possível carregar essa versão.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Voltou para a versão de {p0}: {p1} páginas. Desfazer traz de volta a apresentação que você tinha."
 }

@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Це поверне всю презентацію в стан, у якому вона була, коли ви відкрили редактор цього разу: {p0} сторінок (зараз у вас {p1}). Усі зміни відтоді буде видалено; Скасувати повертає їх назад. Торкніться, щоб відновити.",
   "Restore these pages": "Відновити ці сторінки",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Це поверне сторінки {p0} до стану, у якому вони були, коли ви відкрили редактор цього разу. Усі зміни, внесені відтоді, буде видалено; Скасувати поверне їх назад. Торкніться, щоб відновити.",
-  "Contents": "Зміст"
+  "Contents": "Зміст",
+  "Version history is not available here. Undo goes back through the changes of this session.": "Історія версій тут недоступна. Скасувати повертає зміни цієї сесії назад.",
+  "Looking up the saved versions…": "Пошук збережених версій…",
+  "{p0} pages": "{p0} с.",
+  "There is no earlier saved version that differs from the deck you have now.": "Немає раніше збереженої версії, що відрізняється від поточної презентації.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Це раніше збережені версії цієї презентації (зараз у вас {p0} слайдів). Торкніться однієї, щоб повернутися до неї; «Скасувати» повертає поточну презентацію.",
+  "That version could not be loaded.": "Не вдалося завантажити цю версію.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Повернулися до версії від {p0}: {p1} слайдів. «Скасувати» повертає презентацію, яка у вас була."
 }

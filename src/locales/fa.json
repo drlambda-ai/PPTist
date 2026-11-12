@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "این کل ارائه را به همان حالتی برمی‌گرداند که این بار ویرایشگر را باز کردید: {p0} صفحه (الان {p1} صفحه دارید). هر تغییری از آن زمان به بعد حذف می‌شود؛ بازگردانی آن را برمی‌گرداند. برای بازیابی بزنید.",
   "Restore these pages": "بازگردانی این صفحه‌ها",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "این کار صفحه‌های {p0} را به همان حالتی که وقتی این‌بار ویرایشگر را باز کردید بودند برمی‌گرداند. هر تغییری که از آن زمان روی آن‌ها انجام شده حذف می‌شود؛ «واگرد» آن را برمی‌گرداند. برای بازگردانی بزنید.",
-  "Contents": "فهرست مطالب"
+  "Contents": "فهرست مطالب",
+  "Version history is not available here. Undo goes back through the changes of this session.": "تاریخچه نسخه‌ها در اینجا در دسترس نیست. بازگردانی از میان تغییرات این جلسه به عقب می‌رود.",
+  "Looking up the saved versions…": "در حال جست‌وجوی نسخه‌های ذخیره‌شده…",
+  "{p0} pages": "{p0} صفحه",
+  "There is no earlier saved version that differs from the deck you have now.": "هیچ نسخهٔ ذخیره‌شدهٔ قبلی‌ای که با ارائهٔ فعلی شما متفاوت باشد وجود ندارد.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "این‌ها نسخه‌های ذخیره‌شدهٔ قبلی این ارائه هستند (اکنون {p0} صفحه دارید). روی یکی بزنید تا به آن برگردید؛ «واگرد» ارائهٔ فعلی را برمی‌گرداند.",
+  "That version could not be loaded.": "آن نسخه بارگیری نشد.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "به نسخهٔ {p0} برگشتید: {p1} صفحه. «واگرد» ارائه‌ای را که داشتید برمی‌گرداند."
 }

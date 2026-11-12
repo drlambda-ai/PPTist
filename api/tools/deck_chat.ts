@@ -111,10 +111,11 @@ const TOOLS = [
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
     said_background: { type: 'boolean', description: 'true ONLY if the user\'s words ask for the background picture' },
+    wants_additional_picture: { type: 'boolean', description: 'true when the user asks to ADD or INSERT a picture (one more), false when they ask to change, replace, swap or refresh the picture that is there' },
     picture_named: { type: 'boolean', description: 'true if the words pick this picture (its place, its subject, "the second one", an answer naming it) or ask for all of them; false when the page has several and the words do not say which' },
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
-  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai']),
+  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'wants_additional_picture']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -221,6 +222,7 @@ const TOOLS = [
     pages: { ...pages, description: 'The pages named; empty = the current page' },
     whole_deck: { type: 'boolean', description: 'true when the user means everything / all pages / the whole deck ("mọi thứ", "всё", "todo", "全部")' },
   }, ['pages', 'whole_deck']),
+  fn('version_history', 'Show the earlier saved versions of this deck so the user can go back to one: "version history", "yesterday\'s version", "the 21-page version", "what I had this morning", "I lost my slides". The editor lists them as buttons.', {}, []),
   fn('undo', 'Undo the last change.', {
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
@@ -411,8 +413,8 @@ Rules:
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
    "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
    "The previous version / go back / как было / предыдущий вариант / revert" -> undo, never restore_original.
-   An older saved version ("yesterday's version", "the 21-page one", "version history") -> answer_question: the editor
-   keeps no dated versions; Undo goes back through this session's changes. Never restore_original for it.
+   An older saved version ("yesterday's version", "the 21-page one", "version history", lost work) -> version_history.
+   Never restore_original for it.
    A correction is ALWAYS undo (with "instead") and then the change the user wants; never answer it with words only.
    "I don't see a change" / "nothing changed" / "не бачу змін" / "没变化" is NOT a correction: never undo. Do the change
    they asked for last again, on the same target, clearly bigger and visible.
@@ -448,11 +450,11 @@ const keepLanguage = async (calls: any[]) => {
     const lang = String(c.args?.language || '')
     if (!lang || CJK_LANGS.test(lang)) continue
     const fields: Record<string, unknown> = {}
-    for (const k of ['instruction', 'topics']) if (CJK.test(JSON.stringify(c.args[k] ?? ''))) fields[k] = c.args[k]
+    for (const k of ['instruction', 'topics', 'whole_deck_option']) if (CJK.test(JSON.stringify(c.args[k] ?? ''))) fields[k] = c.args[k]
     if (!Object.keys(fields).length) continue
     try {
       const out = JSON.parse(await chat([{ role: 'user', content: `Translate every string value of this JSON into ${lang}, keeping its keys, structure, numbers and meaning. Return the JSON only.\n${JSON.stringify(fields)}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 4000 }))
-      if (typeof out.instruction === 'string' && 'instruction' in fields) c.args.instruction = out.instruction
+      for (const k of ['instruction', 'whole_deck_option']) if (typeof out[k] === 'string' && k in fields) c.args[k] = out[k]
       const was = fields.topics as unknown[]
       if (Array.isArray(was) && Array.isArray(out.topics) && out.topics.length === was.length && out.topics.every((x: unknown) => typeof x === 'string')) c.args.topics = out.topics
     }
@@ -475,21 +477,49 @@ const viaOpenAI = async (model: string, context: string, history: any[], user: s
   return (data.choices?.[0]?.message?.tool_calls || []).map((c: any) => ({ action: c.function?.name || 'answer_question', args: parseArgs(c.function?.arguments) }))
 }
 
+// One "Done so far" line ("<action> <args json> -> <result>") as the tool call it was. Lines that are not a call
+// (a nudge, a skipped create_deck) stay notes.
+const asCall = (d: string): { name: string, args: string, result: string } | null => {
+  const m = d.match(/^(\w+) (?=\{)/)
+  if (!m || !TOOLS.some((t: any) => t.function.name === m[1])) return null
+  const rest = d.slice(m[0].length)
+  let depth = 0, str = false, esc = false
+  for (let i = 0; i < rest.length; i++) {
+    const ch = rest[i]
+    if (str) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') str = false; continue }
+    if (ch === '"') str = true
+    else if (ch === '{') depth++
+    else if (ch === '}' && --depth === 0) return { name: m[1], args: rest.slice(0, i + 1), result: rest.slice(i + 1).replace(/^ -> /, '') || 'done' }
+  }
+  return null
+}
+
 // gpt-6.x: function tools with reasoning are only served by the Responses API
-const viaResponses = async (model: string, context: string, history: any[], user: string) => {
+const viaResponses = async (model: string, context: string, history: any[], user: string, done: string[] = []) => {
+  // A real tool loop: the steps already run are the model's own tool calls and their results, and after a step the
+  // model may answer in plain text, which ends the message. As a "Done so far" text list with a tool call forced every
+  // round, the router proposed a step it had just run in 34 of 100 replayed real conversations (client guards then
+  // skipped it); this way in 1-2 of 100, same pass rate, a quarter less waiting (deck-eval, 2026-11-12).
+  const steps = done.flatMap((d, i): any[] => {
+    const c = asCall(d)
+    return c ? [{ type: 'function_call', call_id: `step_${i}`, name: c.name, arguments: c.args }, { type: 'function_call_output', call_id: `step_${i}`, output: c.result }]
+      : [{ role: 'user', content: `[editor note] ${d}` }]
+  })
   const r = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
-      model, reasoning: { effort: 'low' }, tool_choice: 'required', parallel_tool_calls: false,
+      model, reasoning: { effort: 'low' }, tool_choice: done.length ? 'auto' : 'required', parallel_tool_calls: false,
       tools: TOOLS.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
-      input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }],
+      input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }, ...steps],
     }),
   })
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
   const data = await r.json()
   addUsage(model, data.usage)
-  return (data.output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
+  const calls = (data.output || []).filter((o: any) => o.type === 'function_call').map((o: any) => ({ action: o.name, args: parseArgs(o.arguments) }))
+  // after a step, plain text and no tool call = the model is done (the end of a tool loop)
+  return !calls.length && done.length ? [{ action: 'finish', args: { not_done: '' } }] : calls
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
@@ -568,9 +598,11 @@ async function handler(req: any, res: any) {
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 4000)}". You asked: "${String(body.pending.question).slice(0, 300)}"${Array.isArray(body.pending.done) && body.pending.done.length
       ? `. Already done for it (do not repeat; do what is left): ${body.pending.done.map((d: unknown) => String(d).slice(0, 200)).join(' | ').slice(0, 4000)}` : ''}]` : ''
-    const user = instruction + pending + (done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : '')
+    const doneText = done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : ''
+    const user = instruction + pending + doneText
     const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
-      : m.startsWith('gpt-6') ? viaResponses(m, context, history, user) : viaOpenAI(m, context, history, user)
+      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Call the next tool only for a part of the request that is still not done. When nothing is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
+      : viaOpenAI(m, context, history, user)
     // routing fallback when Anthropic is unavailable: the cheap model by default (Quanlai, 2026-11-02: cost first);
     // ROUTER_FALLBACK_MODEL=gpt-6.1-sol routes better (164/220 vs Haiku 157 on the real-prompt eval) at ~10x the price
     const calls = await route(model).catch(e => {

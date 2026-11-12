@@ -12,6 +12,8 @@ window.__chatslide = {
   save: async () => {}, sync: async () => ({}), pptx: async () => '',
   share: async () => { window.__ev.push('share'); return { url: location.origin + '/shared/test', copied: false } },
   goto: async (s) => window.__ev.push('goto:' + s),
+  // ?versions=a.json,b.json: the deck's saved copies, newest first (decks/ files), one hour apart
+  ...(q.get('versions') ? { versions: async () => q.get('versions').split(',').map((f, k) => ({ url: location.origin + '/decks/' + f, at: new Date(Date.now() - k * 3600e3).toISOString() })) } : {}),
 }
 </script>
 <iframe src="index.html"></iframe></body></html>

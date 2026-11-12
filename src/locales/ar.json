@@ -1202,9 +1202,16 @@
   "Those pictures were already added in this message.": "تلك الصور أُضيفت بالفعل في هذه الرسالة.",
   "You're out of credits; {p0} of the pictures were added.": "نفدت رصيدك؛ تمت إضافة {p0} من الصور.",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "لا توجد صورة مطابقة هناك، لذا فهذه هي الأقرب لنفس الموضوع: تحقّق من أنها مناسبة لشريحتك.",
-  "Restore the whole deck": "استعادة العرض بالكامل",
+  "Restore the whole deck": "استعادة العرض التقديمي بالكامل",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "يعيد هذا العرض بالكامل كما كان عندما فتحت المحرر هذه المرة: {p0} صفحة (لديك الآن {p1}). ستُزال كل التغييرات منذ ذلك الحين؛ ويُعيده التراجع. اضغط للاستعادة.",
   "Restore these pages": "استعادة هذه الصفحات",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "يعيد الصفحات {p0} إلى حالتها كما كانت عندما فتحتَ المحرر هذه المرة. ستُزال كل التغييرات التي أُجريت عليها منذ ذلك الحين؛ ويُعيدها التراجع. اضغط للاستعادة.",
-  "Contents": "المحتويات"
+  "Contents": "المحتويات",
+  "Version history is not available here. Undo goes back through the changes of this session.": "سجل الإصدارات غير متاح هنا. التراجع يعود عبر تغييرات هذه الجلسة.",
+  "Looking up the saved versions…": "جارٍ البحث عن الإصدارات المحفوظة…",
+  "{p0} pages": "{p0} صفحة",
+  "There is no earlier saved version that differs from the deck you have now.": "لا توجد نسخة محفوظة سابقة تختلف عن العرض التقديمي الذي لديك الآن.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "هذه هي النسخ المحفوظة السابقة من هذا العرض التقديمي (لديك الآن {p0} صفحة). اضغط على واحدة للرجوع إليها؛ «تراجع» يعيد العرض التقديمي الحالي.",
+  "That version could not be loaded.": "تعذر تحميل تلك النسخة.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "تم الرجوع إلى النسخة من {p0}: {p1} صفحة. «تراجع» يعيد العرض التقديمي الذي كان لديك."
 }

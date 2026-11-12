@@ -109,6 +109,7 @@ interface Session {
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
   pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[] } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
+  savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
 
 const KEY = 'ai-deck-session'
@@ -1249,6 +1250,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter(e => !drop.has(e.id)) }, id)
       touched([id])
     }
+    // nothing but a background photo on the named pages: that is the picture meant ("remove that background from
+    // slide 1" answered "there is no picture to remove", 2026-11-11)
+    if (!n && args.pages?.length) {
+      const photo = targets.filter(id => slides.value[pos(id)].background?.type === 'image')
+      for (const id of photo) slidesStore.updateSlide({ background: { type: 'solid', color: '#ffffff' } }, id)
+      if (photo.length) { touched(photo); return t('Removed {p0} picture(s).', { p0: photo.length }) }
+    }
     if (!n) fail(t('There is no picture to remove.'))
     return t('Removed {p0} picture(s).', { p0: n })
   }
@@ -1586,8 +1594,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (image === 0 && !args.said_background && content.length) {
       image = content.findIndex((_, k) => !replacedThisTurn.has(`${id}:${k + 1}`)) + 1 || 1
     }
-    // a page with only a background: the new picture is added, the background stays ("insert real photos of X" swapped it)
-    if (!args.said_background && !content.length) {
+    // a page with only a background picture: "change the image / the cover photo" means that picture (the eval's
+    // "Change the image on the slide" got a small extra picture, 2026-11-12); only a request to ADD one keeps it
+    // ("insert real photos of X" swapped the background)
+    if (!args.said_background && !content.length && (args.wants_additional_picture || !sl.elements.some((e: any) => e.type === 'image' && isBackdrop(e)))) {
       return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: true, replaces_existing: false }, ids)
     }
     // several pictures and nothing in the message picks one: ask (Quanlai: "if there are multiple choices you should at least ask")
@@ -1607,7 +1617,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     replacedThisTurn.add(`${id}:${image ?? 1}`)
     const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     // says WHICH picture changed, so a later reply about this step is grounded in what happened
-    const which = backdrop ? (t('the background picture on page {p0}', { p0: pos(id) + 1 })) : (t('the picture on page {p0}', { p0: pos(id) + 1 }))
+    // the page's only picture is "the picture", full-slide or not: told "the background picture" was replaced, the
+    // router undid its own correct change (2026-11-12)
+    const which = backdrop && content.length ? (t('the background picture on page {p0}', { p0: pos(id) + 1 })) : (t('the picture on page {p0}', { p0: pos(id) + 1 }))
     return (t('Replaced {p0} with a {p1} picture for "{p2}"; check it is what you meant.', { p0: which, p1: how, p2: String(args.query || '').slice(0, 60) })) + (note ? ` ${note}` : '')
   }
   if (action === 'move_element_to_page') {
@@ -1816,6 +1828,31 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return args.question || (t('Could you say that more specifically?'))
   }
   // "back to how it was at first": one step to the page as opened, not a chain of undos (a user needed five, 2026-11-11)
+  // Version history: the deck's saved copies (ChatSlide keeps the newest 20 and one per hour for 7 days), offered as
+  // buttons. A doctor asked for "yesterday's version" and "the version history" after a day's work was replaced, and
+  // the editor had neither (2026-11-12).
+  if (action === 'version_history') {
+    if (!chatslide?.versions) fail(t('Version history is not available here. Undo goes back through the changes of this session.'))
+    busy.value = t('Looking up the saved versions…')
+    const all = (await chatslide.versions()).slice(0, 60)
+    const sig = (d: any[]) => `${d.length}|${d.map(x => (x.elements || []).map((e: any) => String(e.content ?? e.text?.content ?? e.src ?? '').length).join(',')).join(';')}`
+    const seen = new Set([sig(slides.value)]) // versions that differ from the deck on screen, one per distinct state
+    const choices: Record<string, string> = {}
+    for (let k = 0; k < all.length && Object.keys(choices).length < 5; k += 8) {
+      const batch = await Promise.all(all.slice(k, k + 8).map(v => fetch(v.url, { cache: 'no-store' }).then(r => r.json()).then(d => ({ v, d })).catch(() => null)))
+      for (const x of batch) {
+        if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 5) continue
+        seen.add(sig(x.d.slides))
+        const when = new Date(x.v.at).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        choices[`${when} · ${t('{p0} pages', { p0: x.d.slides.length })}`] = x.v.url
+      }
+    }
+    if (!Object.keys(choices).length) return t('There is no earlier saved version that differs from the deck you have now.')
+    s.savedVersions = choices
+    s.pending = { request: text, question: '', options: Object.keys(choices), offer: true }
+    askedThisTurn = true
+    return t('These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.', { p0: slides.value.length })
+  }
   if (action === 'restore_original') {
     // only a tap on the confirmation restores more than one page (the router's own flag is never enough)
     const ok = args.confirmed && tappedRestore
@@ -1934,6 +1971,22 @@ const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && 
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
+  // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
+  const versionUrl = s.savedVersions?.[text.trim()]
+  s.savedVersions = undefined
+  if (versionUrl) {
+    s.pending = null
+    const saved = await (await fetch(versionUrl, { cache: 'no-store' })).json()
+    if (!saved?.slides?.length) fail(t('That version could not be loaded.'))
+    if (saved.theme) slidesStore.setTheme(saved.theme)
+    slidesStore.setSlides(saved.slides)
+    slidesStore.updateSlideIndex(0)
+    addHistorySnapshot()
+    const line = t('Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.', { p0: text.trim().split(' · ')[0], p1: saved.slides.length })
+    say('assistant', line)
+    recordTurn(text, line, ['load_version'], true)
+    return
+  }
   if (!Object.keys(openedSlides).length) rememberOriginal() // a deck opened another way (?pptx=, a local session): its state before the first change
   newTurn() // a new message: charged on its own
   // the Yes button confirms; so does a typed reply to the question when the router, reading it, asks again to delete
@@ -2177,11 +2230,15 @@ const deckTurn = async (text: string) => {
       turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
       for (const x of slides.value) if (!idsAtStart.has(x.id)) createdThisMessage.add(x.id)
       terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
-      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${memo ? `\n${memo}` : ''}`)
+      // the whole-deck offer is a button, not the end of the message: "make the title red and add a picture" stopped
+      // after the title (2026-11-12). The router is told, so it neither applies it itself nor stops there.
+      const offered = c.action === 'edit_page' && s.pending?.offer && s.pending.options?.[0] === String(c.args?.whole_deck_option || '').trim()
+        ? ' (The user now has a button to apply this to the whole deck: never do that yourself. Go on only with a different part of the request, if there is one.)' : ''
+      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
-    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action)) || work.some((c: any) => c.action === 'edit_page' && c.args?.whole_deck_option && c.args?.page_named !== true && !turnSelected && !c.args?.source_pages?.length)) break // a question is asked/answered once; showing a page ends the turn
+    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null

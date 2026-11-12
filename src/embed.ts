@@ -11,6 +11,7 @@ export interface ChatSlideHost {
   // the deck back into the project; returns the picture links of the pages it uploaded, by key
   sync: (pages: { key: string, url?: string, image?: Blob, text: string, notes: string }[]) => Promise<Record<string, string>>
   flush?: () => Promise<void> // set by the editor: sync now
+  versions?: () => Promise<{ url: string, at: string }[]> // the deck's saved copies, newest first (version history)
   pptx: () => Promise<string> // the project's deck as a .pptx (blob: URL), for the first open
   // chat actions done by ChatSlide itself (absent when the editor runs alone)
   share?: () => Promise<{ url: string, copied: boolean }>

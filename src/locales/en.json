@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.",
   "Restore these pages": "Restore these pages",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.",
-  "Contents": "Contents"
+  "Contents": "Contents",
+  "Version history is not available here. Undo goes back through the changes of this session.": "Version history is not available here. Undo goes back through the changes of this session.",
+  "Looking up the saved versions…": "Looking up the saved versions…",
+  "{p0} pages": "{p0} pages",
+  "There is no earlier saved version that differs from the deck you have now.": "There is no earlier saved version that differs from the deck you have now.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.",
+  "That version could not be loaded.": "That version could not be loaded.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had."
 }

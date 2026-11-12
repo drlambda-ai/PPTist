@@ -1206,5 +1206,12 @@
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Ini mengembalikan seluruh deck seperti saat Anda membuka editor kali ini: {p0} halaman (sekarang Anda punya {p1}). Semua perubahan sejak saat itu akan dihapus; Urungkan akan mengembalikannya. Ketuk untuk memulihkan.",
   "Restore these pages": "Pulihkan halaman ini",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Ini mengembalikan halaman {p0} seperti saat Anda membuka editor kali ini. Setiap perubahan sejak saat itu akan dihapus; Urungkan akan mengembalikannya. Ketuk untuk memulihkan.",
-  "Contents": "Daftar Isi"
+  "Contents": "Daftar Isi",
+  "Version history is not available here. Undo goes back through the changes of this session.": "Riwayat versi tidak tersedia di sini. Urungkan kembali melalui perubahan sesi ini.",
+  "Looking up the saved versions…": "Mencari versi yang disimpan…",
+  "{p0} pages": "{p0} halaman",
+  "There is no earlier saved version that differs from the deck you have now.": "Tidak ada versi tersimpan sebelumnya yang berbeda dari presentasi yang Anda miliki sekarang.",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Ini adalah versi tersimpan sebelumnya dari presentasi ini (sekarang Anda memiliki {p0} halaman). Ketuk salah satu untuk kembali ke sana; Urungkan akan membawa kembali presentasi saat ini.",
+  "That version could not be loaded.": "Versi itu tidak dapat dimuat.",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Kembali ke versi dari {p0}: {p1} halaman. Urungkan akan mengembalikan presentasi yang Anda miliki."
 }

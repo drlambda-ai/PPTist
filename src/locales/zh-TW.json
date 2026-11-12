@@ -1202,9 +1202,16 @@
   "Those pictures were already added in this message.": "那些圖片已經新增到這則訊息中。",
   "You're out of credits; {p0} of the pictures were added.": "你的點數已用完；已新增了 {p0} 張圖片。",
   "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "那裡沒有完全相同的圖片，所以這是同一主題中最接近的一張：請確認它是否適合你的投影片。",
-  "Restore the whole deck": "恢復整份簡報",
+  "Restore the whole deck": "還原整份簡報",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "這會將整份簡報恢復成您這次開啟編輯器時的樣子：{p0} 頁（您現在有 {p1} 頁）。從那時起的所有變更都會被移除；復原可將其找回。點一下即可恢復。",
   "Restore these pages": "還原這些頁面",
   "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "這會將頁面 {p0} 還原為你這次開啟編輯器時的狀態。此後對它們所做的每項變更都會被移除；復原會將其帶回。點一下即可還原。",
-  "Contents": "目錄"
+  "Contents": "目錄",
+  "Version history is not available here. Undo goes back through the changes of this session.": "這裡無法使用版本記錄。復原會回到本次工作階段中的變更。",
+  "Looking up the saved versions…": "正在查找已儲存的版本…",
+  "{p0} pages": "{p0} 頁",
+  "There is no earlier saved version that differs from the deck you have now.": "沒有比你目前的簡報更早且不同的已儲存版本。",
+  "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "這是此簡報較早儲存的版本（你現在有 {p0} 頁）。點選其中一個即可回到該版本；「復原」會帶回目前的簡報。",
+  "That version could not be loaded.": "無法載入該版本。",
+  "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "已回到 {p0} 的版本：{p1} 頁。「復原」會帶回你原本的簡報。"
 }
