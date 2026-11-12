@@ -1201,5 +1201,7 @@
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Страница {p0} была заполнена, поэтому картинки на новой странице {p1}.",
   "Those pictures were already added in this message.": "Эти изображения уже были добавлены в это сообщение.",
   "You're out of credits; {p0} of the pictures were added.": "У вас закончились кредиты; было добавлено {p0} изображений.",
-  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там нет точного изображения, поэтому это ближайшее по той же теме: проверьте, подходит ли оно для вашего слайда."
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там нет точного изображения, поэтому это ближайшее по той же теме: проверьте, подходит ли оно для вашего слайда.",
+  "Restore the whole deck": "Восстановить всю презентацию",
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Это вернёт всю презентацию в состояние, в котором она была, когда вы открыли редактор в этот раз: {p0} страниц (сейчас у вас {p1}). Все изменения с тех пор будут удалены; Отмена вернёт их обратно. Нажмите, чтобы восстановить."
 }

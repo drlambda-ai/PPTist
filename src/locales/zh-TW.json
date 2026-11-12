@@ -1201,5 +1201,7 @@
   "Page {p0} was full, so the pictures are on a new page {p1}.": "第 {p0} 頁已滿，所以圖片在新的一頁 {p1} 上。",
   "Those pictures were already added in this message.": "那些圖片已經新增到這則訊息中。",
   "You're out of credits; {p0} of the pictures were added.": "你的點數已用完；已新增了 {p0} 張圖片。",
-  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "那裡沒有完全相同的圖片，所以這是同一主題中最接近的一張：請確認它是否適合你的投影片。"
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "那裡沒有完全相同的圖片，所以這是同一主題中最接近的一張：請確認它是否適合你的投影片。",
+  "Restore the whole deck": "恢復整份簡報",
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "這會將整份簡報恢復成您這次開啟編輯器時的樣子：{p0} 頁（您現在有 {p1} 頁）。從那時起的所有變更都會被移除；復原可將其找回。點一下即可恢復。"
 }

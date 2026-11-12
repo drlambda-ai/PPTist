@@ -1809,6 +1809,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'restore_original') {
     // "everything back": the deck as opened, its deleted pages back and pages added since gone (Undo reverses it)
     if (args.whole_deck && Object.keys(openedSlides).length) {
+      // the whole deck is replaced only after the user taps to confirm, seeing what it puts back
+      if (!args.confirmed) {
+        const back = Object.keys(openedSlides).length
+        s.pending = { request: text, question: '', options: [t('Restore the whole deck')], offer: true,
+          repeat: [{ action: 'restore_original', args: { whole_deck: true, confirmed: true } }], pages: [1] }
+        return t('This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.', { p0: back, p1: slides.value.length })
+      }
       slidesStore.setSlides(JSON.parse(JSON.stringify(Object.values(openedSlides))))
       ids.splice(0, ids.length, ...slides.value.map(x => x.id))
       touched(slides.value.map(x => x.id))
@@ -1896,21 +1903,10 @@ let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
 let openedSlides: Record<string, any> = {} // slide id -> the page as it was when this project was first opened here
 const helperPages = new Set<string>() // pages the editor added for pictures: not "new pages the user asked for"
-// the first-opened version per project, kept across reloads (after a reload "the original" was the edited deck)
-const ORIGINAL_KEY = () => `pptist-original-${chatslide?.projectId}`
+// each page as it was when the editor opened the deck this time. Never an older session's copy: "go back to the previous
+// version" restored a deck from two days earlier over a day of a doctor's work (2026-11-12)
 const rememberOriginal = () => {
-  if (!chatslide?.projectId) { openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))])); return } // no project: this session only, never another deck's copy
-  try {
-    const kept = localStorage.getItem(ORIGINAL_KEY())
-    if (kept) { openedSlides = JSON.parse(kept); return }
-  }
-  catch { /* storage unreadable: this session's copy below */ }
   openedSlides = Object.fromEntries(slides.value.map(x => [x.id, JSON.parse(JSON.stringify(x))]))
-  try {
-    const json = JSON.stringify(openedSlides)
-    if (json.length < 2_000_000) localStorage.setItem(ORIGINAL_KEY(), json) // pictures are links; a huge deck stays per session
-  }
-  catch { /* quota: this session's copy only */ }
 }
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN

@@ -1201,5 +1201,7 @@
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Сторінка {p0} була заповнена, тож зображення на новій сторінці {p1}.",
   "Those pictures were already added in this message.": "Ці зображення вже були додані в це повідомлення.",
   "You're out of credits; {p0} of the pictures were added.": "У вас закінчилися кредити; було додано {p0} зображень.",
-  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там немає точного зображення, тож це найближче з того ж самого предмета: перевірте, чи воно підходить для вашого слайда."
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Там немає точного зображення, тож це найближче з того ж самого предмета: перевірте, чи воно підходить для вашого слайда.",
+  "Restore the whole deck": "Відновити всю презентацію",
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Це поверне всю презентацію в стан, у якому вона була, коли ви відкрили редактор цього разу: {p0} сторінок (зараз у вас {p1}). Усі зміни відтоді буде видалено; Скасувати повертає їх назад. Торкніться, щоб відновити."
 }

@@ -1201,5 +1201,7 @@
   "Page {p0} was full, so the pictures are on a new page {p1}.": "La page {p0} était pleine, donc les images sont sur une nouvelle page {p1}.",
   "Those pictures were already added in this message.": "Ces images ont déjà été ajoutées dans ce message.",
   "You're out of credits; {p0} of the pictures were added.": "Vous n’avez plus de crédits ; {p0} des images ont été ajoutées.",
-  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Il n’existe pas d’image exacte là-bas, donc c’est la plus proche du même sujet : vérifiez qu’elle convient à votre diapositive."
+  "No exact picture exists there, so this is the nearest one of the same subject: check it is right for your slide.": "Il n’existe pas d’image exacte là-bas, donc c’est la plus proche du même sujet : vérifiez qu’elle convient à votre diapositive.",
+  "Restore the whole deck": "Restaurer toute la présentation",
+  "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Cela remet tout le deck comme il était quand vous avez ouvert l’éditeur cette fois-ci : {p0} pages (vous en avez {p1} maintenant). Chaque changement depuis est supprimé ; Annuler le rétablit. Appuyez pour restaurer."
 }

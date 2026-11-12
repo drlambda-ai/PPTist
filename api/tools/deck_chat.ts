@@ -213,7 +213,7 @@ const TOOLS = [
     question: { type: 'string', description: 'The question, in that language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
   }, ['user_language', 'question', 'options']),
-  fn('restore_original', 'Put pages back to how they were when the deck was opened ("back to the original", "như ban đầu", "как было", "恢复原样"), in one step.', {
+  fn('restore_original', 'Put pages back to how they were when the editor was opened this time ("back to the original", "how it was at first", "như ban đầu", "恢复原样"), in one step. Not for "the previous version" (undo).', {
     pages: { ...pages, description: 'The pages named; empty = the current page' },
     whole_deck: { type: 'boolean', description: 'true when the user means everything / all pages / the whole deck ("mọi thứ", "всё", "todo", "全部")' },
   }, ['pages', 'whole_deck']),
@@ -401,7 +401,10 @@ Rules:
    "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. A complaint that something is still
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
-   "Back to the original / how it was at first / ban đầu / lần đầu" -> restore_original (one step, not a chain of undos).
+   "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
+   "The previous version / go back / как было / предыдущий вариант / revert" -> undo, never restore_original.
+   An older saved version ("yesterday's version", "the 21-page one", "version history") -> answer_question: the editor
+   keeps no dated versions; Undo goes back through this session's changes. Never restore_original for it.
    A correction is ALWAYS undo (with "instead") and then the change the user wants; never answer it with words only.
    "I don't see a change" / "nothing changed" / "не бачу змін" / "没变化" is NOT a correction: never undo. Do the change
    they asked for last again, on the same target, clearly bigger and visible.
