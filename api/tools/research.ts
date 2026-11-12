@@ -93,7 +93,7 @@ const wikimedia = async (query: string, nearest = false) => {
 }
 
 // Academic papers (OpenAlex: free, no key, the same corpus as Semantic Scholar without its anonymous rate limit)
-const scholar = async (query: string) => {
+const scholarOnce = async (query: string) => {
   const params = new URLSearchParams({ search: query, 'per-page': '6', select: 'display_name,publication_year,doi,authorships,primary_location,cited_by_count', mailto: 'contact@chatslide.ai' })
   const r = await fetch(`https://api.openalex.org/works?${params}`)
   if (!r.ok) throw new Error(`openalex ${r.status}`)
@@ -105,6 +105,21 @@ const scholar = async (query: string) => {
       venue: w.primary_location?.source?.display_name || '', url: w.doi || w.primary_location?.landing_page_url || '',
     })).filter(p => p.title),
   }
+}
+
+// OpenAlex matches every word: the router's 20-word queries ("systemic sclerosis contemporary guidelines epidemiology
+// ... dazodalibep") and Russian ones found 0 papers where "systemic sclerosis epidemiology pathogenesis" finds 44,317
+// (2026-11-12). Nothing found: up to three short English searches, the first that finds papers wins.
+const scholar = async (query: string) => {
+  const first = await scholarOnce(query)
+  if (first.papers.length) return first
+  const alts = await chat([{ role: 'user', content: `An academic paper search found nothing for: ${query}\nGive 3 different short English searches (3 to 5 words each, the core topic first) that would find the key papers. JSON {"queries": ["...", "...", "..."]}` }], { jsonMode: true, maxTokens: 2000 })
+    .then(r => (JSON.parse(r).queries || []) as string[]).catch(() => [] as string[])
+  for (const q of alts.slice(0, 3)) {
+    const got = await scholarOnce(String(q)).catch(() => ({ papers: [] as any[] }))
+    if (got.papers.length) return got
+  }
+  return first
 }
 
 // A page or a YouTube video the user pasted: its text (Supadata), so the chat can build slides from it

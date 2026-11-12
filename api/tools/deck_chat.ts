@@ -71,7 +71,7 @@ const TOOLS = [
   }, ['pages', 'instruction']),
   fn('edit_page', 'Never adds pictures (that is add_image). Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
-    page_named: { type: 'boolean', description: 'true ONLY if the user named the page (a number, "the cover", "the last slide", a title); false when they said "this slide", "here" or nothing' },
+    page_named: { type: 'boolean', description: 'true if the user named or clearly identified the page: a number, "the cover", "the last slide", a title, "the other / remaining slides", "these slides" when the question they answer listed them, or a plan that lists pages; false ONLY when they mean the page they are looking at ("this slide", "here", or nothing about pages)' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
     redesign: { type: 'boolean', description: 'true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },

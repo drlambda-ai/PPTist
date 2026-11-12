@@ -1273,7 +1273,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const del = nums(args.pages)
     if (del.length >= n) fail(t('A deck needs at least one page, so I kept it.'))
     // more than one page goes only after the user says yes: a pasted homework task once deleted 9 of 10 pages
-    if (del.length > 1 && !del.every(id => deleteConfirmable.includes(id))) {
+    const repeatedWish = args.user_asked_to_cut === true && del.every(id => deleteAnswered.includes(id)) // those pages or some of them
+    if (del.length > 1 && !del.every(id => deleteConfirmable.includes(id)) && !repeatedWish) {
       const q = t('Delete {p0} pages ({p1})? Nothing is deleted yet.', { p0: del.length, p1: del.map(id => pos(id) + 1).join(', ') })
       s.deleteAsked = del
       s.pending = { request: userText, question: q, options: [t('Yes, delete them'), t('No, keep them')] }
@@ -1395,7 +1396,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
     // (the first page edit of a message only: the router walking pages 1-4 marked 2-4 unnamed, and all four landed on page 1)
-    const target = args.page_named === false && !turnKeepPages && !turnSelected && !editedThisTurn.size && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
+    // (never when answering a question that listed pages: "redo these slides, keep the first" sent page 2's edit to page 1)
+    const target = args.page_named === false && !turnKeepPages && !turnSelected && !editedThisTurn.size && !deleteAnswered.length && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
@@ -1912,6 +1914,7 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
+let deleteAnswered: string[] = [] // the same, answered in words: deletable when the router asks for exactly them again
 let askedThisTurn = false // a question for the user ends the message
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
@@ -1933,8 +1936,10 @@ let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
   if (!Object.keys(openedSlides).length) rememberOriginal() // a deck opened another way (?pptx=, a local session): its state before the first change
   newTurn() // a new message: charged on its own
-  // only the Yes button confirms: "No, keep them" (or any other answer) never unlocks the deletion
+  // the Yes button confirms; so does a typed reply to the question when the router, reading it, asks again to delete
+  // exactly those pages as the user's own wish ("можешь их заменить!" got the same question back, 2026-11-12)
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
+  deleteAnswered = s.deleteAsked && text.trim() !== t('No, keep them') ? s.deleteAsked : []
   s.deleteAsked = undefined
   askedThisTurn = false
   userText = text
