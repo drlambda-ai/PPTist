@@ -1132,8 +1132,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // calls, the router added one picture and stopped, 2026-11-11)
   // the language of new slide text, named by the router and stated in the instruction itself: instructions written in
   // Chinese gave an English user's new pages Chinese text (2026-11-12, "generate more slides upto 30")
-  if (['add_page', 'edit_page', 'edit_all_pages'].includes(action) && args.language && !String(args.instruction || '').includes('Write all slide text in')) {
-    args = { ...args, instruction: `${args.instruction}\n(Write all slide text in ${String(args.language).slice(0, 40)}.)` }
+  // (a translation is written in its target language, never the deck's: the two would contradict)
+  const slideLang = String(args.translate_to || args.language || '').slice(0, 40)
+  if (['add_page', 'edit_page', 'edit_all_pages'].includes(action) && slideLang && !String(args.instruction || '').includes('Write all slide text in')) {
+    args = { ...args, instruction: `${args.instruction}\n(Write all slide text in ${slideLang}.)` }
   }
   // a medical picture is a real one (Wikimedia, which falls back to a labelled stock photo): asked in prose, the router
   // still chose stock photos 6 of 6 times for "a picture for each variant of pulmonary hypertension" (2026-11-11)

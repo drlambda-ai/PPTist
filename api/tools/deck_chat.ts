@@ -34,7 +34,7 @@ const TOOLS = [
     topics: { type: 'array', items: { type: 'string' }, description: 'One topic per new page, in order (["TikTok", "Reddit"] for "one about TikTok and one about Reddit"); [] when the pages share one topic' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
-    language: { type: 'string', description: 'The language the slide text must be in: the language of the deck, or the one the user asks for ("English", "Русский", "Tiếng Việt")' },
+    language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
@@ -78,7 +78,7 @@ const TOOLS = [
     new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides, in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
-    language: { type: 'string', description: 'The language the slide text must be in: the language of the deck, or the one the user asks for ("English", "Русский", "Tiếng Việt")' },
+    language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'source_pages', 'language']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
@@ -95,7 +95,7 @@ const TOOLS = [
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
     instruction: { type: 'string', description: 'The change for every page. Written in the user\'s language, never another (new slide text follows it).' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
-    language: { type: 'string', description: 'The language the slide text must be in: the language of the deck, or the one the user asks for ("English", "Русский", "Tiếng Việt")' },
+    language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['instruction', 'every_page', 'language']),
   fn('apply_theme', 'Give the whole deck a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look"). Done directly, keeps the wording.', {
     background: { type: 'string', description: 'Slide background #RRGGBB' },
@@ -450,7 +450,9 @@ const keepLanguage = async (calls: any[]) => {
     if (!Object.keys(fields).length) continue
     try {
       const out = JSON.parse(await chat([{ role: 'user', content: `Translate every string value of this JSON into ${lang}, keeping its keys, structure, numbers and meaning. Return the JSON only.\n${JSON.stringify(fields)}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 4000 }))
-      for (const k of Object.keys(fields)) if (out[k] !== undefined) c.args[k] = out[k]
+      if (typeof out.instruction === 'string' && 'instruction' in fields) c.args.instruction = out.instruction
+      const was = fields.topics as unknown[]
+      if (Array.isArray(was) && Array.isArray(out.topics) && out.topics.length === was.length && out.topics.every((x: unknown) => typeof x === 'string')) c.args.topics = out.topics
     }
     catch { /* the editor still appends "Write all slide text in <language>" */ }
   }
