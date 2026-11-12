@@ -139,6 +139,27 @@ const readUrl = async (url: string) => {
   return { title: String(d.name || d.title || url).trim(), text: String(d.content || '').slice(0, 60000), kind: yt ? 'video transcript' : 'web page' }
 }
 
+// The pictures on a page. context.dev (brand.dev's web API, the key the chatslide.ai tools already use; 1 credit a
+// page) renders the page, so script-loaded pictures are found: 91 / 85 / 91 on three brand sites where the Supadata
+// markdown had 31 / 6 (2026-11-12). Supadata stays as the fallback.
+const pagePictures = async (page: string): Promise<{ title: string, pictures: { src: string, alt: string }[] }> => {
+  const host = new URL(page).hostname.toLowerCase()
+  if (/^[\d.]+$|^\[|:|^localhost$|\.(local|internal|localhost|lan)$/.test(host) || !host.includes('.')) throw new Error('only public web links can be read')
+  const key = process.env.BRANDDEV_API_KEY
+  if (key) {
+    try {
+      const r = await fetch(`https://api.context.dev/v1/web/scrape/images?${new URLSearchParams({ url: page })}`, { headers: { Authorization: `Bearer ${key}` } })
+      const d = r.ok ? await r.json() : null
+      const pictures = ((d?.images || []) as any[]).filter(x => x.type === 'url' && /^https:\/\//.test(String(x.src)))
+        .map(x => ({ src: String(x.src), alt: String(x.alt || '').replace(/<[^>]+>/g, ' ').trim().slice(0, 120) }))
+      if (pictures.length) return { title: host.replace(/^www\./, ''), pictures }
+    }
+    catch { /* the fallback below */ }
+  }
+  const read = await readUrl(page)
+  return { title: read.title, pictures: [...read.text.matchAll(/!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)/g)].map(m => ({ src: m[2], alt: m[1].slice(0, 120) })) }
+}
+
 // Real pictures from a brand's, company's or product's own website (a paid feature, gated in ChatSlide's proxy):
 // the page is read by Supadata like any pasted link, and its pictures are picked by what the slide needs. Stock
 // photos cannot show one brand's products ("more photos of the brand's products" got generic clothes, 2026-11-12).
@@ -156,14 +177,14 @@ const siteImages = async (what: string, url: string, brand: string, count: numbe
     page = /^https?:\/\//i.test(String(official.url || '')) ? String(official.url) : ''
     if (!page) throw new Error(`no official website found for ${brand}`)
   }
-  const read = await readUrl(page)
+  const read = await pagePictures(page)
   const seen = new Set<string>()
   const all: { src: string, alt: string }[] = []
-  for (const m of read.text.matchAll(/!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)/g)) {
-    const file = fileOf(m[2])
+  for (const x of read.pictures) {
+    const file = fileOf(x.src)
     if (seen.has(file) || had.has(file) || /\.(svg|gif|ico)$/i.test(file.split('?')[0])) continue // one size of each picture; no vector icons
     seen.add(file)
-    all.push({ src: m[2], alt: m[1].slice(0, 120) })
+    all.push(x)
   }
   if (!all.length) throw new Error(`no ${had.size ? 'more ' : ''}pictures found on ${page}`) // an error, so the call is not charged
   let picks = all.slice(0, count)
