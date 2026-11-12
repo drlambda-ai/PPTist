@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Đây là các phiên bản đã lưu trước đó của bản trình chiếu này (hiện bạn có {p0} trang). Chạm một phiên bản để quay lại; Hoàn tác sẽ đưa bản trình chiếu hiện tại trở lại.",
   "That version could not be loaded.": "Không thể tải phiên bản đó.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Đã quay lại phiên bản từ {p0}: {p1} trang. Hoàn tác sẽ đưa bản trình chiếu bạn có trước đó trở lại.",
-  "Number of pages updated: {p0}.": "Số trang đã được cập nhật: {p0}."
+  "Number of pages updated: {p0}.": "Số trang đã được cập nhật: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Ảnh thật từ trang web của một thương hiệu hoặc công ty là tính năng trả phí. Hãy nâng cấp gói của bạn và tôi sẽ lấy chúng từ trang đó.",
+  "Reading the website for pictures…": "Đang đọc trang web để tìm ảnh…",
+  "I could not get pictures from that website ({p0}).": "Tôi không thể lấy ảnh từ trang web đó ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "Đã thêm {p0} ảnh từ {p1}."
 }

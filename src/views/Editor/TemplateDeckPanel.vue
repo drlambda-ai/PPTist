@@ -895,6 +895,7 @@ let pictureNote = ''
 let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
 const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = [], reuse = false) => {
   pictureNote = ''
+  if (source === 'direct') { pictureSource = 'photo'; return query } // a picture file already chosen (from a website)
   const nearest = source === 'medical' // a medical picture may be the nearest real one of the same subject
   if (nearest) source = 'wikimedia'
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
@@ -1151,6 +1152,25 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // вариант" drew 4 AI pictures, 40 credits, unasked, 2026-11-11)
   if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && !args.asked_for_ai) args = { ...args, source: 'photo' }
   if ((action === 'add_image' || action === 'change_image') && args.medical && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'medical' }
+  // Real pictures from a brand's or company's own website: a paid feature. Free users are told so and get the plans
+  // (Quanlai, 2026-11-12: "say that this is a paid feature and ask them to pay", "an agent reading a certain website").
+  if (action === 'add_site_pictures') {
+    if (!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)) {
+      (chatslide?.offerPaid || chatslide?.offerAdvanced)?.()
+      askedThisTurn = true // the message ends here; nothing changed
+      return t('Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.')
+    }
+    busy.value = t('Reading the website for pictures…')
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'site_images', query: args.what, url: args.site, brand: args.brand, count: args.count }) })).json()
+    if (r.error || !r.images?.length) fail(t('I could not get pictures from that website ({p0}).', { p0: r.error || r.page || '' }))
+    const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
+    const pictures = () => slides.value.reduce((n, sl) => n + sl.elements.filter(e => e.type === 'image').length, 0)
+    const before = pictures()
+    const srcs: string[] = r.images.map((x: any) => x.src)
+    await runCall(text, 'add_image', { index: pg, page_named: true, query: srcs[0], items: srcs.length > 1 ? srcs : [], source: 'direct', box: { x: 55, y: 20, w: 40, h: 60 }, replaces_existing: false }, ids)
+    return t('Added {p0} picture(s) from {p1}.', { p0: pictures() - before, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') })
+  }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     const items = args.items.filter(Boolean).slice(0, 4)
     const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)

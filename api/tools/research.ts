@@ -136,13 +136,49 @@ const readUrl = async (url: string) => {
   const r = await fetch(`${endpoint}?${params}`, { headers: { 'x-api-key': key } })
   if (!r.ok) throw new Error(`could not read that link (${r.status})`)
   const d = await r.json()
-  return { title: d.name || d.title || url, text: String(d.content || '').slice(0, 60000), kind: yt ? 'video transcript' : 'web page' }
+  return { title: String(d.name || d.title || url).trim(), text: String(d.content || '').slice(0, 60000), kind: yt ? 'video transcript' : 'web page' }
+}
+
+// Real pictures from a brand's, company's or product's own website (a paid feature, gated in ChatSlide's proxy):
+// the page is read by Supadata like any pasted link, and its pictures are picked by what the slide needs. Stock
+// photos cannot show one brand's products ("more photos of the brand's products" got generic clothes, 2026-11-12).
+// ponytail: the slide links to the site's own picture file; a site that blocks other origins will not export. Copy the
+// files through our storage if that shows up.
+const siteImages = async (what: string, url: string, brand: string, count: number) => {
+  let page = /^https?:\/\//i.test(url) ? url : ''
+  if (!page) {
+    if (!brand.trim()) throw new Error('no website or brand named')
+    const found = await web(`What is the official website (home page URL) of the brand or company "${brand}"? Give the URL.`)
+    const official = JSON.parse(await chat([{ role: 'user', content: `Brand: ${brand}\nSearch answer: ${found.answer}\nSources: ${found.sources.map(x => x.url).join(' ')}\nWhich URL is the brand's OWN official website (not a marketplace, wiki or news page)? JSON {"url": "<https://... or empty>"}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 2000 }))
+    page = /^https?:\/\//i.test(String(official.url || '')) ? String(official.url) : ''
+    if (!page) throw new Error(`no official website found for ${brand}`)
+  }
+  const read = await readUrl(page)
+  const seen = new Set<string>()
+  const all: { src: string, alt: string }[] = []
+  for (const m of read.text.matchAll(/!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)/g)) {
+    const file = m[2].split('?')[0]
+    if (seen.has(file) || /\.(svg|gif|ico)$/i.test(file)) continue // one size of each picture; no vector icons
+    seen.add(file)
+    all.push({ src: m[2], alt: m[1].slice(0, 120) })
+  }
+  if (!all.length) return { images: [], page, title: read.title }
+  let picks = all.slice(0, count)
+  try {
+    const list = all.slice(0, 60).map((x, k) => `${k}: ${x.alt || '(no description)'} | ${x.src.split('?')[0].split('/').pop()}`).join('\n')
+    const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs ${count} picture(s) from the website "${read.title}": ${what}\nPictures on the page:\n${list}\nPick the ${count} that fit best (real photos of the products or the thing asked for; never logos, icons, payment badges or banners with text). JSON {"picks": [numbers]}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 2000 }))
+    const chosen = (out.picks || []).map((k: number) => all[k]).filter(Boolean).slice(0, count)
+    if (chosen.length) picks = chosen
+  }
+  catch { /* the page's first pictures */ }
+  return { images: picks, page, title: String(read.title).trim() }
 }
 
 async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { kind = '', query = '', nearest = false } = await readBody(req)
+    const { kind = '', query = '', nearest = false, url = '', brand = '', count = 3 } = await readBody(req)
+    if (kind === 'site_images') { res.status(200).json(await siteImages(String(query).slice(0, 300), String(url).trim().slice(0, 2000), String(brand).slice(0, 120), Math.min(Math.max(Number(count) || 3, 1), 4))); return }
     if (!String(query).trim()) { res.status(400).json({ error: 'query required' }); return }
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
     else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))

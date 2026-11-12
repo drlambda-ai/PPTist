@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Voici les versions enregistrées précédentes de cette présentation (vous avez {p0} pages maintenant). Touchez-en une pour y revenir ; Annuler ramène la présentation actuelle.",
   "That version could not be loaded.": "Cette version n’a pas pu être chargée.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Retour à la version du {p0} : {p1} pages. Annuler rétablit la présentation que vous aviez.",
-  "Number of pages updated: {p0}.": "Nombre de pages mises à jour : {p0}."
+  "Number of pages updated: {p0}.": "Nombre de pages mises à jour : {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Les vraies images provenant du site web d’une marque ou d’une entreprise sont une fonctionnalité payante. Passez à une formule supérieure et je les récupérerai sur le site.",
+  "Reading the website for pictures…": "Lecture du site web à la recherche d’images…",
+  "I could not get pictures from that website ({p0}).": "Je n’ai pas pu obtenir d’images depuis ce site web ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "{p0} image(s) ajoutée(s) depuis {p1}."
 }

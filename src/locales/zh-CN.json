@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "这些是此演示文稿之前保存的版本（你现在有 {p0} 页）。点按一个即可返回；撤销可恢复当前演示文稿。",
   "That version could not be loaded.": "无法加载该版本。",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "已返回到 {p0} 的版本：{p1} 页。撤销可恢复你之前的演示文稿。",
-  "Number of pages updated: {p0}.": "已更新页面数：{p0}。"
+  "Number of pages updated: {p0}.": "已更新页面数：{p0}。",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "来自品牌或公司网站的真实图片是付费功能。升级您的方案，我会从网站上提取它们。",
+  "Reading the website for pictures…": "正在读取网站中的图片…",
+  "I could not get pictures from that website ({p0}).": "我无法从该网站 ({p0}) 获取图片。",
+  "Added {p0} picture(s) from {p1}.": "已从 {p1} 添加 {p0} 张图片。"
 }

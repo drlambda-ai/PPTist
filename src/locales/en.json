@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.",
   "That version could not be loaded.": "That version could not be loaded.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.",
-  "Number of pages updated: {p0}.": "Number of pages updated: {p0}."
+  "Number of pages updated: {p0}.": "Number of pages updated: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.",
+  "Reading the website for pictures…": "Reading the website for pictures…",
+  "I could not get pictures from that website ({p0}).": "I could not get pictures from that website ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "Added {p0} picture(s) from {p1}."
 }

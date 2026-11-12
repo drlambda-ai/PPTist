@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "این‌ها نسخه‌های ذخیره‌شدهٔ قبلی این ارائه هستند (الان {p0} صفحه داری). روی یکی بزن تا به آن برگردی؛ بازگردانی ارائهٔ فعلی را برمی‌گرداند.",
   "That version could not be loaded.": "آن نسخه بارگیری نشد.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "به نسخهٔ {p0} برگشت: {p1} صفحه. بازگردانی ارائه‌ای را که داشتی برمی‌گرداند.",
-  "Number of pages updated: {p0}.": "تعداد صفحه‌های به‌روزشده: {p0}."
+  "Number of pages updated: {p0}.": "تعداد صفحه‌های به‌روزشده: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "عکس‌های واقعی از وب‌سایت یک برند یا شرکت، یک قابلیت پولی است. طرح خود را ارتقا دهید تا آن‌ها را از سایت بگیرم.",
+  "Reading the website for pictures…": "در حال خواندن وب‌سایت برای یافتن تصاویر…",
+  "I could not get pictures from that website ({p0}).": "نتوانستم از آن وب‌سایت ({p0}) تصویر بگیرم.",
+  "Added {p0} picture(s) from {p1}.": "{p0} تصویر از {p1} اضافه شد."
 }

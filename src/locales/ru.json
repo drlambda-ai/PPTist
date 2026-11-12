@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Это более ранние сохраненные версии этой презентации (сейчас у вас {p0} слайдов). Нажмите на одну, чтобы вернуться к ней; Отменить вернет текущую презентацию.",
   "That version could not be loaded.": "Не удалось загрузить эту версию.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Возврат к версии от {p0}: {p1} слайдов. Отменить вернет вашу прежнюю презентацию.",
-  "Number of pages updated: {p0}.": "Количество обновлённых страниц: {p0}."
+  "Number of pages updated: {p0}.": "Количество обновлённых страниц: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Реальные изображения с сайта бренда или компании — это платная функция. Обновите тариф, и я возьму их с сайта.",
+  "Reading the website for pictures…": "Читаю сайт в поиске изображений…",
+  "I could not get pictures from that website ({p0}).": "Не удалось получить изображения с этого сайта ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "Добавлено {p0} изображение(я) с {p1}."
 }

@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Ini adalah versi presentasi yang tersimpan sebelumnya (sekarang Anda memiliki {p0} halaman). Ketuk salah satu untuk kembali ke sana; Undo akan mengembalikan presentasi saat ini.",
   "That version could not be loaded.": "Versi itu tidak dapat dimuat.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Kembali ke versi dari {p0}: {p1} halaman. Undo akan mengembalikan presentasi yang Anda miliki.",
-  "Number of pages updated: {p0}.": "Jumlah halaman yang diperbarui: {p0}."
+  "Number of pages updated: {p0}.": "Jumlah halaman yang diperbarui: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Foto asli dari situs web merek atau perusahaan adalah fitur berbayar. Tingkatkan paket Anda dan saya akan mengambilnya dari situs.",
+  "Reading the website for pictures…": "Membaca situs web untuk mencari gambar…",
+  "I could not get pictures from that website ({p0}).": "Saya tidak bisa mendapatkan gambar dari situs web itu ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "{p0} gambar dari {p1} telah ditambahkan."
 }

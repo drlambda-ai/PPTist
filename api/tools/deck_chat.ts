@@ -106,6 +106,14 @@ const TOOLS = [
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['background', 'font_color', 'colors', 'font']),
+  fn('add_site_pictures', 'Put REAL pictures taken from a website on a page: a specific brand\'s or company\'s own products, store, team or app ("more photos of the brand\'s products", "pictures from their site", "use images from <url>"). Stock photos cannot show one brand\'s products, so never use add_image/change_image for that. It is a paid feature; the editor tells free users.', {
+    index: page,
+    page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide", "here" or nothing' },
+    site: { type: 'string', description: 'The website URL when the user or the deck gives one, else ""' },
+    brand: { type: 'string', description: 'The brand, company or product whose own website to read (from the message or the deck)' },
+    what: { type: 'string', description: 'What the pictures should show, in English' },
+    count: { type: 'integer', description: 'How many pictures, 1 to 4 (3 when the user says "more photos" without a number)' },
+  }, ['index', 'page_named', 'site', 'brand', 'what', 'count']),
   fn('change_image', 'No subject named ("change the image", "refresh this picture") -> choose one that fits the page, never ask what to change it to. Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
     index: page,
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },

@@ -7,6 +7,7 @@ window.__chatslide = {
   canExport: () => { window.__ev.push('canExport'); return q.get('paid') === '1' },
   canUseAdvanced: () => q.get('paid') === '1',
   offerAdvanced: () => window.__ev.push('offerAdvanced'),
+  offerPaid: () => window.__ev.push('offerPaid'),
   outOfCredits: () => window.__ev.push('outOfCredits'),
   load: async () => { const f = q.get('deck'); return f ? await (await fetch('decks/' + f)).json() : null },
   save: async () => {}, sync: async () => ({}), pptx: async () => '',

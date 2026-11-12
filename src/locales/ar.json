@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "هذه هي الإصدارات المحفوظة السابقة لهذا العرض التقديمي (لديك الآن {p0} صفحة). اضغط على أحدها للعودة إليه؛ وسيعيد تراجع العرض التقديمي الحالي.",
   "That version could not be loaded.": "تعذر تحميل تلك النسخة.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "تمت العودة إلى الإصدار من {p0}: {p1} صفحة. يعيد تراجع العرض التقديمي الذي كان لديك.",
-  "Number of pages updated: {p0}.": "عدد الصفحات التي تم تحديثها: {p0}."
+  "Number of pages updated: {p0}.": "عدد الصفحات التي تم تحديثها: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "الصور الحقيقية من موقع علامة تجارية أو شركة هي ميزة مدفوعة. قم بترقية خطتك وسأجلبها من الموقع.",
+  "Reading the website for pictures…": "جارٍ قراءة الموقع لاستخراج الصور…",
+  "I could not get pictures from that website ({p0}).": "تعذّر عليّ الحصول على صور من ذلك الموقع ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "تمت إضافة {p0} من الصور من {p1}."
 }

@@ -1213,5 +1213,9 @@
   "These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.": "Estas son las versiones guardadas anteriores de esta presentación (ahora tienes {p0} páginas). Toca una para volver a ella; Deshacer recupera la presentación actual.",
   "That version could not be loaded.": "No se pudo cargar esa versión.",
   "Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.": "Se volvió a la versión de {p0}: {p1} páginas. Deshacer recupera la presentación que tenías.",
-  "Number of pages updated: {p0}.": "Número de páginas actualizadas: {p0}."
+  "Number of pages updated: {p0}.": "Número de páginas actualizadas: {p0}.",
+  "Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.": "Las fotos reales de un sitio web de una marca o empresa son una función de pago. Mejora tu plan y las tomaré del sitio.",
+  "Reading the website for pictures…": "Leyendo el sitio web en busca de imágenes…",
+  "I could not get pictures from that website ({p0}).": "No pude obtener imágenes de ese sitio web ({p0}).",
+  "Added {p0} picture(s) from {p1}.": "Se añadieron {p0} imágenes de {p1}."
 }
