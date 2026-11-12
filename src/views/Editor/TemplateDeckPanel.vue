@@ -112,7 +112,7 @@ interface Session {
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
-  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[] } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -1511,7 +1511,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.whole_deck_option && args.page_named !== true && !turnSelected) { // (none for an edit using another page's text)
       const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
       s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
-        repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others }
+        repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others, from: i + 1 }
     }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
   }
@@ -2117,6 +2117,10 @@ const deckTurn = async (text: string) => {
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
   const repeating = repeat.length > 0
+  if (repeating && pendingAtStart?.from) {
+    const general = await forAnyPage(String(pendingAtStart.repeat![0].args?.instruction || ''))
+    for (const c of repeat) if (c.action === 'edit_page') c.args.instruction = general
+  }
   tappedRestore = repeat.some((c: any) => c.action === 'restore_original')
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
   const rounds = 16 + repeat.length // fixed before the queue drains (re-read each round it ended a long repeat early)
@@ -2378,6 +2382,19 @@ const recordTurn = (message: string, reply: string, steps: string[], ok: boolean
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30) }),
   }).catch(() => undefined)
+}
+
+// "Apply to the whole deck" repeats an edit_page instruction the router wrote for one page, and its topic went onto
+// every other page ("keep its focus on obturation timing" on all 10; a roasting paragraph on "Coffee Today", even when
+// told to keep each page's own topic, 2026-11-12). So the instruction is rewritten once, for any page.
+const forAnyPage = async (instruction: string) => {
+  try {
+    const r = await (await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction: `This edit instruction was written for one slide. Rewrite it so it applies to ANY slide of the deck: keep the kind of change, its amount, style and language rules; drop every topic, fact, name and wording that belongs to that one slide (each slide uses its own content).\nInstruction: ${instruction.slice(0, 3000)}\nReturn JSON {"instruction": "..."}` }) })).json()
+    return String(r.instruction || '').trim() || instruction
+  }
+  catch {
+    return instruction
+  }
 }
 
 // Every turn's reply in the language of the user's message: the code's lines follow the app language and the
