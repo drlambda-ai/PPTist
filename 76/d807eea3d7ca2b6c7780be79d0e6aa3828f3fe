@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude); Codex out of credits
+Fixed-In: 3fa0e83b (reviewed with 7e08f40c and 62d38564; the localize-prompt finding on explicit reply-language requests was tried, did not change the outcome, and was dropped)
+Reviewed-At: 2026-11-12T19:03:31Z
