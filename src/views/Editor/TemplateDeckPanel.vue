@@ -893,7 +893,7 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
 // Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
 let pictureNote = ''
 let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
-const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = []) => {
+const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = [], reuse = false) => {
   pictureNote = ''
   const nearest = source === 'medical' // a medical picture may be the nearest real one of the same subject
   if (nearest) source = 'wikimedia'
@@ -927,6 +927,8 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     const r = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any)
     const src = (r.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u)) // the services axios instance already unwraps response.data
     if (src) return src as string
+    // every result already used: the first again, rather than an AI picture nobody asked for (10 credits)
+    if (reuse && r.data?.[0]?.src) return r.data[0].src as string
     pictureNote = t('No stock photo matched, so I generated one with AI.')
     pictureSource = 'ai'
   }
@@ -1655,7 +1657,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.photo_query) {
       busy.value = t('Finding a picture…')
       // never the photo already there ("change the background", then "again", gave the same one, 2026-11-12)
-      const src = await findPicture(args.photo_query, 'photo', true, [...usedBackgrounds, ...slides.value.map(x => x.background?.image?.src).filter(Boolean) as string[]])
+      const src = await findPicture(args.photo_query, 'photo', true, [...usedBackgrounds, ...slides.value.map(x => x.background?.image?.src).filter(Boolean) as string[]], true)
       if (!src) fail(t('Could not get a background picture.'))
       usedBackgrounds.add(src)
       background = { type: 'image', image: { src, size: 'cover' } }
@@ -2051,8 +2053,7 @@ const deckTurn = async (text: string) => {
   }).join('; ') : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
-  const failures: { message: string, ran: number, pages: number[] }[] = [] // steps that failed, and how many steps had run by then
-  const pagesOf = (c: any): number[] => (c.args?.pages?.length ? c.args.pages : c.args?.index != null ? [c.args.index] : []).map(Number)
+  let failed = 0 // steps of this message that failed
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -2243,20 +2244,18 @@ const deckTurn = async (text: string) => {
       }
       catch (e) {
         if (!(e instanceof StepFailed)) throw e
-        if (repeating) { // "the same on the other pages": one page already as asked, the others still get it
-          replies.push(e.message)
-          terse.push(e.message)
-          if (e instanceof NoChange) continue
-          round = 99
-          break
-        }
-        // The router sees the failure as that step's result and may do that part another way once, or go on with
-        // the rest of the message: "change the photo on slide 1 to a plainer one, and the photo on slide 3" ended at
-        // "there is no picture to remove" with slide 3 untouched (2026-11-12). Two failures end the message.
-        failures.push({ message: e.message, ran: ran.length, pages: pagesOf(c) })
-        done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed: ${e.message} (Do this part another way once if there is one, and go on with the other parts of the request.)`)
+        replies.push(e.message)
+        terse.push(e.message)
+        if (repeating && e instanceof NoChange) continue // one page already as asked: the other pages still get it
+        // A failure used to end the message: "change the photo on slide 1 to a plainer one, and the photo on slide 3"
+        // stopped at "there is no picture to remove" with slide 3 untouched (2026-11-12). Now the user is told at
+        // once, the router gets it as that step's result, and it may go on with the OTHER parts of the request. Still
+        // the end of the message: a question to the user ("Which font?"), a page that is already as asked, a repeat
+        // over pages, or a second failure.
+        failed++
+        if (repeating || e instanceof NoChange || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
+        done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
-        if (failures.length >= 2) { round = 99; break }
         continue
       }
       replies.push(reply)
@@ -2281,11 +2280,6 @@ const deckTurn = async (text: string) => {
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
     if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
-  }
-  // a failed part is said, unless a later step did it another way (a step that ran afterwards on the same pages)
-  for (const f of failures) {
-    const redone = ran.slice(f.ran).some((c: any) => { const p = pagesOf(c); return !p.length || !f.pages.length || p.some(x => f.pages.includes(x)) })
-    if (!redone) { replies.push(f.message); terse.push(f.message) }
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
