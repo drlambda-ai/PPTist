@@ -144,12 +144,15 @@ const readUrl = async (url: string) => {
 // photos cannot show one brand's products ("more photos of the brand's products" got generic clothes, 2026-11-12).
 // ponytail: the slide links to the site's own picture file; a site that blocks other origins will not export. Copy the
 // files through our storage if that shows up.
-const siteImages = async (what: string, url: string, brand: string, count: number) => {
+const siteImages = async (what: string, url: string, brand: string, count: number, avoid: string[] = []) => {
+  // one picture = its file, or what an image proxy points at (/_next/image?url=…), whatever size is asked for
+  const fileOf = (src: string) => { try { const u = new URL(src); return u.searchParams.get('url') || u.origin + u.pathname } catch { return src } }
+  const had = new Set(avoid.map(fileOf)) // already on the deck: "more" brings other pictures
   let page = /^https?:\/\//i.test(url) ? url : ''
   if (!page) {
     if (!brand.trim()) throw new Error('no website or brand named')
     const found = await web(`What is the official website (home page URL) of the brand or company "${brand}"? Give the URL.`)
-    const official = JSON.parse(await chat([{ role: 'user', content: `Brand: ${brand}\nSearch answer: ${found.answer}\nSources: ${found.sources.map(x => x.url).join(' ')}\nWhich URL is the brand's OWN official website (not a marketplace, wiki or news page)? JSON {"url": "<https://... or empty>"}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 2000 }))
+    const official = await chat([{ role: 'user', content: `Brand: ${brand}\nSearch answer: ${found.answer}\nSources: ${found.sources.map(x => x.url).join(' ')}\nWhich URL is the brand's OWN official website (not a marketplace, wiki or news page)? JSON {"url": "<https://... or empty>"}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 2000 }).then(r => JSON.parse(r) || {}).catch(() => ({}))
     page = /^https?:\/\//i.test(String(official.url || '')) ? String(official.url) : ''
     if (!page) throw new Error(`no official website found for ${brand}`)
   }
@@ -157,12 +160,12 @@ const siteImages = async (what: string, url: string, brand: string, count: numbe
   const seen = new Set<string>()
   const all: { src: string, alt: string }[] = []
   for (const m of read.text.matchAll(/!\[([^\]]*)\]\((https:\/\/[^)\s]+)\)/g)) {
-    const file = m[2].split('?')[0]
-    if (seen.has(file) || /\.(svg|gif|ico)$/i.test(file)) continue // one size of each picture; no vector icons
+    const file = fileOf(m[2])
+    if (seen.has(file) || had.has(file) || /\.(svg|gif|ico)$/i.test(file.split('?')[0])) continue // one size of each picture; no vector icons
     seen.add(file)
     all.push({ src: m[2], alt: m[1].slice(0, 120) })
   }
-  if (!all.length) return { images: [], page, title: read.title }
+  if (!all.length) throw new Error(`no ${had.size ? 'more ' : ''}pictures found on ${page}`) // an error, so the call is not charged
   let picks = all.slice(0, count)
   try {
     const list = all.slice(0, 60).map((x, k) => `${k}: ${x.alt || '(no description)'} | ${x.src.split('?')[0].split('/').pop()}`).join('\n')
@@ -177,8 +180,8 @@ const siteImages = async (what: string, url: string, brand: string, count: numbe
 async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { kind = '', query = '', nearest = false, url = '', brand = '', count = 3 } = await readBody(req)
-    if (kind === 'site_images') { res.status(200).json(await siteImages(String(query).slice(0, 300), String(url).trim().slice(0, 2000), String(brand).slice(0, 120), Math.min(Math.max(Number(count) || 3, 1), 4))); return }
+    const { kind = '', query = '', nearest = false, url = '', brand = '', count = 3, avoid = [] } = await readBody(req)
+    if (kind === 'site_images') { res.status(200).json(await siteImages(String(query).slice(0, 300), String(url).trim().slice(0, 2000), String(brand).slice(0, 120), Math.min(Math.max(Number(count) || 3, 1), 4), (Array.isArray(avoid) ? avoid : []).slice(0, 200).map(String))); return }
     if (!String(query).trim()) { res.status(400).json({ error: 'query required' }); return }
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
     else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))
