@@ -2389,8 +2389,8 @@ const recordTurn = (message: string, reply: string, steps: string[], ok: boolean
 // told to keep each page's own topic, 2026-11-12). So the instruction is rewritten once, for any page.
 const forAnyPage = async (instruction: string) => {
   try {
-    const r = await (await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction: `This edit instruction was written for one slide. Rewrite it so it applies to ANY slide of the deck: keep the kind of change, its amount, style and language rules; drop every topic, fact, name and wording that belongs to that one slide (each slide uses its own content).\nInstruction: ${instruction.slice(0, 3000)}\nReturn JSON {"instruction": "..."}` }) })).json()
-    return String(r.instruction || '').trim() || instruction
+    const r = await (await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction: `This edit instruction was written for one slide. Rewrite it so it applies to ANY slide of the deck: keep the kind of change, its amount and style, any text meant for every slide (a footer, a reference, a name) and any line in parentheses word for word; drop the topic, facts and wording that describe that one slide's own content (each slide uses its own).\nInstruction: ${instruction.slice(0, 3000)}\nReturn JSON {"instruction": "..."}` }) })).json()
+    return typeof r.instruction === 'string' && r.instruction.trim() ? r.instruction.trim() : instruction
   }
   catch {
     return instruction
