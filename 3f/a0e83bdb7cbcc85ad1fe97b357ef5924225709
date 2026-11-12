@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: fix commit for the review of 7e08f40c, verified by type check, ed-whole-deck-own-content, a footer rewrite 3 of 3, and editor-cases.jsonl 31/32 (one fetch-failed, passed on rerun)
+Reviewed-At: 2026-11-12T19:03:31Z
