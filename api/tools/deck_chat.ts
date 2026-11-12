@@ -23,7 +23,7 @@ const SOURCE = 'attached: the user\'s own picture listed under "Attached picture
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
-    topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message; "" if that message names none' },
+    topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message, or of the request it answers when that request asked for slides ("make slides from my paper" -> "attach it" -> "here it is"); "" otherwise' },
   }, ['instruction', 'topic_in_this_message']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
     instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete Written in the user\'s language, never another (new slide text follows it).' },

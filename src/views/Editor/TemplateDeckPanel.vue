@@ -2012,8 +2012,7 @@ const deckTurn = async (text: string) => {
     if (error) throw new Error(error)
     // replacing the deck needs a topic in this very message: a complaint ("same problem") rebuilt a deck on a guess
     const newDeck = calls.find((c: any) => c.action === 'create_deck')
-    // (or the request the message answers: "make slides from my paper" -> "attach it" -> "here it is", 2026-11-12)
-    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim() && !(pendingAtStart?.request && !pendingAtStart.offer)) {
+    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim()) {
       done.push('create_deck -> skipped: the latest message names no topic for a new deck. Do not replace the deck: edit it or ask_user')
       continue
     }
