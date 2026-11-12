@@ -1205,5 +1205,6 @@
   "Restore the whole deck": "Відновити всю презентацію",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Це поверне всю презентацію в стан, у якому вона була, коли ви відкрили редактор цього разу: {p0} сторінок (зараз у вас {p1}). Усі зміни відтоді буде видалено; Скасувати повертає їх назад. Торкніться, щоб відновити.",
   "Restore these pages": "Відновити ці сторінки",
-  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Це поверне сторінки {p0} до стану, у якому вони були, коли ви відкрили редактор цього разу. Усі зміни, внесені відтоді, буде видалено; Скасувати поверне їх назад. Торкніться, щоб відновити."
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Це поверне сторінки {p0} до стану, у якому вони були, коли ви відкрили редактор цього разу. Усі зміни, внесені відтоді, буде видалено; Скасувати поверне їх назад. Торкніться, щоб відновити.",
+  "Contents": "Зміст"
 }

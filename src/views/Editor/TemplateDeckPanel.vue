@@ -1394,7 +1394,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // after "slide 5: <text>" (2026-11-11)
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
     // no page named: the page the user is looking at, like the classic assistant
-    const target = args.page_named === false && !turnKeepPages && !turnSelected && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
+    // (the first page edit of a message only: the router walking pages 1-4 marked 2-4 unnamed, and all four landed on page 1)
+    const target = args.page_named === false && !turnKeepPages && !turnSelected && !editedThisTurn.size && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
     const i = pos(idOf(target))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
@@ -2011,15 +2012,20 @@ const deckTurn = async (text: string) => {
     if (error) throw new Error(error)
     // replacing the deck needs a topic in this very message: a complaint ("same problem") rebuilt a deck on a guess
     const newDeck = calls.find((c: any) => c.action === 'create_deck')
-    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim()) {
+    // (or the request the message answers: "make slides from my paper" -> "attach it" -> "here it is", 2026-11-12)
+    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim() && !(pendingAtStart?.request && !pendingAtStart.offer)) {
       done.push('create_deck -> skipped: the latest message names no topic for a new deck. Do not replace the deck: edit it or ask_user')
       continue
     }
-    if (newDeck && !done.length) {
+    // after steps that only read material (the attached paper, the web): the deck is built from it, with the router's
+    // full instruction ("here is my paper" read the file and stopped, 2026-11-12)
+    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d))
+    if (newDeck && onlyRead) {
+      const brief = done.length ? String(newDeck.args?.instruction || text) : text
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
       openedSlides = {} // "the original" of a new deck is the new deck (taken at the next message)
       busy.value = s.template ? t('Building the deck (about a minute)…') : t('Writing the deck…')
-      await (s.template ? templateTurn(text) : generateNative(text))
+      await (s.template ? templateTurn(brief) : generateNative(brief))
       addHistorySnapshot() // the new deck is a history step of its own
       return
     }

@@ -1,3 +1,4 @@
+import { t } from '@/i18n'
 import { ref } from 'vue'
 import { nanoid } from 'nanoid'
 import type { ImageClipDataRange, PPTElement, PPTImageElement, PPTShapeElement, PPTTextElement, Slide, TextType } from '@/types/slides'
@@ -396,6 +397,8 @@ export default () => {
         const elements = contentsTemplate.elements.map(el => {
           if (el.type === 'image' && el.imageType && imgPool.value.length) return getNewImgElement(el)
           if (el.type !== 'text' && el.type !== 'shape') return el
+          // the templates' fixed heading "目录" stayed Chinese on every deck's contents page (2026-11-12)
+          if (el.type === 'text' && el.content.includes('>目录<')) return { ...el, content: el.content.replace('>目录<', `>${t('Contents')}<`) }
           if (checkTextType(el, 'item')) {
             const index = sortedItemIds.findIndex(id => id === el.id)
             const itemTitle = item.data.items[index]

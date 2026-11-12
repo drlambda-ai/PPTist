@@ -1205,5 +1205,6 @@
   "Restore the whole deck": "استعادة العرض بالكامل",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "يعيد هذا العرض بالكامل كما كان عندما فتحت المحرر هذه المرة: {p0} صفحة (لديك الآن {p1}). ستُزال كل التغييرات منذ ذلك الحين؛ ويُعيده التراجع. اضغط للاستعادة.",
   "Restore these pages": "استعادة هذه الصفحات",
-  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "يعيد الصفحات {p0} إلى حالتها كما كانت عندما فتحتَ المحرر هذه المرة. ستُزال كل التغييرات التي أُجريت عليها منذ ذلك الحين؛ ويُعيدها التراجع. اضغط للاستعادة."
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "يعيد الصفحات {p0} إلى حالتها كما كانت عندما فتحتَ المحرر هذه المرة. ستُزال كل التغييرات التي أُجريت عليها منذ ذلك الحين؛ ويُعيدها التراجع. اضغط للاستعادة.",
+  "Contents": "المحتويات"
 }

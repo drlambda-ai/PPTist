@@ -15,9 +15,11 @@ http.createServer(async (req, res0) => {
   if (m) {
     handlers[m[1]] ||= (await import(new URL(`../../api/tools/${m[1]}.ts`, import.meta.url).href)).default
     let code = 200
-    const res: any = { setHeader: (k: string, v: string) => res0.setHeader(k, v), status(n: number) { code = n; return res }, json(o: any) { res0.writeHead(code, { 'Content-Type': 'application/json' }); res0.end(JSON.stringify(o)); appendFileSync(LOG, `${new Date().toISOString().slice(11, 19)} ${m[1]} ${code} ${JSON.stringify(o).slice(0, 3000)}\n`) }, end(b?: any) { res0.writeHead(code); res0.end(b) } }
+    const res: any = { setHeader: (k: string, v: string) => res0.setHeader(k, v), status(n: number) { code = n; return res },
+      // streamed replies (the deck writer): passed straight through
+      writeHead(n: number, h?: any) { code = n; if (!res0.headersSent) res0.writeHead(n, h); return res }, write(c: any) { if (!res0.headersSent) res0.writeHead(code); return res0.write(c) }, end(c?: any) { if (!res0.headersSent) res0.writeHead(code); res0.end(c) }, flushHeaders() { if (!res0.headersSent) res0.writeHead(code) }, json(o: any) { if (!res0.headersSent) res0.writeHead(code, { 'Content-Type': 'application/json' }); res0.end(JSON.stringify(o)); appendFileSync(LOG, `${new Date().toISOString().slice(11, 19)} ${m[1]} ${code} ${JSON.stringify(o).slice(0, 3000)}\n`) }, end(b?: any) { res0.writeHead(code); res0.end(b) } }
     if (m[1] === 'deck_chat') { const chunks: Buffer[] = []; for await (const c of req) chunks.push(c as Buffer); const body = JSON.parse(Buffer.concat(chunks).toString() || '{}'); (req as any).body = body; if (!body.localize) appendFileSync(LOG, `>> current=${body.current} pending=${JSON.stringify(body.pending || null).slice(0, 160)} msg=${String(body.instruction).slice(0, 60)}\n`) }
-    try { await handlers[m[1]](req, res) } catch (e: any) { res0.writeHead(500); res0.end(String(e?.message || e)) }
+    try { await handlers[m[1]](req, res) } catch (e: any) { if (!res0.headersSent) res0.writeHead(500); res0.end(String(e?.message || e)) }
     return
   }
   if (path.startsWith('/api/')) { res0.writeHead(200, { 'Content-Type': 'application/json' }); res0.end('{}'); return } // record_turn, deck saves

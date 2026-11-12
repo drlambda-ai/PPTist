@@ -1205,5 +1205,6 @@
   "Restore the whole deck": "Restaurer toute la présentation",
   "This puts back the whole deck as it was when you opened the editor this time: {p0} pages (you have {p1} now). Every change since then is removed; Undo brings it back. Tap to restore.": "Cela remet tout le deck comme il était quand vous avez ouvert l’éditeur cette fois-ci : {p0} pages (vous en avez {p1} maintenant). Chaque changement depuis est supprimé ; Annuler le rétablit. Appuyez pour restaurer.",
   "Restore these pages": "Restaurer ces pages",
-  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Cela remet les pages {p0} dans l’état où elles étaient lorsque vous avez ouvert l’éditeur cette fois-ci. Toute modification effectuée depuis est supprimée ; Annuler la rétablit. Touchez pour restaurer."
+  "This puts pages {p0} back as they were when you opened the editor this time. Every change on them since then is removed; Undo brings it back. Tap to restore.": "Cela remet les pages {p0} dans l’état où elles étaient lorsque vous avez ouvert l’éditeur cette fois-ci. Toute modification effectuée depuis est supprimée ; Annuler la rétablit. Touchez pour restaurer.",
+  "Contents": "Sommaire"
 }
