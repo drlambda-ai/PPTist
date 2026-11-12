@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude)
+Fixed-In: 03956bf8 (failures always reported, no invited retry, questions and NoChange end the message, no AI fallback for a used-up background search, ru/uk strings)
+Reviewed-At: 2026-11-12T13:08:01Z
