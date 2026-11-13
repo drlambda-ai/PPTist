@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code) on net diff bc9cba8b..1472a446; 953763e7 is one prompt line
+Reviewed-At: 2026-11-13T17:53:26Z
+Verified: eval ed-logo-move-en 5/5, -es 3/3, -no-logo 3/3, long-deck production case 1/1, full suite 65/66 (the 1 now rewritten)
