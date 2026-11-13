@@ -115,7 +115,7 @@ interface Session {
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
-  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, queue?: { action: string, args: any }[], repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -511,6 +511,9 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       if (!n) return e === backdrop ? '[image 0: background picture covering the whole slide]' : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
+      // the user's own attached picture (a logo they uploaded): named, so "move my logo" can find it
+      const attached = (s.images || []).find(m => m.url && m.url === e.src)
+      if (attached) return `[image ${img + 1}: the user's attached picture "${attached.name.replace(/["\]]/g, '')}"]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
@@ -2310,6 +2313,9 @@ const deckTurn = async (text: string) => {
     ? [...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.map(c => ({ action: c.action,
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
+  // a confirmed queue (pictures on every page): its steps as planned, then the router again for the rest of the request
+  const queued = !repeat.length && !!pendingAtStart?.queue?.length && pendingAtStart.options?.[0]?.trim() === text.trim()
+  if (queued) repeat.push(...pendingAtStart!.queue!.map(c => ({ action: c.action, args: { ...c.args } })))
   const repeating = repeat.length > 0
   if (repeating && pendingAtStart?.from) {
     const general = await forAnyPage(String(pendingAtStart.repeat![0].args?.instruction || ''))
@@ -2496,21 +2502,47 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
       }
+      // a long deck: the page count first, one tap runs it page by page (each page kept as it lands). Also when the
+      // router plans edit_all_pages itself ("make the presentation more detailed" ran on 30 pages unasked, eval
+      // 2026-11-14). Each page is an edit_page carrying redesign/hard: its paywall and advanced-model gate apply
+      if (c.action === 'edit_all_pages' && !repeating && slides.value.length > 12) {
+        const one = c.args?.from_page_edit
+        const each = one ? { ...one, whole_deck_option: '', user_said_whole_deck: false }
+          : { instruction: String(c.args?.instruction || ''), page_named: true, translate_to: '', hard: !!c.args?.hard, redesign: !!c.args?.redesign, new_content: false,
+              whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: c.args?.language || '' }
+        const pages = one ? slides.value.map((_, k) => k + 1).slice(1, -1) : slides.value.map((_, k) => k + 1) // a spread page edit keeps the cover and closing
+        const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: pages.length })
+        s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: pages.length })], offer: true, localize: true,
+          repeat: [{ action: 'edit_page', args: each }], pages, ...(one ? { from: Number(one.index) || 1 } : {}) }
+        askedThisTurn = true
+        save()
+        replies.push(q)
+        terse.push(q)
+        break
+      }
       if (c.action === 'edit_all_pages' && c.args?.from_page_edit) {
         const n = slides.value.length
-        const one = c.args.from_page_edit
-        if (n > 12) { // a long deck: the page count first, one tap runs it page by page (each page kept as it lands)
-          const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
-          s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true,
-            repeat: [{ action: 'edit_page', args: { ...one, whole_deck_option: '', user_said_whole_deck: false } }], pages: slides.value.map((_, k) => k + 1).slice(1, -1), from: Number(one.index) || 1 } // cover and closing kept, as below
-          askedThisTurn = true
-          save()
-          replies.push(q)
-          terse.push(q)
-          break
-        }
         c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
           pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
+      }
+      // pictures "on every slide": the router added slide 1's and stopped (2 of 7 eval runs, 2026-11-13). The page count
+      // (and, for AI pictures, the credits) first; the yes queues one picture per page on that page's own title
+      if (c.action === 'add_image' && c.args?.every_page === true && !repeating && slides.value.length > 1 && !(c.args?.items?.length > 1)) {
+        const n = slides.value.length
+        const ai = c.args.source === 'ai' && !!c.args.asked_for_ai // the only paid source (10 credits each); the rest are free
+        const q = ai ? t('Add pictures to {p0} pages? This uses about {p1} credits.', { p0: n, p1: n * 10 }) : t('Add pictures to {p0} pages?', { p0: n })
+        const routed = Number(c.args.index) || 1
+        const queue = slides.value.map((sl, k) => {
+          const title = (readingOrder(sl).map(elText).find(Boolean) || '').slice(0, 80)
+          return { action: 'add_image', args: { ...c.args, index: k + 1, page_named: true, every_page: false, replaces_existing: false, items: [],
+            query: k + 1 === routed || !title ? c.args.query : title, box: k + 1 === routed ? c.args.box : { x: 55, y: 20, w: 40, h: 60 } } }
+        })
+        s.pending = { request: userText, question: q, options: [t('Yes, add the pictures')], offer: true, localize: true, queue }
+        askedThisTurn = true
+        save()
+        replies.push(q)
+        terse.push(q)
+        break
       }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
@@ -2529,6 +2561,10 @@ const deckTurn = async (text: string) => {
         // the end of the message: a question to the user ("Which font?"), a page that is already as asked, a repeat
         // over pages, or a second failure.
         failed++
+        if (queued) { // one page's picture failing never stops the other pages
+          done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed: ${e.message}`)
+          continue
+        }
         if (repeating || e instanceof NoChange || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
         done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)

@@ -101,6 +101,8 @@ const TOOLS = [
     instruction: { type: 'string', description: 'The change for every page. Written in the user\'s language, never another (new slide text follows it).' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
+    redesign: { type: 'boolean', description: 'As edit_page\'s redesign: true when the user asks to make the pages look better in general with no concrete change named' },
+    hard: { type: 'boolean', description: 'As edit_page\'s hard: true when each page needs real spatial or structural work (diagrams, a crowded layout)' },
   }, ['instruction', 'every_page', 'language']),
   fn('apply_theme', 'Give the whole deck a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look"). Done directly, keeps the wording.', {
     background: { type: 'string', description: 'Slide background #RRGGBB' },
@@ -156,6 +158,7 @@ const TOOLS = [
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
+    every_page: { type: 'boolean', description: 'true when the user asks for pictures on every / each / all slides or the whole presentation ("add pictures related to the history of coffee on every slide"): the editor asks first, then adds one to each page on that page\'s topic' },
   }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'own_brand']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo"). Only when the user asks for the background: a request about pictures, photos or images is change_image/add_image/remove_images, even for the last or largest picture.', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
@@ -360,9 +363,11 @@ Rules:
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
    ask_user per request; if already answered once, act on the best reading.
-   The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): if it is under "Attached pictures",
+   The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): when the deck lists a picture as
+   [logo] or as their attached picture and they want it moved or resized ("move my logo to the top right and make it
+   small") -> edit_page on the page(s) it is on. To add or replace with it: if it is under "Attached pictures",
    change_image or add_image with source attached (query = its file name), on the pages they name (all pages only if
-   they say so); if none is attached, answer_question asking them to attach it with the 📎 icon.
+   they say so). Otherwise (no such picture listed, none attached) answer_question asking them to attach it with the 📎 icon.
    "Review the deck AND change/fix what is wrong" -> edit_all_pages (fix overflow, overlap, alignment, typos; keep content).
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
@@ -683,7 +688,7 @@ async function handler(req: any, res: any) {
     const doneText = done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : ''
     const user = instruction + pending + doneText
     const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
-      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Go through the message part by part (every change asked for, and every question asked): call the next tool for the first part that no step below has done or answered yet (a question is answered with answer_question). Only when no part is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
+      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Go through the message part by part (every change asked for, and every question asked): call the next tool for the first part that no step below has done or answered yet (a question is answered with answer_question). Only when no part is left, answer with the single English word DONE (never translated, nothing after it) and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
       : viaOpenAI(m, context, history, user)
     // routing fallback when Anthropic is unavailable: the cheap model by default (Quanlai, 2026-11-02: cost first);
     // ROUTER_FALLBACK_MODEL=gpt-6.1-sol routes better (164/220 vs Haiku 157 on the real-prompt eval) at ~10x the price
