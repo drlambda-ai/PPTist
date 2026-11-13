@@ -2445,12 +2445,12 @@ const send = () => {
 }
 
 // One attach control (or drop files on the box): a .pptx becomes the company template while none is set and no deck
-// was built yet; everything else is material
+// was built or opened yet (s.edited: a ChatSlide deck, which a template import would replace); everything else is material
 const attach = (files?: FileList | File[] | null) => {
   if (busy.value || !files) return
   for (const f of Array.from(files)) {
     if (/^image\//.test(f.type)) uploadPicture(f)
-    else if (/\.pptx$/i.test(f.name) && !s.template && !s.mode) uploadTemplate(f)
+    else if (/\.pptx$/i.test(f.name) && !s.template && !s.mode && !s.edited) uploadTemplate(f)
     else uploadContent(f)
   }
 }
