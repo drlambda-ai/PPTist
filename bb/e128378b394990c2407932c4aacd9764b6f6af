@@ -1,0 +1,4 @@
+Codex-Review: rejected
+Reviewer: eval (Claude Code)
+Reviewed-At: 2026-11-13T18:39:09Z
+Reason: ed-logo-move-no-logo fell to 2/8 and -es to 1/3; reverted, never deployed
