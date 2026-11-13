@@ -2067,7 +2067,7 @@ const deckTurn = async (text: string) => {
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
   deleteAnswered = s.deleteAsked && text.trim() !== t('No, keep them') ? s.deleteAsked : []
   s.deleteAsked = undefined
-  removeConfirmable = s.removeAsked && text.trim() !== t('No, keep them') ? s.removeAsked : ''
+  removeConfirmable = s.removeAsked && text.trim() === t('Yes, remove them') ? s.removeAsked : '' // the button only: any other reply let the router remove them unasked
   s.removeAsked = undefined
   askedThisTurn = false
   userText = text
