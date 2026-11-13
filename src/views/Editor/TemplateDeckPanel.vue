@@ -438,10 +438,20 @@ const isBackdrop = (e: any) => {
   const { width: W, height: H } = slideSize()
   return e.width * e.height >= 0.8 * W * H
 }
+const firstBackdrop = (sl: Slide) => sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e)) as PPTImageElement | undefined
+// No content pictures: the page's picture is the lowest full-slide one. A full-slide picture above it can only be a
+// see-through design layer (an opaque one would hide it): "replace all pictures on slide 1" put a photo over the cover
+// photo, hiding it (2026-11-10).
 const pictures = (sl: Slide) => {
-  const imgs = readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image')
-  const content = imgs.filter(e => !isBackdrop(e))
-  return content.length ? content : imgs
+  const content = readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image' && !isBackdrop(e))
+  const backdrop = firstBackdrop(sl)
+  return content.length ? content : backdrop ? [backdrop] : []
+}
+// The whole page is one picture and nothing else (an imported or pasted page): its text and pictures are inside that
+// image, so none of them can be changed on its own. Replacing it as "the picture" wiped the page.
+const isFlat = (sl: Slide) => {
+  const imgs = sl.elements.filter((e: any) => e.type === 'image')
+  return imgs.length === 1 && isBackdrop(imgs[0]) && !sl.elements.some((e: any) => e.type === 'chart' || e.type === 'table' || elText(e))
 }
 
 const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>()) => {
@@ -452,7 +462,8 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
       const n = numbered.indexOf(e) + 1
-      if (!n) return '[image 0: background picture covering the whole slide]'
+      if (isFlat(sl)) return '[image 1: one picture covering the whole page; the page has no separate text]'
+      if (!n) return e === firstBackdrop(sl) ? '[image 0: background picture covering the whole slide]' : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
@@ -485,6 +496,14 @@ const picturedThisTurn = new Set<string>()
 const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
 const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
+// The words the router quoted as the user asking for the background, kept only when the user really wrote them (this
+// message or their last few): the router answered "the background: yes" for "replace these photos" and swapped the
+// background (2026-11-10, again in the 2026-11-13 replay). It still decides what the words mean; this checks the quote.
+const saidBackground = (text: string, words: unknown) => {
+  const norm = (x: string) => x.toLowerCase().replace(/\s+/g, ' ').trim()
+  const w = typeof words === 'string' ? norm(words) : ''
+  return !!w && [text, ...s.history.filter(h => h.role === 'user').slice(-4).map(h => h.text)].some(x => norm(String(x || '')).includes(w))
+}
 let currentAtSend = '' // id of the page the user was on when they sent the message
 const createdThisMessage = new Set<string>() // pages added since the message was sent
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
@@ -1146,7 +1165,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
     const sl = slides.value[pos(idOf(args.index))]
-    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: false }, ids)
+    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: '' }, ids)
   }
   // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
   // calls, the router added one picture and stopped, 2026-11-11)
@@ -1304,7 +1323,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = sl.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
       const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? imgs.filter(e => !isBackdrop(e)) : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
+      // "no pictures at all" includes the full-slide one ("no image at all in the last slide" answered "there is no
+      // picture to remove", prod 2026-11-13), but never a page that is one flat picture: that would blank the page
+      const all = isFlat(sl) ? [] : sl.elements.filter((e: any) => e.type === 'image' && !logos.has(imgSpot(e)))
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? all : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
@@ -1647,17 +1669,35 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const id = idOf(args.index)
     const sl = slides.value[pos(id)]
     const content = pictures(sl).filter(e => !isBackdrop(e))
+    const said = saidBackground(text, args.said_background)
     let image = args.image
     // "change the picture(s)" means the pictures on the page, not the background, unless the user said background
     // (a user asked for slide 5's pictures and got its background replaced, 2026-11-10)
-    if (image === 0 && !args.said_background && content.length) {
+    if (image === 0 && !said && content.length) {
       image = content.findIndex((_, k) => !replacedThisTurn.has(`${id}:${k + 1}`)) + 1 || 1
     }
     // a page with only a background picture: "change the image / the cover photo" means that picture (the eval's
     // "Change the image on the slide" got a small extra picture, 2026-11-12); only a request to ADD one keeps it
     // ("insert real photos of X" swapped the background)
-    if (!args.said_background && !content.length && (args.wants_additional_picture || !sl.elements.some((e: any) => e.type === 'image' && isBackdrop(e)))) {
+    if (!said && !content.length && (args.wants_additional_picture || !sl.elements.some((e: any) => e.type === 'image' && isBackdrop(e)))) {
       return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: true, replaces_existing: false }, ids)
+    }
+    // the page is one flat picture: the pictures the user sees are inside it, and replacing it would replace the page
+    if (isFlat(sl)) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: pos(id) + 1 }))
+    // "the pictures" / "all of them": every content picture on the page, in one step (the router asked for one per
+    // picture replaced only the first of slide 5's three, 2026-11-13)
+    if (args.all_pictures && content.length > 1) {
+      const left = content.map((_, k) => k + 1).filter(k => !replacedThisTurn.has(`${id}:${k}`))
+      if (!left.length) return ''
+      busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
+      slidesStore.updateSlideIndex(pos(id))
+      let note = ''
+      for (const k of left) {
+        note = (await changeImage(text, id, k, args.query, args.source)).note || note
+        replacedThisTurn.add(`${id}:${k}`)
+      }
+      const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
+      return (t('Replaced {p0} pictures on page {p1} with {p2} pictures for "{p3}"; the background was not touched. Check they are what you meant.', { p0: left.length, p1: pos(id) + 1, p2: how, p3: String(args.query || '').slice(0, 60) })) + (note ? ` ${note}` : '')
     }
     // several pictures and nothing in the message picks one: ask (Quanlai: "if there are multiple choices you should at least ask")
     if (askedThisTurn) return '' // already asking which picture this message
@@ -1704,7 +1744,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const pages = args.pages?.length ? args.pages : [slideIndex.value + 1]
       return runCall(text, 'copy_page_style', { from: pages[0], page_named: false, pages }, ids)
     }
-    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    // a page that is one flat picture has its background inside that picture: replacing or fading it wipes the page
+    const named = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const flat = named.filter(id => isFlat(slides.value[pos(id)]))
+    const flatNote = flat.length ? ' ' + t('Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.', { p0: flat.map(id => pos(id) + 1).join(', ') }) : ''
+    const targets = named.filter(id => !flat.includes(id))
+    if (!targets.length) fail(flatNote.trim())
     let background: any = { type: 'solid', color: args.color }
     if (args.photo_query) {
       busy.value = t('Finding a picture…')
@@ -1746,7 +1791,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const bgHow = args.photo_query
       ? (pictureSource === 'ai' ? (t('an AI-generated picture for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })) : (t('a stock photo for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })))
       : (t('colour {p0}', { p0: args.color }))
-    return (t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })) + note
+    return (t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })) + note + flatNote
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
@@ -2098,7 +2143,8 @@ const deckTurn = async (text: string) => {
     // numbered as changeImage resolves them: 0 is the first full-slide picture, the rest by pictures()
     if (e.type === 'image') {
       const first = startSl.elements.find((x: any) => x.type === 'image' && isBackdrop(x))
-      return e === first ? 'image 0 (the background picture)' : `image ${pictures(startSl).indexOf(e) + 1}`
+      const n = pictures(startSl).indexOf(e) + 1
+      return e === first ? 'image 0 (the background picture)' : n ? `image ${n}` : 'a see-through design layer over the page (not a picture to change)'
     }
     if (e.type === 'chart') return `the ${e.chartType} chart`
     if (e.type === 'table') return 'the table'
@@ -2211,6 +2257,9 @@ const deckTurn = async (text: string) => {
       // a second deck-wide edit is the router re-planning the first ("dark blue, bigger headers" ran twice and ended
       // in "Not done yet … tap Continue", 2026-11-11); what is really left it names in finish
       || work.find((c: any) => c.action === 'edit_all_pages' && done.some(d => d.startsWith('edit_all_pages ')))
+      // a request about pictures is never a background change: "replace the photos ... the last one" swapped page 10's
+      // background (2026-11-10, replayed 2026-11-13)
+      || work.find((c: any) => c.action === 'set_background' && c.args?.photo_query && !saidBackground(text, c.args?.said_background))
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
       || work.find((c: any) => c.action === 'change_image' && replacedThisTurn.has(`${ids[Number(c.args?.index) - 1]}:${c.args?.image ?? 1}`))
       // after an Undo in a correction, redoing the very change just undone ("not the background" -> background again)
@@ -2249,6 +2298,7 @@ const deckTurn = async (text: string) => {
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
                 ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
+                : extra.action === 'set_background' ? 'the user\'s words do not ask for the page background, so it stays: for pictures use change_image (all_pictures for every picture on a page), add_image or remove_images'
                 : extra.action === 'edit_all_pages' ? 'a deck-wide edit already ran in this message (see Done so far); finish, and put in not_done only a part of the request it did not cover'
                 : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)

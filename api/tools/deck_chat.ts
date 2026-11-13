@@ -114,19 +114,20 @@ const TOOLS = [
     what: { type: 'string', description: 'What the pictures should show, in English' },
     count: { type: 'integer', description: 'How many pictures, 1 to 4 (3 when the user says "more photos" without a number)' },
   }, ['index', 'page_named', 'site', 'brand', 'what', 'count']),
-  fn('change_image', 'No subject named ("change the image", "refresh this picture") -> choose one that fits the page, never ask what to change it to. Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
+  fn('change_image', 'No subject named ("change the image", "refresh this picture") -> choose one that fits the page, never ask what to change it to. "The pictures"/"these photos" (plural) on a page -> ONE call with all_pictures true, never a question. Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
     index: page,
+    all_pictures: { type: 'boolean', description: 'true when the words mean every picture on that page ("the pictures", "all the images", "these photos", "All of them"): this one step replaces each of them (never the background); false for one picture' },
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true if the user named the page, or asked for every/each/all/the other slides (in this message or the question it answers: one step per page, each naming its page); false ONLY for "this slide"/"here"/nothing' },
-    said_background: { type: 'boolean', description: 'true ONLY if the user\'s words ask for the background picture' },
+    said_background: { type: 'string', description: 'The user\'s own words that ask for the background, copied exactly as they wrote them ("фон", "nền", "背景", "background"), never words that describe a photo; "" when they do not ask for the background' },
     wants_additional_picture: { type: 'boolean', description: 'true when the user asks to ADD or INSERT a picture (one more), false when they ask to change, replace, swap or refresh the picture that is there' },
     picture_named: { type: 'boolean', description: 'true if the words pick this picture (its place, its subject, "the second one", an answer naming it) or ask for all of them; false when the page has several and the words do not say which' },
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'wants_additional_picture']),
+  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'wants_additional_picture']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -153,12 +154,13 @@ const TOOLS = [
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
   }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'own_brand']),
-  fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo").', {
+  fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo"). Only when the user asks for the background: a request about pictures, photos or images is change_image/add_image/remove_images, even for the last or largest picture.', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
     photo_query: { type: 'string', description: 'Stock photo search words (English) for a background photo, or ""' },
     like_other_pages: { type: 'boolean', description: 'true when the user wants these pages to have the SAME background as the rest of the deck ("как для всей презентации", "giống các trang khác", "like the other slides"); color and photo_query are then ""' },
-  }, ['pages', 'color', 'photo_query', 'like_other_pages']),
+    said_background: { type: 'string', description: 'The user\'s own words that ask for the background, copied exactly as they wrote them ("фон", "nền", "背景", "background"), never words that describe a photo; "" when they do not ask for the background' },
+  }, ['pages', 'color', 'photo_query', 'like_other_pages', 'said_background']),
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
     pages: { ...pages, description: 'The current page unless the user names pages or says all; empty = every page, only when they say all' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
@@ -282,8 +284,9 @@ Rules:
 5. A new or different picture -> change_image on the pictures on the page, never image 0 (the background) unless the user
    says background. Never an icon or a [logo] unless the user names it. If that page has no image except icons/logos, use
    add_image instead. One picture on the page -> that one. Several, and the words do not say which -> ONE change_image,
-   image 1, picture_named false: the editor asks the user which. "The pictures"/"all the images"/"All of them" -> one
-   change_image per picture (image 1, 2, ...), each with its own query, picture_named true. Moving a picture/text to another page -> move_element_to_page.
+   image 1, picture_named false: the editor asks the user which. "The pictures"/"all the images"/"All of them" -> ONE
+   change_image on that page with all_pictures true (it replaces each picture), picture_named true. A page that is one
+   flat picture cannot have a picture in it changed: the editor says so. Moving a picture/text to another page -> move_element_to_page.
    Merging/combining pages -> merge_pages (one call for all of them).
    Attached files are listed after the deck. Anything that refers to them ("my PDF", "page 2 of the article", "the table
    in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it
@@ -384,7 +387,8 @@ Rules:
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
-   "Change the picture" on a page with two or more pictures and nothing to tell them apart -> ask_user which.
+   "Change the picture" (one) on a page with two or more pictures and nothing to tell them apart -> ask_user which.
+   "The pictures" (plural, any language) means all of them: change_image with all_pictures true, never a question.
    create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction
    or a follow-up. "A slide" (one) is add_page, never a new deck. "Can you do X in language Y?" -> do X only if it is
    about new content; otherwise answer_question and leave the deck alone. "Repeat that in Y" is about this chat: answer_question. "Open the background/theme/design menu" -> open_design. A diagram on a new page -> add_page with hard true.

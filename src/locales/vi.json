@@ -1221,5 +1221,8 @@
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Gói trả phí: mô hình AI nâng cao · hình ảnh thật từ trang web thương hiệu của bạn · tải xuống dưới dạng PowerPoint hoặc PDF",
   "Upgrade": "Nâng cấp",
   "Remove the pictures from {p0} pages? Nothing is removed yet.": "Xóa hình ảnh khỏi {p0} trang? Chưa có gì bị xóa.",
-  "Yes, remove them": "Có, xóa đi"
+  "Yes, remove them": "Có, xóa đi",
+  "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "Trang {p0} là một ảnh phẳng duy nhất: chữ và hình của nó đều nằm trong ảnh đó, nên tôi không thể thay một hình bên trong. Chưa có gì thay đổi. Tôi có thể thêm một ảnh mới lên trên.",
+  "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "Đã thay {p0} ảnh trên trang {p1} bằng ảnh {p2} cho \"{p3}\"; nền không bị thay đổi. Hãy kiểm tra xem có đúng ý bạn không.",
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Các trang {p0} mỗi trang là một ảnh phẳng: nền là một phần của ảnh đó, nên không được thay đổi."
 }

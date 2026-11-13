@@ -1221,5 +1221,8 @@
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Offres payantes : modèle d’IA avancé · vraies images depuis le site web de votre marque · téléchargement au format PowerPoint ou PDF",
   "Upgrade": "Passer au payant",
   "Remove the pictures from {p0} pages? Nothing is removed yet.": "Retirer les images de {p0} pages ? Rien n'est encore retiré.",
-  "Yes, remove them": "Oui, les retirer"
+  "Yes, remove them": "Oui, les retirer",
+  "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "La page {p0} est une seule image plate : son texte et ses images sont à l'intérieur de cette image, je ne peux donc pas y changer une image. Rien n'a été modifié. Je peux ajouter une nouvelle image par-dessus.",
+  "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "{p0} images de la page {p1} remplacées par des images ({p2}) pour « {p3} » ; le fond n'a pas été touché. Vérifiez qu'elles correspondent à ce que vous vouliez.",
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Les pages {p0} sont chacune une seule image plate : leur fond fait partie de cette image, elles n'ont donc pas été modifiées."
 }
