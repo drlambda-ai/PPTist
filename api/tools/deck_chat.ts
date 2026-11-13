@@ -141,7 +141,7 @@ const TOOLS = [
     element: { type: 'string', description: 'Which element, as the user described it (e.g. "the photo", "image 2", "the title")' },
     copy: { type: 'boolean', description: 'true = keep the original too (copy), false = move' },
   }, ['from', 'to', 'element', 'copy']),
-  fn('add_image', 'Insert a NEW picture on a page (a stock photo, a real picture from Wikimedia for medical subjects and real named things, or AI-generated), at a given place. Pictures on every / each / all slides: one add_image per page, all in the same response, each query about THAT page\'s own topic (stopping after slide 1 and listing the rest left the user to ask again, 2026-11-13).', {
+  fn('add_image', 'Insert a NEW picture on a page (a stock photo, a real picture from Wikimedia for medical subjects and real named things, or AI-generated), at a given place.', {
     index: page,
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
@@ -362,7 +362,7 @@ Rules:
    ask_user per request; if already answered once, act on the best reading.
    The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): when the deck lists a picture as
    [logo] or as their attached picture and they want it moved or resized ("move my logo to the top right and make it
-   small") -> edit_page on the page(s) it is on. To add or replace with it: if it is under "Attached pictures",
+   small") -> edit_page on the page it is on, edit_all_pages when it is on every page and they mean all of them. To add or replace with it: if it is under "Attached pictures",
    change_image or add_image with source attached (query = its file name), on the pages they name (all pages only if
    they say so). Otherwise (no such picture listed, none attached) answer_question asking them to attach it with the 📎 icon.
    "Review the deck AND change/fix what is wrong" -> edit_all_pages (fix overflow, overlap, alignment, typos; keep content).
