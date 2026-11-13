@@ -2354,6 +2354,14 @@ const deckTurn = async (text: string) => {
     // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
     // is re-planned against the updated deck in the next round
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
+    // "make the presentation more detailed" edited pages 2 and 1 and offered the rest as a tap (3 of 3 eval runs,
+    // 2026-11-13): an edit the router itself says is for the whole presentation runs on every page, once
+    for (const c of work) {
+      if (c.action === 'edit_page' && c.args?.user_said_whole_deck === true && c.args?.page_named !== true && !c.args?.source_pages?.length) {
+        const instruction = await forAnyPage(String(c.args.instruction || ''))
+        Object.assign(c, { action: 'edit_all_pages', args: { instruction, every_page: true, language: c.args.language || '' } })
+      }
+    }
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
     if (!work.length && left && String(left).trim()) { // never pretend the rest is done
       free.push(String(left).trim())
@@ -2377,6 +2385,8 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
+      // pictures go only when the user's words ask for it: "..." after "like page 6" deleted one (eval, 2026-11-13)
+      || work.find((c: any) => c.action === 'remove_images' && c.args?.user_asked_to_remove === false)
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
@@ -2423,6 +2433,7 @@ const deckTurn = async (text: string) => {
     }
     if (extra) {
       const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
+        : extra.action === 'remove_images' ? 'the user\'s latest message does not ask to remove pictures. Do not remove any: do what it asks, or ask_user what they want'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
           : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
             ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
