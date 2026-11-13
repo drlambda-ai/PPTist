@@ -1464,9 +1464,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
         if (e.type !== 'image' || isBackdrop(e) || !(logos.has(imgSpot(e)) || own.has(e.src))) continue
-        const w = Math.min(e.width * f, W * 0.4), h = e.height * (w / e.width)
-        const left = corner.endsWith('right') ? W - w - pad : corner.endsWith('left') ? pad : e.left + (e.width - w) / 2
-        const top = corner.startsWith('top') ? pad : corner.startsWith('bottom') ? H - h - pad : e.top + (e.height - h) / 2
+        const k = Math.min(f, (W * 0.4) / e.width, (H * 0.4) / e.height) // never past 40% of the slide either way
+        const w = e.width * k, h = e.height * k
+        const fit = (v: number, room: number) => Math.min(Math.max(v, 0), room) // kept inside the slide
+        const left = fit(corner.endsWith('right') ? W - w - pad : corner.endsWith('left') ? pad : e.left + (e.width - w) / 2, W - w)
+        const top = fit(corner.startsWith('top') ? pad : corner.startsWith('bottom') ? H - h - pad : e.top + (e.height - h) / 2, H - h)
         slidesStore.updateElement({ id: e.id, props: { width: w, height: h, left, top } as any, slideId: id })
         if (!moved.includes(id)) moved.push(id)
       }
