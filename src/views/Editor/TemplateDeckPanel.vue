@@ -291,8 +291,10 @@ const run = async (label: string, fn: () => Promise<void>) => {
     else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) {
       say('assistant', kept ? t('The AI service is unavailable right now. Please try again in a moment.') + keptLine : t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
     }
-    // a bug of ours, never shown raw to the user (it is in the turn record with its stack)
-    else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError) {
+    // a bug of ours, or a storage / network failure (prod 2026-11-12: "Vercel Blob: Failed to retrieve the client token"),
+    // never shown raw to the user (it is in the turn record with its stack)
+    else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError
+      || /^Vercel Blob:|Failed to fetch|NetworkError|Load failed/.test(String((e as Error)?.message))) {
       say('assistant', (e as any).keptSteps
         ? t('Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.')
         : t('Something went wrong on our side; nothing was changed. Please try again.'))
