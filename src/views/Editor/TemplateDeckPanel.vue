@@ -108,6 +108,9 @@ interface Session {
   docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
   projectFiles?: boolean // the project's files were added once (a removed one stays removed)
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
+  // what each picture the chat added or replaced shows (element id -> its search words): "the police photo" names one.
+  // Without it every picture read "large image" and the router changed the page on screen, not page 6 (2026-11-13)
+  pics?: Record<string, string>
   // turn: the chat message this reply answers (its x-turn-id); rating 1 up, 0 down; comment: sent with a thumbs-down
   history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
@@ -516,7 +519,8 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo, ${Math.round(area * 100)}% of slide, ${where}]`
       const attached = (s.images || []).find(m => m.url && m.url === e.src)
       const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
-      return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}]`
+      const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].replace(/["\]]/g, '').slice(0, 60)}"` : ''
+      return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
     const t = elText(e)
@@ -1128,6 +1132,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const src = await findPicture(query, source, el.width >= el.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
   if (!src) fail(t('Could not get a picture.'))
   slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
+  s.pics = { ...s.pics, [el.id]: query }
   if (isBackdrop(el)) showBackdrop(slideId, el.id)
   touched([slideId])
   return { note: pictureNote, backdrop: isBackdrop(el) }
@@ -1430,7 +1435,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!src) fail(t('Could not get a picture.'))
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
     if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
-    slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
+    const picId = nanoid(10)
+    slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: picId, src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
+    s.pics = { ...s.pics, [picId]: String(args.query || '') }
     touched([id])
     picturedThisTurn.add(picKey(id, args.query))
     slidesStore.updateSlideIndex(pos(id))
@@ -2299,6 +2306,7 @@ const deckTurn = async (text: string) => {
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
   const picturedPages = new Set<string>() // pages that got a picture for an every-page request in this message
+  let picNudgedAt = 0 // picturedPages.size when the router was last sent back for the pages left
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
   // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
   const animatedThisTurn = (pages?: number[]) => done.some((d) => {
@@ -2375,6 +2383,14 @@ const deckTurn = async (text: string) => {
         && !c.args?.redesign && !c.args?.hard) {
         Object.assign(c, { action: 'edit_all_pages', args: { instruction: String(c.args.instruction || ''), every_page: false, language: c.args.language || '', from_page_edit: c.args } })
       }
+    }
+    // "pictures on every slide": a finish with pages still without one goes back to the router, once per page done
+    // (it stopped after page 1 in 1 of 5 runs although told which pages were left); no progress, no second nudge
+    const picLeft = picturedPages.size ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) ? k + 1 : 0)).filter(Boolean) : []
+    if (!work.length && picLeft.length && picturedPages.size > picNudgedAt) {
+      picNudgedAt = picturedPages.size
+      done.push(`not finished: every page was asked for a picture; pages still without one: ${picLeft.join(', ')}. Call add_image for the next one, on that page's own topic.`)
+      continue
     }
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
     if (!work.length && left && String(left).trim()) { // never pretend the rest is done
