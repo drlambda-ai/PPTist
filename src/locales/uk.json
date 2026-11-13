@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "Вибрано ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Панель «Дизайн» поки недоступна на телефонах. Попросіть мене тут змінити тему або відкрийте цю презентацію на комп’ютері.",
   "No page was changed. {p0}": "Жодну сторінку не змінено. {p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Видалити {p0} слайдів ({p1})? Поки що нічого не видалено.",
   "Yes, delete them": "Так, видалити",
   "No, keep them": "Ні, залишити",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Змінено розмір тексту в {p0} текстових полях на {p1} слайдах.",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "Так, видалити зображення",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "Слайд {p0} — одне суцільне зображення: його текст і картинки всередині нього, тому замінити окрему картинку не можна. Нічого не змінено. Можу додати нове зображення поверх.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "На слайді {p1} замінено зображень: {p0} ({p2}) за запитом «{p3}»; фон не змінено. Перевірте, чи це саме те, що ви мали на увазі.",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Слайди {p0} — кожен одне суцільне зображення: їхній фон є частиною цього зображення, тому їх не змінено."
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Слайди {p0} — кожен одне суцільне зображення: їхній фон є частиною цього зображення, тому їх не змінено.",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Видалити {p0} з {p1} слайдів ({p2})? Залишиться {p3}. Поки що нічого не видалено."
 }

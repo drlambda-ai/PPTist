@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "Pilihan ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Panel Desain belum tersedia di ponsel. Minta saya di sini untuk mengubah tema, atau buka presentasi ini di komputer.",
   "No page was changed. {p0}": "Tidak ada halaman yang diubah. {p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Hapus {p0} halaman ({p1})? Belum ada yang dihapus.",
   "Yes, delete them": "Ya, hapus",
   "No, keep them": "Tidak, pertahankan",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Mengubah ukuran teks di {p0} kotak teks pada {p1} halaman.",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "Ya, hapus",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "Halaman {p0} adalah satu gambar datar: teks dan gambarnya ada di dalam gambar itu, jadi saya tidak bisa mengganti gambar di dalamnya. Tidak ada yang diubah. Saya bisa menambahkan gambar baru di atasnya.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "Mengganti {p0} gambar di halaman {p1} dengan gambar {p2} untuk \"{p3}\"; latar belakang tidak diubah. Periksa apakah sesuai maksud Anda.",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Halaman {p0} masing-masing adalah satu gambar datar: latar belakangnya bagian dari gambar itu, jadi tidak diubah."
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Halaman {p0} masing-masing adalah satu gambar datar: latar belakangnya bagian dari gambar itu, jadi tidak diubah.",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Hapus {p0} dari {p1} halaman Anda ({p2})? {p3} akan tersisa. Belum ada yang dihapus."
 }

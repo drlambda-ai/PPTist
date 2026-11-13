@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "Sélection ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "Le panneau Création n’est pas encore disponible sur téléphone. Demandez-moi ici de changer le thème ou ouvrez cette présentation sur un ordinateur.",
   "No page was changed. {p0}": "Aucune page n’a été modifiée. {p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Supprimer {p0} pages ({p1}) ? Rien n’est encore supprimé.",
   "Yes, delete them": "Oui, les supprimer",
   "No, keep them": "Non, les conserver",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Taille du texte modifiée dans {p0} zones de texte sur {p1} page(s).",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "Oui, les retirer",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "La page {p0} est une seule image plate : son texte et ses images sont à l'intérieur de cette image, je ne peux donc pas y changer une image. Rien n'a été modifié. Je peux ajouter une nouvelle image par-dessus.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "{p0} images de la page {p1} remplacées par des images ({p2}) pour « {p3} » ; le fond n'a pas été touché. Vérifiez qu'elles correspondent à ce que vous vouliez.",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Les pages {p0} sont chacune une seule image plate : leur fond fait partie de cette image, elles n'ont donc pas été modifiées."
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Les pages {p0} sont chacune une seule image plate : leur fond fait partie de cette image, elles n'ont donc pas été modifiées.",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Supprimer {p0} de vos {p1} pages ({p2}) ? Il en resterait {p3}. Rien n’est encore supprimé."
 }

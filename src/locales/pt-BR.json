@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "Seleção ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "O painel Design ainda não está disponível em celulares. Peça aqui para eu mudar o tema ou abra esta apresentação em um computador.",
   "No page was changed. {p0}": "Nenhuma página foi alterada. {p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "Excluir {p0} páginas ({p1})? Nada foi excluído ainda.",
   "Yes, delete them": "Sim, excluir",
   "No, keep them": "Não, manter",
   "Resized the text in {p0} text boxes across {p1} page(s).": "O texto em {p0} caixas de texto em {p1} página(s) foi redimensionado.",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "Sim, remover",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "A página {p0} é uma única imagem plana: o texto e as imagens dela estão dentro dessa imagem, então não consigo trocar uma imagem nela. Nada foi alterado. Posso adicionar uma nova imagem por cima.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "Substituí {p0} imagens na página {p1} por imagens ({p2}) para \"{p3}\"; o fundo não foi alterado. Confira se são o que você queria.",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "As páginas {p0} são, cada uma, uma única imagem plana: o fundo faz parte dessa imagem, então não foram alteradas."
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "As páginas {p0} são, cada uma, uma única imagem plana: o fundo faz parte dessa imagem, então não foram alteradas.",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Excluir {p0} das suas {p1} páginas ({p2})? Restariam {p3}. Nada foi excluído ainda."
 }

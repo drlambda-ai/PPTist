@@ -700,6 +700,16 @@ const fitOne = async (slideId: string, ids: string[], before: Record<string, num
   }
 }
 
+// page numbers as runs: 2-28, 30
+const spans = (ps: number[]) => {
+  const out: string[] = []
+  for (const p of [...ps].sort((a, b) => a - b)) {
+    const last = out[out.length - 1]?.split('–')
+    if (last && Number(last[last.length - 1]) === p - 1) out[out.length - 1] = `${last[0]}–${p}`
+    else out.push(String(p))
+  }
+  return out.join(', ')
+}
 const cloneSlide = (sl: Slide): Slide => {
   const newId: Record<string, string> = Object.fromEntries(sl.elements.map(e => [e.id, nanoid(10)]))
   return {
@@ -1366,7 +1376,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // more than one page goes only after the user says yes: a pasted homework task once deleted 9 of 10 pages
     const repeatedWish = args.yes_to_delete_question === true && args.user_asked_to_cut === true && del.every(id => deleteAnswered.includes(id)) // those pages or some of them
     if (del.length > 1 && !del.every(id => deleteConfirmable.includes(id)) && !repeatedWish) {
-      const q = t('Delete {p0} pages ({p1})? Nothing is deleted yet.', { p0: del.length, p1: del.map(id => pos(id) + 1).join(', ') })
+      // the counts before and after, in words: "delete 27 slides" on a 28-page deck was confirmed and left 1 (2026-11-12)
+      const q = t('Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.', { p0: del.length, p1: n, p2: spans(del.map(id => pos(id) + 1)), p3: n - del.length })
       s.deleteAsked = del
       s.pending = { request: userText, question: q, options: [t('Yes, delete them'), t('No, keep them')] }
       askedThisTurn = true

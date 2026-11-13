@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "انتخاب ({p0}/{p1})",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "پنل طراحی هنوز در گوشی‌ها در دسترس نیست. اینجا از من بخواهید تم را تغییر دهم، یا این ارائه را در رایانه باز کنید.",
   "No page was changed. {p0}": "هیچ صفحه‌ای تغییر نکرد. {p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "{p0} صفحه ({p1}) حذف شود؟ هنوز چیزی حذف نشده است.",
   "Yes, delete them": "بله، حذفشان کن",
   "No, keep them": "نه، نگه‌شان دار",
   "Resized the text in {p0} text boxes across {p1} page(s).": "اندازهٔ متن در {p0} کادر متن در {p1} صفحه تغییر کرد.",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "بله، حذف شوند",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "صفحه {p0} یک تصویر یکپارچه است: متن و تصاویرش همه درون همان تصویرند، پس نمی‌توانم تصویری را در آن عوض کنم. چیزی تغییر نکرد. می‌توانم یک تصویر تازه روی آن اضافه کنم.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "{p0} تصویر در صفحه {p1} با تصاویر {p2} برای «{p3}» جایگزین شد؛ پس‌زمینه دست نخورد. بررسی کنید همان چیزی است که می‌خواستید.",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "صفحه‌های {p0} هر کدام یک تصویر یکپارچه‌اند: پس‌زمینه‌شان بخشی از همان تصویر است، پس تغییر نکردند."
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "صفحه‌های {p0} هر کدام یک تصویر یکپارچه‌اند: پس‌زمینه‌شان بخشی از همان تصویر است، پس تغییر نکردند.",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "{p0} صفحه از {p1} صفحه شما ({p2}) حذف شود؟ {p3} صفحه باقی می‌ماند. هنوز چیزی حذف نشده است."
 }

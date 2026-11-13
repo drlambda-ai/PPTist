@@ -1171,7 +1171,6 @@
   "Selection ({p0}/{p1})": "已选元素（{p0}/{p1}）",
   "The Design panel isn't on phones yet. Ask me here to change the theme, or open this deck on a computer.": "手机上暂不支持“设计”面板。你可以在这里让我更改主题，或在电脑上打开这份演示文稿。",
   "No page was changed. {p0}": "未更改任何页面。{p0}",
-  "Delete {p0} pages ({p1})? Nothing is deleted yet.": "删除 {p0} 页（{p1}）？尚未删除任何内容。",
   "Yes, delete them": "是，删除",
   "No, keep them": "否，保留",
   "Resized the text in {p0} text boxes across {p1} page(s).": "已调整 {p1} 页中 {p0} 个文本框的文字大小。",
@@ -1224,5 +1223,6 @@
   "Yes, remove them": "是的，删除",
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "第 {p0} 页是一整张平面图片：页面上的文字和图片都在这张图里，所以无法单独更换其中的图片。没有做任何更改。我可以在上面添加一张新图片。",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "已将第 {p1} 页的 {p0} 张图片替换为{p2}图片（“{p3}”）；背景未改动。请检查是否符合你的意思。",
-  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "第 {p0} 页各是一整张平面图片：背景是图片的一部分，因此没有更改。"
+  "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "第 {p0} 页各是一整张平面图片：背景是图片的一部分，因此没有更改。",
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "删除全部 {p1} 页中的 {p0} 页（{p2}）？删除后剩 {p3} 页。尚未删除任何内容。"
 }
