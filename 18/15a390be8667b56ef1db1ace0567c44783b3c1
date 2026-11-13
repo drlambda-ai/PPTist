@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: Claude Code
+Reviewed-At: 2026-11-13T17:30:40Z
+Note: pure revert; tree equals production bc9cba8b
