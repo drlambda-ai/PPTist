@@ -583,6 +583,10 @@ const editSlide = async (index: number, instruction: string, advanced = false, f
   }
   return editSlideWith(index, instruction, false)
 }
+// A page that is one flat picture (an imported or pasted page) shows its title and text, but they are pixels of that
+// image: "rewrite the text", "make the title bigger" moved or stretched the picture, or stacked a second title over the
+// painted one, and the reply said the page was updated
+const FLAT_NOTE = '\n(This page is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized or moved. Unless the request is to add something new on top (a text box, a shape, a label) or to change that picture as a whole, change nothing, and say in "reply" that the page is one flat picture whose text cannot be edited here.)'
 const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -603,7 +607,7 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${isFlat(slide) ? FLAT_NOTE : ''}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || t('That edit could not be applied.'))
