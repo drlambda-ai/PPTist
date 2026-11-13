@@ -2144,12 +2144,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         await showPptx(s.versions[s.versions.length - 1].deckUrl)
       }
       else if (snapshotStore.canUndo) await snapshotStore.unDo()
-      // a correction of a change made outside this editor (ChatSlide's classic chat): nothing to take back here, and
-      // "nothing to undo" before the fix read as a refusal (hist-30301). The router is told; the user sees the fix
-      else if (String(args.instead || '').trim()) {
-        memo = 'nothing to undo in this editor (that change was made before or elsewhere): do the "instead" request now'
-        return ''
-      }
       else return t('There is nothing to undo yet.')
     }
     else await snapshotStore.reDo()
@@ -2373,7 +2367,7 @@ const deckTurn = async (text: string) => {
     // 2026-11-13): an edit the router itself says is for the whole presentation runs on every page, once. Not a
     // redesign or a hard edit: those keep edit_page, its paywall and the advanced model (with the offer for the rest)
     for (const c of work) {
-      if (c.action === 'edit_page' && c.args?.scope === 'whole_deck' && c.args?.page_named !== true && !c.args?.source_pages?.length
+      if (c.action === 'edit_page' && c.args?.user_said_whole_deck === true && c.args?.page_named !== true && !c.args?.source_pages?.length
         && !c.args?.redesign && !c.args?.hard) {
         Object.assign(c, { action: 'edit_all_pages', args: { instruction: String(c.args.instruction || ''), every_page: false, language: c.args.language || '', from_page_edit: c.args } })
       }
@@ -2502,27 +2496,21 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
       }
-      if (c.action === 'edit_all_pages' && !repeating) {
+      if (c.action === 'edit_all_pages' && c.args?.from_page_edit) {
         const n = slides.value.length
-        const one = c.args?.from_page_edit // an edit_page the router marked for the whole presentation
-        // the cover and the closing page keep their few words when a page edit is spread over the deck
-        const pages = one && n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : slides.value.map((_, k) => k + 1)
-        // a long deck, whichever way the router planned it ("make the presentation more detailed" on 30 pages came as
-        // edit_all_pages and ran on all 30 unasked, eval 2026-11-14): the page count first; one tap runs it page by
-        // page, each page kept as it lands
-        if (n > 12) {
-          const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: pages.length })
-          const each = one ? { ...one, whole_deck_option: '', scope: 'this_page' }
-            : { instruction: String(c.args?.instruction || ''), page_named: true, translate_to: '', hard: false, redesign: false, new_content: false, whole_deck_option: '', source_pages: [], language: c.args?.language || '', scope: 'this_page' }
-          s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: pages.length })], offer: true, localize: true,
-            repeat: [{ action: 'edit_page', args: each }], pages, ...(one ? { from: Number(one.index) || 1 } : {}) }
+        const one = c.args.from_page_edit
+        if (n > 12) { // a long deck: the page count first, one tap runs it page by page (each page kept as it lands)
+          const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
+          s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true,
+            repeat: [{ action: 'edit_page', args: { ...one, whole_deck_option: '', user_said_whole_deck: false } }], pages: slides.value.map((_, k) => k + 1).slice(1, -1), from: Number(one.index) || 1 } // cover and closing kept, as below
           askedThisTurn = true
           save()
           replies.push(q)
           terse.push(q)
           break
         }
-        if (one) c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language, pages: n > 3 ? pages : [] }
+        c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
+          pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
       }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
@@ -2547,14 +2535,6 @@ const deckTurn = async (text: string) => {
         continue
       }
       replies.push(reply)
-      // pictures "on every slide": the other pages get the same step, queued here, rather than left to the router, which
-      // stopped after slide 1 with "the other slides still need pictures" (2 of 7 eval runs, 2026-11-13/14)
-      if (c.action === 'add_image' && c.args?.every_page === true && !repeating && !(c.args?.items?.length > 1)) {
-        const here = ids[Number(c.args.index) - 1]
-        // the pages the user had (not one this message added), each once
-        const rest = slides.value.map((x, k) => ({ id: x.id, n: k + 1 })).filter(x => x.id !== here && idsAtStart.has(x.id) && ![...picturedThisTurn].some(k => k.startsWith(`${x.id}|`)))
-        repeat.splice(0, repeat.length, ...rest.map(x => ({ action: 'add_image', args: { ...c.args, index: x.n, page_named: true, every_page: false } })), { action: 'finish', args: { not_done: '' } })
-      }
       if (['answer_question', 'ask_user', 'say_unable'].includes(c.action)) free.push(reply)
       ran.push(c)
       if (!['answer_question', 'ask_user', 'say_unable', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design', 'download_deck'].includes(c.action)) {

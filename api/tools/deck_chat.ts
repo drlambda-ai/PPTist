@@ -74,7 +74,6 @@ const TOOLS = [
     instruction: { type: 'string', description: 'Anything the user said about how to combine; empty if nothing' },
   }, ['pages', 'instruction']),
   fn('edit_page', 'Never adds pictures (that is add_image). Never for a question put to you ("tell me…", "what is…", "explain…": that is answer_question, in the chat, not on the slide). Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
-    scope: { type: 'string', enum: ['this_page', 'named_pages', 'whole_deck'], description: 'Decide this first: where the user wants the edit. "whole_deck" when their words make the presentation, the deck or all slides the target, in this message or the request it answers: "make the presentation more detailed", "the whole deck shorter", "зроби презентацію більш розгорнутою", "сделай презентацию подробнее", "haz la presentación más detallada", "làm bài thuyết trình chi tiết hơn", "deixe a apresentação mais formal", "把整个PPT写得更详细" (the editor then edits every page, asking first on a long deck; whole_deck_option ""). "named_pages" when they name a page by number or title ("slide 5", "the cover", "the last slide"). "this_page" for "this slide", "here", or nothing about where ("make it shorter", "more text").' },
     index: page, instruction: { type: 'string', description: 'The edit, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
     page_named: { type: 'boolean', description: 'true if the user named or clearly identified the page: a number, "the cover", "the last slide", a title, "the other / remaining slides", "these slides" when the question they answer listed them, or a plan that lists pages; false ONLY when they mean the page they are looking at ("this slide", "here", or nothing about pages)' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
@@ -82,9 +81,10 @@ const TOOLS = [
     redesign: { type: 'boolean', description: 'A named arrangement ("horizontal", "side by side", "two columns", "text on the left") is a concrete change: false. true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },
     new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides or the presentation as a whole ("презентацію", "the presentation": then use edit_all_pages, not this), in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
+    user_said_whole_deck: { type: 'boolean', description: 'true when the user\'s words make the whole presentation the target ("the presentation", "презентацію", "la presentación", "bài thuyết trình", "all slides", "every page"), in this message or the request it answers: the editor then does it on every page ("make the presentation more detailed" -> true, and whole_deck_option ""). false when they name a page, say "this slide", or say nothing about where' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
-  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'source_pages', 'language', 'scope']),
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
@@ -156,8 +156,7 @@ const TOOLS = [
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-    every_page: { type: 'boolean', description: 'true when the user asks for pictures on every / each / all slides or the whole presentation ("add pictures related to the history of coffee on every slide", "ảnh cho tất cả các trang", "фото на кожен слайд"): this call is the first page and the editor adds one on each other page; false otherwise' },
-  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'own_brand', 'every_page']),
+  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'own_brand']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo"). Only when the user asks for the background: a request about pictures, photos or images is change_image/add_image/remove_images, even for the last or largest picture.', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
@@ -361,9 +360,6 @@ Rules:
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
    ask_user per request; if already answered once, act on the best reading.
-   Moving or resizing a logo or picture already on a page ("move my logo to the top right and make it small", "mándalo a la
-   esquina superior derecha y pequeño") -> edit_page on that page (the picture listed there), never a question about
-   attaching it and never undo.
    The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): if it is under "Attached pictures",
    change_image or add_image with source attached (query = its file name), on the pages they name (all pages only if
    they say so); if none is attached, answer_question asking them to attach it with the 📎 icon.
@@ -527,7 +523,7 @@ const asCall = (d: string): { name: string, args: string, result: string } | nul
 }
 
 // gpt-6.x: function tools with reasoning are only served by the Responses API
-const viaResponses = async (model: string, context: string, history: any[], user: string, done: string[] = [], again = false): Promise<any[]> => {
+const viaResponses = async (model: string, context: string, history: any[], user: string, done: string[] = []) => {
   // A real tool loop: the steps already run are the model's own tool calls and their results, and after a step the
   // model may answer in plain text, which ends the message. As a "Done so far" text list with a tool call forced every
   // round, the router proposed a step it had just run in 34 of 100 replayed real conversations (client guards then
@@ -543,7 +539,7 @@ const viaResponses = async (model: string, context: string, history: any[], user
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
-      model, reasoning: { effort: 'low' }, tool_choice: ranSomething && !again ? 'auto' : 'required', parallel_tool_calls: false,
+      model, reasoning: { effort: 'low' }, tool_choice: ranSomething ? 'auto' : 'required', parallel_tool_calls: false,
       tools: TOOLS.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
       input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }, ...steps],
     }),
@@ -556,11 +552,7 @@ const viaResponses = async (model: string, context: string, history: any[], user
   // after a step, plain text and no tool call = the model is done (the end of a tool loop). "DONE" says nothing is
   // left; any other text is for the user (an answer from the file it read, what it could not do)
   const said = (data.output || []).filter((o: any) => o.type === 'message').flatMap((o: any) => o.content || []).map((x: any) => x.text || '').join('\n').trim()
-  if (/^(done[\s.!]*)+$/i.test(said) || !said || again) return [{ action: 'finish', args: { not_done: /^(done[\s.!]*)+$/i.test(said) ? '' : said } }]
-  // anything else, once, as a tool call: "add pictures on every slide" stopped after slide 1 with "the remaining slides
-  // still need pictures" (2 of 7 eval runs, 2026-11-13). The model either does the next part or says, in finish /
-  // answer_question, what it cannot do
-  return viaResponses(model, context, history, `${user}\n\n(You wrote: "${said.slice(0, 600)}". If a part of the request is still to do, call its tool now. If nothing is left, or it cannot be done, call finish with not_done saying only what was not done, or answer_question for an answer.)`, done, true)
+  return [{ action: 'finish', args: { not_done: /^(done[\s.!]*)+$/i.test(said) ? '' : said } }]
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
