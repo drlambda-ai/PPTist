@@ -115,7 +115,7 @@ interface Session {
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
-  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number, confirmWholeDeck?: boolean } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -510,12 +510,12 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const n = numbered.indexOf(e) + 1
       if (!n) return e === backdrop ? '[image 0: background picture covering the whole slide]' : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
-      if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
-      // the user's own attached picture (a logo they uploaded): named, so "move my logo" can find it
-      const attached = (s.images || []).find(m => m.url && m.url === e.src)
-      const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
+      // a logo, or the user's own attached picture, keeps its size and place so "move my logo top-right, smaller" can act
+      if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo, ${Math.round(area * 100)}% of slide, ${where}]`
+      const attached = (s.images || []).find(m => m.url && m.url === e.src)
+      const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
@@ -2207,7 +2207,6 @@ const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/g
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let deleteAnswered: string[] = [] // the same, answered in words: deletable when the router asks for exactly them again
 let askedThisTurn = false // a question for the user ends the message
-let wholeDeckOk = false // this message is the yes to 'Edit all N pages?' (pending.confirmWholeDeck): the original request runs again
 let directAllowed = false // true only while add_site_pictures places the pictures it fetched
 const usedBackgrounds = new Set<string>() // background photos already tried in this session: "again" never brings one back
 let tappedRestore = false // this message is the tap on a restore confirmation
@@ -2268,13 +2267,6 @@ const deckTurn = async (text: string) => {
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
-  // the yes to 'Edit all N pages?' runs the original request again, now allowed deck-wide: the edit and every other part
-  // of the request run exactly as they would have, nothing re-planned by hand
-  wholeDeckOk = !!s.pending?.confirmWholeDeck && s.pending.options?.[0]?.trim() === text.trim()
-  if (wholeDeckOk) {
-    text = userText = s.pending!.request || text
-    s.pending = null
-  }
   const pendingAtStart = s.pending || null
   const done: string[] = []
   const replies: string[] = []
@@ -2522,18 +2514,6 @@ const deckTurn = async (text: string) => {
         }
         c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
           pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
-      }
-      // a deck-wide edit the router planned itself asks first on a long deck too ("make the presentation more detailed"
-      // ran on all 30 pages unasked, 2026-11-13); the yes runs the whole request again with deck-wide edits allowed
-      else if (c.action === 'edit_all_pages' && !wholeDeckOk && !repeating && slides.value.length > 12) {
-        const n = slides.value.length
-        const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
-        s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true, confirmWholeDeck: true }
-        askedThisTurn = true
-        save()
-        replies.push(q)
-        terse.push(q)
-        break
       }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
