@@ -511,6 +511,9 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       if (!n) return e === backdrop ? '[image 0: background picture covering the whole slide]' : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo]`
+      // the user's own attached picture (a logo they uploaded): named, so "move my logo" can find it
+      const attached = (s.images || []).find(m => m.url && m.url === e.src)
+      if (attached) return `[image ${img + 1}: the user's attached picture "${attached.name.replace(/["\]]/g, '')}"]`
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}]`
@@ -2511,6 +2514,20 @@ const deckTurn = async (text: string) => {
         }
         c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
           pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
+      }
+      // a deck-wide edit the router planned itself asks first on a long deck too ("make the presentation more detailed"
+      // ran on all 30 pages unasked, 2026-11-13); the yes runs the same page-by-page path as above, every page included
+      else if (c.action === 'edit_all_pages' && !repeating && slides.value.length > 12) {
+        const n = slides.value.length
+        const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
+        s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true,
+          repeat: [{ action: 'edit_page', args: { instruction: String(c.args?.instruction || ''), language: c.args?.language || '', whole_deck_option: '', user_said_whole_deck: false } }],
+          pages: slides.value.map((_, k) => k + 1) }
+        askedThisTurn = true
+        save()
+        replies.push(q)
+        terse.push(q)
+        break
       }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
