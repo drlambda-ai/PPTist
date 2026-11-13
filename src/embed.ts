@@ -12,6 +12,9 @@ export interface ChatSlideHost {
   sync: (pages: { key: string, url?: string, image?: Blob, text: string, notes: string }[]) => Promise<Record<string, string>>
   flush?: () => Promise<void> // set by the editor: sync now
   versions?: () => Promise<{ url: string, at: string }[]> // the deck's saved copies, newest first (version history)
+  // a thumbs up/down on a chat reply (with an optional comment), stored where ChatSlide keeps its chat feedback and
+  // tied to the turn (the x-turn-id of that message's calls, as in pptist_turns and the editor_turn log)
+  feedback?: (turn: string, good: boolean, comment: string, reply: string) => Promise<boolean>
   pptx: () => Promise<string> // the project's deck as a .pptx (blob: URL), for the first open
   // chat actions done by ChatSlide itself (absent when the editor runs alone)
   share?: () => Promise<{ url: string, copied: boolean }>
@@ -52,6 +55,7 @@ let left = -1
 // name (newTurn starts the next message)
 let turnId = crypto.randomUUID()
 export const newTurn = () => { turnId = crypto.randomUUID() }
+export const currentTurn = () => turnId
 export const takeSpend = () => {
   const out = { charged: spent, left }
   spent = 0

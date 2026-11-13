@@ -13,7 +13,7 @@
         <div class="hint" v-if="!s.history.length">
           {{ t("Hi! Ask me to change anything in this deck: text, pictures, charts, pages or language. Attach your company's PowerPoint template or a PDF, Word, Excel or Markdown file with 📎 and I'll build from it.") }}
         </div>
-        <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}</div>
+        <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}<div class="rate" v-if="m.turn && chatslide?.feedback && (m.rating !== undefined || i === s.history.length - 1)"><span :class="{ on: m.rating === 1 }" :aria-label="t('Good reply')" @click="rate(m, true)"><i-icon-park-outline:thumbs-up /></span><span :class="{ on: m.rating === 0 }" :aria-label="t('Bad reply')" @click="rate(m, false)"><i-icon-park-outline:thumbs-down /></span></div><input class="why" v-if="m.rating === 0 && m.comment === undefined" v-model="why" :placeholder="t('What went wrong? (optional)')" @keydown.enter="comment(m)" @blur="comment(m)" /></div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
         <div class="choices" v-if="!busy && s.pending?.options?.length">
           <span class="choice" v-for="o in s.pending.options" :key="o" @click="input = o; send()">{{ o }}</span>
@@ -67,7 +67,7 @@ defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a float
 const chatLeft = ref(-8)
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { host as chatslide, newTurn, OutOfCredits, takeSpend } from '@/embed'
+import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { isPC } from '@/utils/common'
@@ -108,7 +108,8 @@ interface Session {
   docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
   projectFiles?: boolean // the project's files were added once (a removed one stays removed)
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
-  history: { role: 'user' | 'assistant', text: string }[]
+  // turn: the chat message this reply answers (its x-turn-id); rating 1 up, 0 down; comment: sent with a thumbs-down
+  history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
@@ -243,8 +244,9 @@ const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
   }
 }
 
+let replyTurn = '' // the chat message being answered: its replies get the thumbs, tied to its turn id
 const say = (role: 'user' | 'assistant', text: string) => {
-  s.history.push({ role, text })
+  s.history.push(role === 'assistant' && replyTurn ? { role, text, turn: replyTurn } : { role, text })
   save()
   nextTick(() => {
     if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight 
@@ -727,6 +729,22 @@ const spans = (ps: number[]) => {
     else out.push(String(p))
   }
   return out.join(', ')
+}
+// Thumbs up/down on a chat reply: recorded at once, tied to its turn; a thumbs-down then takes an optional comment,
+// sent as its own record of the same turn (the classic chat records a 👎 and then its reason the same way)
+const why = ref('')
+const rate = (m: Session['history'][number], good: boolean) => {
+  if (!m.turn || m.rating !== undefined) return
+  m.rating = good ? 1 : 0
+  save()
+  chatslide?.feedback?.(m.turn, good, '', m.text).catch(() => undefined)
+}
+const comment = (m: Session['history'][number]) => {
+  if (m.comment !== undefined) return
+  m.comment = why.value.trim().slice(0, 300)
+  why.value = ''
+  save()
+  if (m.comment && m.turn) chatslide?.feedback?.(m.turn, false, m.comment, m.text).catch(() => undefined)
 }
 const localDay = (at: string | number) => {
   const d = new Date(at)
@@ -2132,6 +2150,7 @@ let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
   newTurn() // a new message: charged on its own
+  replyTurn = currentTurn()
   const versionUrl = s.savedVersions?.[text.trim()]
   s.savedVersions = undefined
   if (versionUrl) {
@@ -2538,7 +2557,7 @@ const send = () => {
       recordTurn(text, String(err?.message || e), [`error: ${err?.name || 'Error'}: ${err?.message || e} @ ${where}`], false)
       throw e
     }
-  })
+  }).finally(() => { replyTurn = '' })
 }
 
 // One attach control (or drop files on the box): a .pptx becomes the company template while none is set and no deck
@@ -2834,6 +2853,32 @@ onMounted(() => {
   }
   &.loading {
     opacity: 0.6;
+  }
+  .rate {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    color: #aaa;
+    font-size: 13px;
+
+    span {
+      cursor: pointer;
+      display: flex;
+
+      &:hover, &.on {
+        color: $themeColor;
+      }
+    }
+  }
+  .why {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 12px;
+    border: 1px solid $borderColor;
+    border-radius: 4px;
+    padding: 2px 6px;
+    outline: none;
   }
 }
 .composer {

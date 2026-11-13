@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Слайды {p0} — каждый одна сплошная картинка: их фон — часть этой картинки, поэтому они не изменены.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Удалить {p0} из {p1} слайдов ({p2})? Останется {p3}. Пока ничего не удалено.",
   "Version history": "История версий",
+  "Good reply": "Хороший ответ",
+  "Bad reply": "Плохой ответ",
+  "What went wrong? (optional)": "Что пошло не так? (необязательно)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Нет сохранённой версии от {p0}. Сохранённые версии хранятся 7 дней.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не удалось сохранить текущую презентацию, поэтому ничего не восстановлено. Проверьте подключение и попробуйте ещё раз."
 }

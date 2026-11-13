@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.",
   "Version history": "Version history",
+  "Good reply": "Good reply",
+  "Bad reply": "Bad reply",
+  "What went wrong? (optional)": "What went wrong? (optional)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "There is no saved version from {p0}. Saved versions go back 7 days.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "The deck you have now could not be saved, so nothing was restored. Check your connection and try again."
 }

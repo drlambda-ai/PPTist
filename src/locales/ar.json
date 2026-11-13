@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "الصفحات {p0} كل منها صورة واحدة مسطّحة: خلفيتها جزء من تلك الصورة، لذا لم تتغير.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "حذف {p0} من صفحاتك البالغة {p1} ({p2})؟ ستبقى {p3}. لم يُحذف شيء بعد.",
   "Version history": "سجل الإصدارات",
+  "Good reply": "رد جيد",
+  "Bad reply": "رد سيئ",
+  "What went wrong? (optional)": "ما الخطأ؟ (اختياري)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "لا توجد نسخة محفوظة من {p0}. تعود النسخ المحفوظة إلى 7 أيام.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "تعذّر حفظ العرض الحالي، لذلك لم تتم استعادة أي شيء. تحقّق من اتصالك وحاول مرة أخرى."
 }

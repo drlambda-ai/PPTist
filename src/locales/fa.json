@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "صفحه‌های {p0} هر کدام یک تصویر یکپارچه‌اند: پس‌زمینه‌شان بخشی از همان تصویر است، پس تغییر نکردند.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "{p0} صفحه از {p1} صفحه شما ({p2}) حذف شود؟ {p3} صفحه باقی می‌ماند. هنوز چیزی حذف نشده است.",
   "Version history": "تاریخچه نسخه‌ها",
+  "Good reply": "پاسخ خوب",
+  "Bad reply": "پاسخ بد",
+  "What went wrong? (optional)": "چه مشکلی پیش آمد؟ (اختیاری)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "هیچ نسخه ذخیره‌شده‌ای از {p0} وجود ندارد. نسخه‌های ذخیره‌شده تا ۷ روز گذشته نگه داشته می‌شوند.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "ارائه فعلی شما ذخیره نشد، بنابراین چیزی بازگردانی نشد. اتصال خود را بررسی کنید و دوباره امتحان کنید."
 }

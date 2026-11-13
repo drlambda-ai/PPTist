@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Halaman {p0} masing-masing adalah satu gambar datar: latar belakangnya bagian dari gambar itu, jadi tidak diubah.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Hapus {p0} dari {p1} halaman Anda ({p2})? {p3} akan tersisa. Belum ada yang dihapus.",
   "Version history": "Riwayat versi",
+  "Good reply": "Balasan bagus",
+  "Bad reply": "Balasan buruk",
+  "What went wrong? (optional)": "Apa yang salah? (opsional)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Tidak ada versi tersimpan dari {p0}. Versi tersimpan mencakup 7 hari terakhir.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Presentasi Anda saat ini tidak dapat disimpan, jadi tidak ada yang dipulihkan. Periksa koneksi Anda dan coba lagi."
 }

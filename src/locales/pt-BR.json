@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "As páginas {p0} são, cada uma, uma única imagem plana: o fundo faz parte dessa imagem, então não foram alteradas.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Excluir {p0} das suas {p1} páginas ({p2})? Restariam {p3}. Nada foi excluído ainda.",
   "Version history": "Histórico de versões",
+  "Good reply": "Boa resposta",
+  "Bad reply": "Resposta ruim",
+  "What went wrong? (optional)": "O que deu errado? (opcional)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Não há versão salva de {p0}. As versões salvas cobrem os últimos 7 dias.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Não foi possível salvar a apresentação atual, então nada foi restaurado. Verifique sua conexão e tente novamente."
 }

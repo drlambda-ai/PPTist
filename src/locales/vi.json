@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Các trang {p0} mỗi trang là một ảnh phẳng: nền là một phần của ảnh đó, nên không được thay đổi.",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Xóa {p0} trong {p1} trang của bạn ({p2})? Sẽ còn lại {p3} trang. Chưa xóa gì cả.",
   "Version history": "Lịch sử phiên bản",
+  "Good reply": "Trả lời tốt",
+  "Bad reply": "Trả lời chưa tốt",
+  "What went wrong? (optional)": "Có gì chưa ổn? (không bắt buộc)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Không có phiên bản nào được lưu vào {p0}. Các phiên bản đã lưu được giữ trong 7 ngày.",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Không lưu được bản trình bày hiện tại nên chưa khôi phục gì. Hãy kiểm tra kết nối và thử lại."
 }

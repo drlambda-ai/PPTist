@@ -1226,6 +1226,9 @@
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "第 {p0} 页各是一整张平面图片：背景是图片的一部分，因此没有更改。",
   "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "删除全部 {p1} 页中的 {p0} 页（{p2}）？删除后剩 {p3} 页。尚未删除任何内容。",
   "Version history": "版本历史",
+  "Good reply": "回答不错",
+  "Bad reply": "回答不好",
+  "What went wrong? (optional)": "哪里不对？（可选）",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "没有 {p0} 保存的版本。保存的版本保留 7 天。",
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "当前的演示文稿未能保存，因此没有恢复任何内容。请检查网络连接后重试。"
 }

@@ -140,6 +140,8 @@ declare module 'vue' {
     'IIconParkOutline:textRotationNone': typeof import('~icons/icon-park-outline/text-rotation-none')['default']
     'IIconParkOutline:textUnderline': typeof import('~icons/icon-park-outline/text-underline')['default']
     'IIconParkOutline:theme': typeof import('~icons/icon-park-outline/theme')['default']
+    'IIconParkOutline:thumbsDown': typeof import('~icons/icon-park-outline/thumbs-down')['default']
+    'IIconParkOutline:thumbsUp': typeof import('~icons/icon-park-outline/thumbs-up')['default']
     'IIconParkOutline:transform': typeof import('~icons/icon-park-outline/transform')['default']
     'IIconParkOutline:undo': typeof import('~icons/icon-park-outline/undo')['default']
     'IIconParkOutline:ungroup': typeof import('~icons/icon-park-outline/ungroup')['default']
