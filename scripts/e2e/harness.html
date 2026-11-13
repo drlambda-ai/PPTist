@@ -10,11 +10,11 @@ window.__chatslide = {
   offerPaid: () => window.__ev.push('offerPaid'),
   outOfCredits: () => window.__ev.push('outOfCredits'),
   load: async () => { const f = q.get('deck'); return f ? await (await fetch('decks/' + f)).json() : null },
-  save: async () => {}, sync: async () => ({}), pptx: async () => '',
+  save: async (st) => { window.__ev.push('save:' + st.slides.length) }, sync: async () => ({}), pptx: async () => '',
   share: async () => { window.__ev.push('share'); return { url: location.origin + '/shared/test', copied: false } },
   goto: async (s) => window.__ev.push('goto:' + s),
-  // ?versions=a.json,b.json: the deck's saved copies, newest first (decks/ files), one hour apart
-  ...(q.get('versions') ? { versions: async () => q.get('versions').split(',').map((f, k) => ({ url: location.origin + '/decks/' + f, at: new Date(Date.now() - k * 3600e3).toISOString() })) } : {}),
+  // ?versions=a.json,b.json: the deck's saved copies, newest first (decks/ files), one hour apart (&step=24: a day)
+  ...(q.get('versions') ? { versions: async () => q.get('versions').split(',').map((f, k) => ({ url: location.origin + '/decks/' + f, at: new Date(Date.now() - k * (Number(q.get('step')) || 1) * 3600e3).toISOString() })) } : {}),
 }
 </script>
 <iframe src="index.html"></iframe></body></html>

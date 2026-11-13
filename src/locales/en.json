@@ -1224,5 +1224,8 @@
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.",
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.",
-  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet."
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.",
+  "Version history": "Version history",
+  "There is no saved version from {p0}. Saved versions go back 7 days.": "There is no saved version from {p0}. Saved versions go back 7 days.",
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "The deck you have now could not be saved, so nothing was restored. Check your connection and try again."
 }

@@ -236,7 +236,9 @@ const TOOLS = [
     pages: { ...pages, description: 'The pages named; empty = the current page' },
     whole_deck: { type: 'boolean', description: 'true when the user means everything / all pages / the whole deck ("mọi thứ", "всё", "todo", "全部")' },
   }, ['pages', 'whole_deck']),
-  fn('version_history', 'Show the earlier saved versions of this deck so the user can go back to one: "version history", "yesterday\'s version", "the 21-page version", "what I had this morning", "I lost my slides". The editor lists them as buttons.', {}, []),
+  fn('version_history', 'Show the earlier saved versions of this deck so the user can go back to one: "version history", "yesterday\'s version", "the 21-page version", "what I had this morning", "I lost my slides", "верните версию от 11.11". The editor lists them as buttons. There IS a version history: never say there is none.', {
+    day: { type: 'string', description: 'The day the user named, as YYYY-MM-DD, worked out from today\'s date in the context ("yesterday" = the day before today; "11.11" or "11/11" = 11 November of this year, or last year if that is after today); "" when they name no day' },
+  }, ['day']),
   fn('undo', 'Undo the last change.', {
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
@@ -616,7 +618,8 @@ async function handler(req: any, res: any) {
     const pics = (body.pictures || []) as string[]
     const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
-    const context = `The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
+    const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
+    const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`

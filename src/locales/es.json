@@ -1224,5 +1224,8 @@
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "La página {p0} es una sola imagen plana: su texto y sus imágenes están dentro de esa imagen, así que no puedo cambiar una imagen dentro de ella. No se cambió nada. Puedo añadir una imagen nueva encima.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "Se reemplazaron {p0} imágenes en la página {p1} por imágenes ({p2}) para \"{p3}\"; el fondo no se tocó. Comprueba que son lo que querías.",
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Las páginas {p0} son cada una una sola imagen plana: su fondo forma parte de esa imagen, así que no se cambiaron.",
-  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "¿Eliminar {p0} de tus {p1} páginas ({p2})? Quedarían {p3}. Todavía no se elimina nada."
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "¿Eliminar {p0} de tus {p1} páginas ({p2})? Quedarían {p3}. Todavía no se elimina nada.",
+  "Version history": "Historial de versiones",
+  "There is no saved version from {p0}. Saved versions go back 7 days.": "No hay ninguna versión guardada del {p0}. Las versiones guardadas abarcan los últimos 7 días.",
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "No se pudo guardar la presentación actual, así que no se restauró nada. Revisa tu conexión e inténtalo de nuevo."
 }

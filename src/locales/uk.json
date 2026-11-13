@@ -1224,5 +1224,8 @@
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "Слайд {p0} — одне суцільне зображення: його текст і картинки всередині нього, тому замінити окрему картинку не можна. Нічого не змінено. Можу додати нове зображення поверх.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "На слайді {p1} замінено зображень: {p0} ({p2}) за запитом «{p3}»; фон не змінено. Перевірте, чи це саме те, що ви мали на увазі.",
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "Слайди {p0} — кожен одне суцільне зображення: їхній фон є частиною цього зображення, тому їх не змінено.",
-  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Видалити {p0} з {p1} слайдів ({p2})? Залишиться {p3}. Поки що нічого не видалено."
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "Видалити {p0} з {p1} слайдів ({p2})? Залишиться {p3}. Поки що нічого не видалено.",
+  "Version history": "Історія версій",
+  "There is no saved version from {p0}. Saved versions go back 7 days.": "Немає збереженої версії від {p0}. Збережені версії зберігаються 7 днів.",
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не вдалося зберегти поточну презентацію, тому нічого не відновлено. Перевірте з’єднання та спробуйте ще раз."
 }

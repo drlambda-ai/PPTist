@@ -79,6 +79,7 @@ declare module 'vue' {
     'IIconParkOutline:hamburgerButton': typeof import('~icons/icon-park-outline/hamburger-button')['default']
     'IIconParkOutline:helpcenter': typeof import('~icons/icon-park-outline/helpcenter')['default']
     'IIconParkOutline:highLight': typeof import('~icons/icon-park-outline/high-light')['default']
+    'IIconParkOutline:history': typeof import('~icons/icon-park-outline/history')['default']
     'IIconParkOutline:indentLeft': typeof import('~icons/icon-park-outline/indent-left')['default']
     'IIconParkOutline:indentRight': typeof import('~icons/icon-park-outline/indent-right')['default']
     'IIconParkOutline:insertTable': typeof import('~icons/icon-park-outline/insert-table')['default']

@@ -1224,5 +1224,8 @@
   "Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can't change a picture in it. Nothing was changed. I can add a new picture on top of it.": "الصفحة {p0} صورة واحدة مسطّحة: نصها وصورها كلها داخل تلك الصورة، لذا لا يمكنني تغيير صورة داخلها. لم يتغير شيء. يمكنني إضافة صورة جديدة فوقها.",
   "Replaced {p0} pictures on page {p1} with {p2} pictures for \"{p3}\"; the background was not touched. Check they are what you meant.": "تم استبدال {p0} صور في الصفحة {p1} بصور {p2} لـ \"{p3}\"؛ لم تُمس الخلفية. تحقق من أنها ما قصدته.",
   "Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.": "الصفحات {p0} كل منها صورة واحدة مسطّحة: خلفيتها جزء من تلك الصورة، لذا لم تتغير.",
-  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "حذف {p0} من صفحاتك البالغة {p1} ({p2})؟ ستبقى {p3}. لم يُحذف شيء بعد."
+  "Delete {p0} of your {p1} pages ({p2})? {p3} would remain. Nothing is deleted yet.": "حذف {p0} من صفحاتك البالغة {p1} ({p2})؟ ستبقى {p3}. لم يُحذف شيء بعد.",
+  "Version history": "سجل الإصدارات",
+  "There is no saved version from {p0}. Saved versions go back 7 days.": "لا توجد نسخة محفوظة من {p0}. تعود النسخ المحفوظة إلى 7 أيام.",
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "تعذّر حفظ العرض الحالي، لذلك لم تتم استعادة أي شيء. تحقّق من اتصالك وحاول مرة أخرى."
 }

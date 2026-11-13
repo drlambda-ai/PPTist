@@ -35,6 +35,7 @@
             <FileInput accept=".pptx,.xlsx,.csv,.txt,.md,.docx,.pdf,.json,.png,.jpg,.jpeg,.webp,.gif" @change="files => attach(files)">
               <span class="attach" :class="{ disabled: !!busy }" :aria-label="t('Attach a company template (.pptx) or material')"><i-icon-park-outline:link /></span>
             </FileInput>
+            <span class="attach" v-if="chatslide?.versions" :class="{ disabled: !!busy }" :aria-label="t('Version history')" :title="t('Version history')" @click="showVersions()"><i-icon-park-outline:history /></span>
             <span class="grow"></span>
             <Button type="primary" size="small" :disabled="!!busy || !input.trim()" @click="send()">{{ t('Send') }}</Button>
           </div>
@@ -153,6 +154,7 @@ let blobMode = ''
 
 const SLIDES_KEY = 'ai-deck-slides'
 let saveTimer = 0
+let savePending = false // a debounced save has not reached ChatSlide yet
 let syncTimer = 0
 let saveFailed = false
 let loadingPage = '' // while a project's deck is being converted: never saved, or the blank page replaces the deck
@@ -162,7 +164,9 @@ const save = () => {
     clearTimeout(saveTimer)
     clearTimeout(syncTimer)
     syncTimer = window.setTimeout(() => syncToChatSlide().catch(() => undefined), 15000)
+    savePending = true
     saveTimer = window.setTimeout(async () => {
+      savePending = false
       await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
       chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
         .then(() => saveFailed = false)
@@ -184,6 +188,16 @@ const save = () => {
   catch { // storage full: the session still works until reload; never leave an older saved deck behind
     localStorage.removeItem(SLIDES_KEY)
   }
+}
+// The deck on screen saved now (a save still waiting on its timer goes at once): restoring a saved version first keeps
+// the current deck as the newest copy, so a restore never loses work (a user's 21 pages went to 17 with no way back,
+// 2026-11-12). Throws when the save fails.
+const saveNow = async () => {
+  if (!chatslide || !savePending) return
+  clearTimeout(saveTimer)
+  savePending = false
+  await externalizeImages().catch(() => undefined)
+  await chatslide.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
 }
 // Inline pictures (data: URLs from AI images, attachments, pasted images) become their own files, uploaded once; the
 // slide keeps the link. A 10-page deck with a few AI pictures was 6 MB and took ~4 s to open; links keep it small.
@@ -700,6 +714,10 @@ const fitOne = async (slideId: string, ids: string[], before: Record<string, num
   }
 }
 
+// Version history: the deck's saved copies (ChatSlide keeps the newest 20 and one per hour for 7 days), offered as
+// buttons, from the chat ("yesterday's version", "верните версию от 11.11": day = that date) or the history icon. A doctor
+// asked for "yesterday's version" and "the version history" after a day's work was replaced, and the editor had neither
+// (2026-11-12).
 // page numbers as runs: 2-28, 30
 const spans = (ps: number[]) => {
   const out: string[] = []
@@ -710,6 +728,46 @@ const spans = (ps: number[]) => {
   }
   return out.join(', ')
 }
+const localDay = (at: string | number) => {
+  const d = new Date(at)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const listVersions = async (text: string, day = ''): Promise<string> => {
+  if (!chatslide?.versions) fail(t('Version history is not available here. Undo goes back through the changes of this session.'))
+  busy.value = t('Looking up the saved versions…')
+  // one candidate per hour, newest first: the copies of the last minutes are steps Undo already covers, and listed
+  // first they would hide yesterday's version
+  const hours = new Set<string>()
+  const perHour = (await chatslide.versions()).filter(v => { const h = String(v.at).slice(0, 13); if (hours.has(h)) return false; hours.add(h); return true })
+  const all = (day ? perHour.filter(v => localDay(v.at) === day) : perHour).slice(0, 24)
+  if (day && !all.length) return t('There is no saved version from {p0}. Saved versions go back 7 days.', { p0: new Date(`${day}T12:00:00`).toLocaleDateString(lang, { month: 'short', day: 'numeric' }) })
+  const sig = (d: any[]) => { // content, places, colours, backgrounds, notes
+    // what a person would see as a difference; not the fields the editor fills in on load
+    const j = JSON.stringify(d.map(x => [x.background?.color || x.background?.image?.src || x.background?.type || '', x.remark || '',
+      (x.elements || []).map((e: any) => [e.type, e.content ?? e.text?.content ?? e.src ?? '', Math.round(e.left || 0), Math.round(e.top || 0), Math.round(e.width || 0), e.type === 'text' ? 0 : Math.round(e.height || 0), e.fill || '', e.defaultColor || ''])])) // (a text box's height is refitted when it is shown)
+    let h = 0
+    for (let i = 0; i < j.length; i++) h = (h * 31 + j.charCodeAt(i)) | 0
+    return `${d.length}|${j.length}|${h}`
+  }
+  const seen = new Set([sig(slides.value)]) // versions that differ from the deck on screen, one per distinct state
+  const choices: Record<string, string> = {}
+  for (let k = 0; k < all.length && Object.keys(choices).length < 6; k += 8) {
+    const batch = await Promise.all(all.slice(k, k + 8).map(v => fetch(v.url, { cache: 'no-store' }).then(r => r.json()).then(d => ({ v, d })).catch(() => null)))
+    for (const x of batch) {
+      if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 6) continue
+      seen.add(sig(x.d.slides))
+      const when = new Date(x.v.at).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      choices[`${when} · ${t('{p0} pages', { p0: x.d.slides.length })}`] = x.v.url
+    }
+  }
+  if (!Object.keys(choices).length) return t('There is no earlier saved version that differs from the deck you have now.')
+  s.savedVersions = choices
+  s.pending = { request: text, question: '', options: Object.keys(choices), offer: true }
+  return t('These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.', { p0: slides.value.length })
+}
+// the history icon: the same list, no AI call
+const showVersions = () => { if (!busy.value) run(t('Looking up the saved versions…'), async () => { say('assistant', await listVersions('')); save() }) }
+
 const cloneSlide = (sl: Slide): Slide => {
   const newId: Record<string, string> = Object.fromEntries(sl.elements.map(e => [e.id, nanoid(10)]))
   return {
@@ -1949,36 +2007,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // buttons. A doctor asked for "yesterday's version" and "the version history" after a day's work was replaced, and
   // the editor had neither (2026-11-12).
   if (action === 'version_history') {
-    if (!chatslide?.versions) fail(t('Version history is not available here. Undo goes back through the changes of this session.'))
-    busy.value = t('Looking up the saved versions…')
-    // one candidate per hour, newest first: the copies of the last minutes are steps Undo already covers, and listed
-    // first they would hide yesterday's version
-    const hours = new Set<string>()
-    const all = (await chatslide.versions()).filter(v => { const h = String(v.at).slice(0, 13); if (hours.has(h)) return false; hours.add(h); return true }).slice(0, 24)
-    const sig = (d: any[]) => { // content, places, colours, backgrounds, notes
-      // what a person would see as a difference; not the fields the editor fills in on load
-      const j = JSON.stringify(d.map(x => [x.background?.color || x.background?.image?.src || x.background?.type || '', x.remark || '',
-        (x.elements || []).map((e: any) => [e.type, e.content ?? e.text?.content ?? e.src ?? '', Math.round(e.left || 0), Math.round(e.top || 0), Math.round(e.width || 0), e.type === 'text' ? 0 : Math.round(e.height || 0), e.fill || '', e.defaultColor || ''])])) // (a text box's height is refitted when it is shown)
-      let h = 0
-      for (let i = 0; i < j.length; i++) h = (h * 31 + j.charCodeAt(i)) | 0
-      return `${d.length}|${j.length}|${h}`
-    }
-    const seen = new Set([sig(slides.value)]) // versions that differ from the deck on screen, one per distinct state
-    const choices: Record<string, string> = {}
-    for (let k = 0; k < all.length && Object.keys(choices).length < 6; k += 8) {
-      const batch = await Promise.all(all.slice(k, k + 8).map(v => fetch(v.url, { cache: 'no-store' }).then(r => r.json()).then(d => ({ v, d })).catch(() => null)))
-      for (const x of batch) {
-        if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 6) continue
-        seen.add(sig(x.d.slides))
-        const when = new Date(x.v.at).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-        choices[`${when} · ${t('{p0} pages', { p0: x.d.slides.length })}`] = x.v.url
-      }
-    }
     askedThisTurn = true // an answer either way: the turn ends here and nothing changed
-    if (!Object.keys(choices).length) return t('There is no earlier saved version that differs from the deck you have now.')
-    s.savedVersions = choices
-    s.pending = { request: text, question: '', options: Object.keys(choices), offer: true }
-    return t('These are the earlier saved versions of this deck (you have {p0} pages now). Tap one to go back to it; Undo brings the current deck back.', { p0: slides.value.length })
+    return listVersions(text, /^\d{4}-\d{2}-\d{2}$/.test(String(args.day || '')) ? args.day : '')
   }
   if (action === 'restore_original') {
     // only a tap on the confirmation restores more than one page (the router's own flag is never enough)
@@ -2101,12 +2131,15 @@ const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && 
 let lastGoodSlides: any = null
 const deckTurn = async (text: string) => {
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
+  newTurn() // a new message: charged on its own
   const versionUrl = s.savedVersions?.[text.trim()]
   s.savedVersions = undefined
   if (versionUrl) {
     s.pending = null
     const saved = await (await fetch(versionUrl, { cache: 'no-store' })).json()
     if (!saved?.slides?.length) fail(t('That version could not be loaded.'))
+    // the deck on screen is saved first, so it stays in the version history
+    await saveNow().catch(() => fail(t('The deck you have now could not be saved, so nothing was restored. Check your connection and try again.')))
     if (saved.theme) slidesStore.setTheme(saved.theme)
     if (saved.viewportRatio) slidesStore.setViewportRatio(saved.viewportRatio)
     slidesStore.setSlides(saved.slides)
@@ -2120,7 +2153,6 @@ const deckTurn = async (text: string) => {
     return
   }
   if (!Object.keys(openedSlides).length) rememberOriginal() // a deck opened another way (?pptx=, a local session): its state before the first change
-  newTurn() // a new message: charged on its own
   // the Yes button confirms; so does a typed reply to the question when the router, reading it, asks again to delete
   // exactly those pages as the user's own wish ("можешь их заменить!" got the same question back, 2026-11-12)
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
@@ -2199,6 +2231,7 @@ const deckTurn = async (text: string) => {
         // "this page" stays the page the user was on when they sent the message: steps that show a new page moved it,
         // and "add a page after this one" then re-ran after each new page (30 -> 36)
         instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
+        today: localDay(Date.now()), // "yesterday's version", "the version from 11.11"
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
