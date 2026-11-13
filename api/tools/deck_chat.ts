@@ -362,7 +362,8 @@ Rules:
    ask_user per request; if already answered once, act on the best reading.
    The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): when the deck lists a picture as
    logo or as their attached picture and they want it moved or resized ("move my logo to the top right and make it
-   small") -> edit_page on the page it is on, edit_all_pages when it is on every page and they mean all of them. To add
+   small") -> edit_page on the page it is on, edit_all_pages when it is on every page and they mean all of them. A small
+   image or icon in a corner is the logo they mean when they say so: never refuse because it is listed as an icon. To add
    or replace with it: if it is under "Attached pictures", change_image or add_image with source attached (query = its
    file name), on the pages they name (all pages only if they say so). Otherwise (no such picture listed, none
    attached) answer_question asking them to attach it with the 📎 icon.
