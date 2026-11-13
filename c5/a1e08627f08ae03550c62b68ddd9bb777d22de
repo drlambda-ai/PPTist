@@ -1,0 +1,11 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code), four rounds; Codex workspace out of credits
+Reviewed-At: 2026-11-13T15:36:53Z
+Fixed: script loss on edit/reload/duplicate, restore saves first and awaits in-flight/failed saves, undo restores theme+ratio, version list keeps pre-restore copy, IME comment box, logo kept on all_pictures, said_background current message only, flat pages only for imported backgrounds, pasted page never blanked, localize truncation and marker overlap, HTML-400 resend opt-in, no toast text to PostHog
+Declined-By: Claude Code
+Declined: pre-932dd708 decks lose flat-page protection - same as production before this batch
+Declined: one per-file doc for project files - only a project-level summary exists without a backend change
+Declined: excluding the deck's own source file from project files - it is what users asked the chat to use
+Declined: version list prefetches recent copies - performance only
+Declined: Share is paid-only in the new editor - paywall decision for Quanlai
+Declined: browser check of scripts surviving a real reload not run - dev server start denied; tsc + parseSlides check only
