@@ -2298,6 +2298,7 @@ const deckTurn = async (text: string) => {
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
+  const picturedPages = new Set<string>() // pages that got a picture for an every-page request in this message
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
   // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
   const animatedThisTurn = (pages?: number[]) => done.some((d) => {
@@ -2555,7 +2556,13 @@ const deckTurn = async (text: string) => {
         ? ' (The user now has a button to apply this to the whole deck: never do that yourself. Go on only with a different part of the request, if there is one.)' : ''
       if (offered) offerOrder = slides.value.map(x => x.id).join()
       else if (offerOrder && s.pending?.offer && offerOrder !== slides.value.map(x => x.id).join()) { s.pending = null; offerOrder = '' } // pages added, deleted or moved since: its numbers are stale
-      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}`)
+      // "pictures on every slide": the router added one and stopped, listing the rest for the user (2026-11-13). It is told
+      // which of the deck's pages still have no new picture, so it goes on page by page (each step its usual checks)
+      if (c.action === 'add_image' && c.args?.every_page) picturedPages.add(ids[Number(c.args?.index) - 1])
+      const left = c.action === 'add_image' && c.args?.every_page
+        ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) ? k + 1 : 0)).filter(Boolean) : []
+      const rest = left.length ? `\n(Every page was asked for: pages still without a new picture: ${left.join(', ')}. Call add_image for the next one, on that page's own topic.)` : ''
+      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}${rest}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
