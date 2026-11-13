@@ -367,8 +367,7 @@ Rules:
    image or icon in a corner is the logo they mean when they say so: never refuse because it is listed as an icon. To add
    or replace with it: if it is under "Attached pictures", change_image or add_image with source attached (query = its
    file name), on the pages they name (all pages only if they say so). Otherwise (no such picture listed, none
-   attached) answer_question asking them to attach it with the 📎 icon: never edit_page for it, and never only say
-   that no logo was found.
+   attached) answer_question asking them to attach it with the 📎 icon.
    "Review the deck AND change/fix what is wrong" -> edit_all_pages (fix overflow, overlap, alignment, typos; keep content).
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
