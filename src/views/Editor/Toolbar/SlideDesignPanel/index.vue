@@ -446,7 +446,9 @@ const updateGradientBackgroundColors = (color: string) => {
 
 // 设置图片背景
 const updateImageBackground = (props: Partial<SlideBackgroundImage>) => {
-  updateBackground({ image: { ...background.value.image!, ...props } })
+  const image = { ...background.value.image!, ...props }
+  if (props.src) delete image.imported // a picture the user chose is not an imported render
+  updateBackground({ image })
 }
 
 // 上传背景图片

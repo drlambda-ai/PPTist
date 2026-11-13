@@ -195,6 +195,12 @@ const save = () => {
 // work (a user's 21 pages went to 17 with no way back, 2026-11-12). A save already under way finishes first (it reads
 // the deck before this returns, so never the restored one); then the deck is saved again unless that save holds it
 // (a save still waiting on its timer, or a failed one, goes now). Throws when it cannot be saved.
+// A copied background is the editor's own, never an imported render: the copy drops the import marker isFlat reads
+const copiedBackground = (sl: any) => {
+  const bg = JSON.parse(JSON.stringify(sl.background || {}))
+  if (bg.image) delete bg.image.imported
+  return bg
+}
 const saveNow = async () => {
   if (!chatslide) return
   const waiting = savePending
@@ -203,7 +209,13 @@ const saveNow = async () => {
   await saving
   if (!waiting && !saveFailed) return
   await externalizeImages().catch(() => undefined)
-  await chatslide.save({ session: JSON.parse(JSON.stringify(s)), slides: JSON.parse(JSON.stringify(slides.value)), theme: theme.value, viewportRatio: viewportRatio.value })
+  try {
+    await chatslide.save({ session: JSON.parse(JSON.stringify(s)), slides: JSON.parse(JSON.stringify(slides.value)), theme: theme.value, viewportRatio: viewportRatio.value })
+  }
+  catch (e) {
+    saveFailed = true // the next restore must try this save again, not skip it
+    throw e
+  }
   saveFailed = false
 }
 // Inline pictures (data: URLs from AI images, attachments, pasted images) become their own files, uploaded once; the
@@ -1354,7 +1366,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!roomy) {
       const src = slides.value[at]
       const title: any = readingOrder(src).find((e: any) => elText(e))
-      const page: any = { id: nanoid(10), background: JSON.parse(JSON.stringify(src.background || {})), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
+      const page: any = { id: nanoid(10), background: copiedBackground(src), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
       const list = [...slides.value]
       list.splice(at + 1, 0, page)
       slidesStore.setSlides(list)
@@ -2036,7 +2048,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         if (!color || !elText(e)) return e
         return e.type === 'text' ? { ...e, defaultColor: color, content: setIn(e.content) } : { ...e, text: { ...e.text, defaultColor: color, content: setIn(e.text.content) } }
       })
-      slidesStore.updateSlide({ background: JSON.parse(JSON.stringify(src.background || {})), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
+      slidesStore.updateSlide({ background: copiedBackground(src), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
     }
     touched(targets)
     return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })

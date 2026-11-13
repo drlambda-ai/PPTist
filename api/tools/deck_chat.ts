@@ -600,7 +600,8 @@ async function handler(req: any, res: any) {
       const original = String(body.localize).slice(0, 4000)
       // each router line is already inside the reply: it goes out once, as a marker in the reply plus its own entry,
       // never twice (the doubled text truncated the JSON and the whole reply fell back untranslated, review 2026-11-13)
-      const free = strs(body.free).map(v => v.trim()).filter(v => original.includes(v)), buttons = strs(body.options).map(v => v.slice(0, 120))
+      // longest first and each once: a line inside another line ('Apply' in 'Apply to all pages') would otherwise lose its marker
+      const free = [...new Set(strs(body.free).map(v => v.trim()).filter(v => original.includes(v)))].sort((a, b) => b.length - a.length), buttons = strs(body.options).map(v => v.slice(0, 120))
       const mark = (i: number) => `⟦${i + 1}⟧`
       const marked = free.reduce((r, f, i) => r.split(f).join(mark(i)), original)
       const raw = await chat([
@@ -615,7 +616,10 @@ async function handler(req: any, res: any) {
         model: process.env.FINALIZE_MODEL || 'gpt-6-luna', jsonMode: true, // follows the "be conservative" rule better than Haiku
         // sized to what comes back: a translation is about as long as its source (a token per character at worst)
         maxTokens: Math.min(16000, 1500 + marked.length + free.join('').length + buttons.join('').length),
-      }).catch(() => '')
+      }).catch((e) => {
+        console.error('localize failed, reply left untranslated:', (e as Error)?.message || e) // a vendor outage must show in the logs
+        return ''
+      })
       // a cut-off answer keeps what came complete: the keys come in order, so every key before the last one present
       // is whole. Only a reply that parsed whole is used as the reply
       let j: any = null, whole = false
