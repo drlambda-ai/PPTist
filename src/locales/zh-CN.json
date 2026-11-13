@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "我无法从该网站 ({p0}) 获取图片。",
   "Added {p0} picture(s) from {p1}.": "已从 {p1} 添加 {p0} 张图片。",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "付费方案：高级 AI 模型 · 来自您品牌网站的真实图片 · 可下载为 PowerPoint 或 PDF",
-  "Upgrade": "升级"
+  "Upgrade": "升级",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "要删除 {p0} 页上的图片吗？目前还没有删除任何内容。",
+  "Yes, remove them": "是的，删除"
 }

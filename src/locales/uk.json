@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "Не вдалося отримати зображення з того вебсайту ({p0}).",
   "Added {p0} picture(s) from {p1}.": "Додано {p0} зображення(й) із {p1}.",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Платні плани: вдосконалена модель ШІ · реальні зображення з вебсайту вашого бренду · завантаження у форматі PowerPoint або PDF",
-  "Upgrade": "Покращити тариф"
+  "Upgrade": "Покращити тариф",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "Видалити зображення з {p0} слайдів? Поки нічого не видалено.",
+  "Yes, remove them": "Так, видалити зображення"
 }

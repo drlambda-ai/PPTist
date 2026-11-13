@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "Не удалось получить изображения с этого сайта ({p0}).",
   "Added {p0} picture(s) from {p1}.": "Добавлено {p0} изображение(я) с {p1}.",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Платные тарифы: продвинутая модель ИИ · реальные изображения с сайта вашего бренда · скачать в PowerPoint или PDF",
-  "Upgrade": "Улучшить тариф"
+  "Upgrade": "Улучшить тариф",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "Удалить изображения с {p0} слайдов? Пока ничего не удалено.",
+  "Yes, remove them": "Да, удалить"
 }

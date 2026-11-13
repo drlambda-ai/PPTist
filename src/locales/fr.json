@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "Je n’ai pas pu obtenir d’images depuis ce site web ({p0}).",
   "Added {p0} picture(s) from {p1}.": "{p0} image(s) ajoutée(s) depuis {p1}.",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Offres payantes : modèle d’IA avancé · vraies images depuis le site web de votre marque · téléchargement au format PowerPoint ou PDF",
-  "Upgrade": "Passer au payant"
+  "Upgrade": "Passer au payant",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "Retirer les images de {p0} pages ? Rien n'est encore retiré.",
+  "Yes, remove them": "Oui, les retirer"
 }

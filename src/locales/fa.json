@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "نتوانستم از آن وب‌سایت ({p0}) تصویر بگیرم.",
   "Added {p0} picture(s) from {p1}.": "{p0} تصویر از {p1} اضافه شد.",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "طرح‌های پولی: مدل پیشرفتهٔ هوش مصنوعی · تصاویر واقعی از وب‌سایت برند شما · دانلود به‌صورت PowerPoint یا PDF",
-  "Upgrade": "ارتقا"
+  "Upgrade": "ارتقا",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "تصاویر از {p0} صفحه حذف شوند؟ هنوز چیزی حذف نشده است.",
+  "Yes, remove them": "بله، حذف شوند"
 }

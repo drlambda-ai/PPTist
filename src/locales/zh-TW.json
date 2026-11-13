@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "我無法從該網站 ({p0}) 取得圖片。",
   "Added {p0} picture(s) from {p1}.": "已從 {p1} 新增 {p0} 張圖片。",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "付費方案：進階 AI 模型 · 來自您品牌網站的真實圖片 · 可下載為 PowerPoint 或 PDF",
-  "Upgrade": "升級"
+  "Upgrade": "升級",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "要刪除 {p0} 頁上的圖片嗎？目前尚未刪除任何內容。",
+  "Yes, remove them": "是的，刪除"
 }

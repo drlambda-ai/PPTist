@@ -113,6 +113,7 @@ interface Session {
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
   pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  removeAsked?: string // pages (ids, joined) the user was asked to confirm removing pictures from
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -1282,6 +1283,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    // several pages go only after a yes, like deleting pages: an attached picture plus "every slide" removed all 14
+    // pictures of the deck (2026-11-12)
+    if (targets.length > 1 && removeConfirmable !== targets.join()) {
+      const q = t('Remove the pictures from {p0} pages? Nothing is removed yet.', { p0: targets.length })
+      s.removeAsked = targets.join()
+      s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')] }
+      askedThisTurn = true
+      save()
+      return q
+    }
     const logos = logoSpots()
     let n = 0
     for (const id of targets) {
@@ -2007,6 +2018,7 @@ let memo = ''
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
+let removeConfirmable = '' // the pages the previous message asked to remove pictures from, answered yes
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let deleteAnswered: string[] = [] // the same, answered in words: deletable when the router asks for exactly them again
 let askedThisTurn = false // a question for the user ends the message
@@ -2055,6 +2067,8 @@ const deckTurn = async (text: string) => {
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
   deleteAnswered = s.deleteAsked && text.trim() !== t('No, keep them') ? s.deleteAsked : []
   s.deleteAsked = undefined
+  removeConfirmable = s.removeAsked && text.trim() !== t('No, keep them') ? s.removeAsked : ''
+  s.removeAsked = undefined
   askedThisTurn = false
   userText = text
   editedThisTurn.clear()

@@ -1219,5 +1219,7 @@
   "I could not get pictures from that website ({p0}).": "I could not get pictures from that website ({p0}).",
   "Added {p0} picture(s) from {p1}.": "Added {p0} picture(s) from {p1}.",
   "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF": "Paid plans: advanced AI model · real pictures from your brand’s website · download as PowerPoint or PDF",
-  "Upgrade": "Upgrade"
+  "Upgrade": "Upgrade",
+  "Remove the pictures from {p0} pages? Nothing is removed yet.": "Remove the pictures from {p0} pages? Nothing is removed yet.",
+  "Yes, remove them": "Yes, remove them"
 }
