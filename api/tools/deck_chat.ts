@@ -92,7 +92,7 @@ const TOOLS = [
   fn('set_font_size', 'Make text bigger or smaller, on some or all pages (done directly, exact): "title bigger", "more", "font size like slide 1".', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
-    scale: { type: 'number', description: 'Factor: 1.25 = bigger / "more" / "a bit more", 1.5 = much bigger / "so it reads from the back", 0.8 = smaller' },
+    scale: { type: 'number', description: 'Factor: 1.3 = bigger / "more" / "a bit more" (never under 1.2: a smaller step is not seen), 1.6 = much bigger / "even bigger" / insisting ("to raaaa", "!!!", the same ask again) / "so it reads from the back", 0.8 = smaller' },
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
   }, ['pages', 'scope', 'scale', 'same_as_page']),
   fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {

@@ -1689,7 +1689,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const resize = (h: string) => {
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' }) // PPTist's default
-      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${Math.max(8, Math.round(to || +n * k))}px`)
+      // a step the eye can see: 1.1 of a 14px body is 15px, and "bigger", "more", "even bigger!" went on for five
+      // messages (prod 2026-11-10/11, b1c, 415, e13). At least 4px up or 2px down per step
+      const step = (n: number) => to || (k > 1 ? Math.max(n * k, n + 4) : k < 1 ? Math.min(n * k, n - 2) : n)
+      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${Math.max(8, Math.round(step(+n)))}px`)
     }
     let n = 0
     for (const id of targets) {
