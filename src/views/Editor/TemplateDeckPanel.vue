@@ -1253,7 +1253,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return reply
     }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
-    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
+    // no figures in the deck or the files: look them up once rather than ask the user for numbers ("Añadir un
+    // gráfico de barras" got "can you give me the figures?", eval 2026-11-13)
+    const added = await addChartPage(text, args.instruction, args.chart_type || 'column', after).catch(async (e) => {
+      if (!(e instanceof StepFailed) || e instanceof NoChange) throw e
+      await runCall(text, 'web_search', { query: String(args.instruction).slice(0, 200) }, ids).catch(() => { throw e })
+      return addChartPage(text, `${args.instruction}\n\nFigures found online (use them; their source goes in "note"):\n${memo.slice(0, 6000)}`, args.chart_type || 'column', after)
+    })
+    return added || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
   }
   if (action === 'add_table_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
