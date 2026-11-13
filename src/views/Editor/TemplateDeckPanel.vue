@@ -115,7 +115,7 @@ interface Session {
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
-  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
   removeAsked?: string // pages (ids, joined) the user was asked to confirm removing pictures from
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
@@ -1604,7 +1604,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // design (5 of 5 replays of a real user's request, 2026-11-11); the advanced model redesigned the page (2 of 2).
     // So free users are told plainly and offered what visibly works; paid users get the advanced model.
     if (args.redesign && !canAdvanced) {
-      s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')], offer: true }
+      s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')], offer: true, localize: true }
       save()
       offer() // ChatSlide's paywall, once per session
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
@@ -1642,7 +1642,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // every page left most pages "not changed", 2026-11-11)
     if (args.whole_deck_option && args.page_named !== true && !turnSelected) { // (none for an edit using another page's text)
       const others = slides.value.map((_, k) => k + 1).filter(k => k !== i + 1)
-      s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true,
+      s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true, localize: true,
         repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others, from: i + 1 }
     }
     return upgradeLine ? `${reply} ${upgradeLine}` : reply
@@ -2209,6 +2209,7 @@ const deckTurn = async (text: string) => {
   const done: string[] = []
   const replies: string[] = []
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
+  const free: string[] = [] // lines the router wrote itself (any language): the reply step puts them in the user's
   let changed = false
   const turnCalls: string[] = [] // stepKey of each step that ran, for the next message's Undo guard
   const ran: any[] = [] // the calls that ran
@@ -2305,6 +2306,7 @@ const deckTurn = async (text: string) => {
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
     if (!work.length && left && String(left).trim()) { // never pretend the rest is done
+      free.push(String(left).trim())
       replies.push(String(left).trim())
       terse.push(String(left).trim())
     }
@@ -2448,6 +2450,7 @@ const deckTurn = async (text: string) => {
         continue
       }
       replies.push(reply)
+      if (['answer_question', 'ask_user', 'say_unable'].includes(c.action)) free.push(reply)
       ran.push(c)
       if (!['answer_question', 'ask_user', 'say_unable', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design', 'download_deck'].includes(c.action)) {
         lastGoodSlides = JSON.parse(JSON.stringify(slides.value)) // what a later step's crash rolls back to
@@ -2485,7 +2488,7 @@ const deckTurn = async (text: string) => {
   if ((unfinished || round === rounds) && !askedThisTurn) {
     followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
     // answering an earlier question or offer (Continue included): the request stays the original one, steps accumulate
-    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], done: [...(pendingAtStart?.done || []), ...done].slice(-30) } // any reply continues it
+    s.pending = { request: pendingAtStart ? pendingAtStart.request : text, question: followUp, options: [t('Continue')], localize: true, done: [...(pendingAtStart?.done || []), ...done].slice(-30) } // any reply continues it
     save()
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
@@ -2494,7 +2497,7 @@ const deckTurn = async (text: string) => {
     const here = slides.value.findIndex(x => x.id === startPageId) + 1
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
     // the router learns which pages are left and what was done here, so it neither redoes this page nor skips one
-    s.pending = { request: text, question: `${followUp} (the other pages: ${others.join(', ')})`, options: [t('Do the same on the other {p0} pages', { p0: others.length })], done: done.slice(-30), offer: true,
+    s.pending = { request: text, question: `${followUp} (the other pages: ${others.join(', ')})`, options: [t('Do the same on the other {p0} pages', { p0: others.length })], done: done.slice(-30), offer: true, localize: true,
       repeat: ran.map(c => ({ action: c.action, args: c.args })), pages: others }
     save()
   }
@@ -2511,7 +2514,7 @@ const deckTurn = async (text: string) => {
   const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
-  const said = await finalize(text, reply)
+  const said = await finalize(text, reply, free, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null)
   say('assistant', said + fee)
   recordTurn(text, said, done, true)
 }
@@ -2541,9 +2544,17 @@ const forAnyPage = async (instruction: string) => {
 
 // Every turn's reply in the language of the user's message: the code's lines follow the app language and the
 // router's own sentences (say_unable, ask_user) came back in Chinese for English messages without this step.
-const finalize = async (instruction: string, reply: string) => {
+// The follow-up buttons of this message too: the router's "Apply to the whole deck" label came in the deck's language
+// (Spanish for a Vietnamese user) and the code's ones in the app's. A tap sends the label, so the pending keeps the
+// translated labels it matches against.
+const finalize = async (instruction: string, reply: string, free: string[] = [], offer: NonNullable<typeof s.pending> | null = null) => {
   try {
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
+    const options = offer?.options || []
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, free, options, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
+    if (offer && s.pending === offer && Array.isArray(r.options) && r.options.length === options.length && r.options.every((o: unknown) => typeof o === 'string' && o.trim())) {
+      offer.options = r.options.map((o: string) => o.trim())
+      save()
+    }
     return r.reply || reply
   }
   catch {
