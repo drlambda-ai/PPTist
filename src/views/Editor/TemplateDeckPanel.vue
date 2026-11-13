@@ -1447,10 +1447,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // eval 2026-11-13). The yes button runs exactly this removal, page by page, without asking the router again
     const logos = logoSpots()
     if (!args.confirmed && (targets.length > 1 || args.user_asked_to_remove !== true)) {
-      const count = targets.reduce((k, id) => k + (args.images?.length || Math.max(1, pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length)), 0)
-      const q = t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: targets.length })
+      // only pages that have a picture to remove: a page with none would end the confirmed run there (eval 2026-11-14)
+      const withPictures = targets.filter(id => pictures(slides.value[pos(id)]).some(e => !logos.has(imgSpot(e))))
+      if (!withPictures.length) fail(t('There is no picture to remove.'))
+      const count = withPictures.reduce((k, id) => k + (args.images?.length || pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length), 0)
+      const q = t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: withPictures.length })
       s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')], offer: true,
-        repeat: [{ action: 'remove_images', args: { ...args, confirmed: true } }], pages: targets.map(id => pos(id) + 1) }
+        repeat: [{ action: 'remove_images', args: { ...args, confirmed: true } }], pages: withPictures.map(id => pos(id) + 1) }
       askedThisTurn = true
       save()
       return q
