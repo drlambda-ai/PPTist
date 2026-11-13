@@ -104,7 +104,8 @@ import MoveablePanel from '@/components/MoveablePanel.vue'
 interface Session {
   mode: '' | 'template' | 'native'
   template: { name: string, templateUrl: string, analysis: any, profile: any, chrome: any[] } | null
-  docs: { name: string, text: string }[]
+  docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
+  projectFiles?: boolean // the project's files were added once (a removed one stays removed)
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
   history: { role: 'user' | 'assistant', text: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
@@ -383,13 +384,15 @@ const readStream = async (res: any, onText: (t: string) => void) => {
 }
 
 const material = () => s.docs.map(d => `--- ${d.name} ---\n${d.text.slice(0, Math.floor(80000 / s.docs.length))}`).join('\n\n') // read_file reaches the rest
+// A file attached in the chat is the source; the project's own files (the deck was made from them) where they fit
+const materialBrief = () => `${s.docs.every(d => d.project) ? 'Material from the user\'s files, to use where it fits this request' : 'Use only this material'} (never invent numbers):\n${material()}`
 // What the generators write in: a new deck follows the request's language; pages added later follow the DECK's language
 // (a Chinese deck stays Chinese when someone types an English or Russian request), unless the request names a language.
 const requestLanguage = (text: string) => `the language of this request: "${text.slice(0, 120)}"`
 const deckLanguage = (text: string) => `the language of the existing deck (sample: "${deckLines().join(' ').slice(0, 160)}"), unless this request names another language: "${text.slice(0, 120)}"`
 
 const generateNative = async (text: string) => {
-  const brief = s.docs.length ? `${text}\n\nUse only this material (never invent numbers):\n${material()}` : text
+  const brief = s.docs.length ? `${text}\n\n${materialBrief()}` : text
   let outline = ''
   await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '' }), t => {
     outline += t 
@@ -697,7 +700,7 @@ function fail(msg: string): never {
 // A new content page from the same outline + JSONL generator as a prompt-built deck (layout matches item count).
 const generatePage = async (text: string, instruction: string, at: number, count = 1) => {
   const ask = `Exactly ${count} content slide(s) for an existing deck (no cover, no closing slide, no contents slide). Deck so far: ${deckLines().join(' | ').slice(0, 1500)}. The new slide(s): ${instruction}`
-  const brief = s.docs.length ? `${ask}\n\nUse only this material (never invent numbers):\n${material()}` : ask
+  const brief = s.docs.length ? `${ask}\n\n${materialBrief()}` : ask
   let outline = ''
   await readStream(await api.AIPPT_Outline({ content: brief, language: deckLanguage(text), model: '' }), t => {
     outline += t
@@ -2616,6 +2619,16 @@ onMounted(() => {
         // saved at once: the saved deck is what makes the project open in this editor next time. Never a failed
         // conversion: a saved blank page would be opened instead of the project's slides from then on
         save()
+      }
+      // the files the user already gave this project: "use my file" reads them, no re-attach (12 replies asked for
+      // the 📎 from users whose file the project already had, 2026-11-10 to 13). Not awaited: the deck opens first.
+      if (chatslide!.files && !s.projectFiles) {
+        chatslide!.files().then(files => {
+          const add = files.filter(f => f.text.trim() && !s.docs.some(d => d.name === f.name))
+          s.docs.push(...add.map(f => ({ name: f.name, text: f.text, project: true })))
+          s.projectFiles = true // kept with the next save
+          if (add.length) save()
+        }, () => undefined) // unreadable now: asked again next time the deck opens
       }
       // each page as it was when the deck was opened: "back to how it was at first" restores from this
       rememberOriginal()
