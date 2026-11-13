@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code), two rounds; Codex workspace out of credits
+Reviewed-At: 2026-11-13T16:31:41Z
+Fixed: whole-deck rewrite keeps redesign/hard and the paywall; online chart figures removed, charts ask for numbers, memo cleared; partial whole-deck edits kept; >12 pages confirm with count, cover/closing kept (fcbeb563); unasked picture removal confirmed with counts; forAnyPage after duplicate checks
+Declined-By: Claude Code
+Declined: the >12-page confirmation rarely fires because the router seldom sets the whole-deck flag on long decks - the fallback is a one-page edit plus an "apply to whole deck" button, which is safe
