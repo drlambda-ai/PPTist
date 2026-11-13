@@ -26,4 +26,4 @@ http.createServer(async (req, res0) => {
   const f = join(DIST, path === '/' ? 'index.html' : path)
   if (!existsSync(f)) { res0.writeHead(404); res0.end(); return }
   res0.writeHead(200, { 'Content-Type': types[extname(f)] || 'application/octet-stream' }); res0.end(readFileSync(f))
-}).listen(3001, process.env.E2E_HOST || '::1', () => console.log('ready')) // E2E_HOST=127.0.0.1 when another run holds [::1]:3001
+}).listen(Number(process.env.E2E_PORT) || 3001, process.env.E2E_HOST || '::1', () => console.log('ready')) // E2E_HOST=127.0.0.1 or E2E_PORT=3002 when another run holds [::1]:3001

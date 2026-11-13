@@ -10,7 +10,8 @@ window.__chatslide = {
   offerPaid: () => window.__ev.push('offerPaid'),
   outOfCredits: () => window.__ev.push('outOfCredits'),
   load: async () => { const f = q.get('deck'); return f ? await (await fetch('decks/' + f)).json() : null },
-  save: async (st) => { window.__ev.push('save:' + st.slides.length) }, sync: async () => ({}), pptx: async () => '',
+  // window.__saveDelay (ms) keeps a save in flight; window.__saveFail makes saves fail
+  save: async (st) => { const n = st.slides.length; window.__ev.push('save:' + n); await new Promise(r => setTimeout(r, window.__saveDelay || 0)); if (window.__saveFail) { window.__ev.push('save-failed:' + n); throw new Error('offline') } window.__ev.push('saved:' + n) }, sync: async () => ({}), pptx: async () => '',
   feedback: async (turn, good, comment, reply) => { window.__ev.push('feedback:' + JSON.stringify([turn, good, comment, reply.slice(0, 40)])); return true },
   share: async () => { window.__ev.push('share'); return { url: location.origin + '/shared/test', copied: false } },
   goto: async (s) => window.__ev.push('goto:' + s),

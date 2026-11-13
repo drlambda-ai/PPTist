@@ -13,7 +13,7 @@
         <div class="hint" v-if="!s.history.length">
           {{ t("Hi! Ask me to change anything in this deck: text, pictures, charts, pages or language. Attach your company's PowerPoint template or a PDF, Word, Excel or Markdown file with 📎 and I'll build from it.") }}
         </div>
-        <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}<div class="rate" v-if="m.turn && chatslide?.feedback && (m.rating !== undefined || i === s.history.length - 1)"><span :class="{ on: m.rating === 1 }" :aria-label="t('Good reply')" @click="rate(m, true)"><i-icon-park-outline:thumbs-up /></span><span :class="{ on: m.rating === 0 }" :aria-label="t('Bad reply')" @click="rate(m, false)"><i-icon-park-outline:thumbs-down /></span></div><input class="why" v-if="m.rating === 0 && m.comment === undefined" v-model="why" :placeholder="t('What went wrong? (optional)')" @keydown.enter="comment(m)" @blur="comment(m)" /></div>
+        <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}<div class="rate" v-if="m.turn && chatslide?.feedback && (m.rating !== undefined || i === s.history.length - 1)"><span :class="{ on: m.rating === 1 }" :aria-label="t('Good reply')" @click="rate(m, true)"><i-icon-park-outline:thumbs-up /></span><span :class="{ on: m.rating === 0 }" :aria-label="t('Bad reply')" @click="rate(m, false)"><i-icon-park-outline:thumbs-down /></span></div><input class="why" v-if="m.rating === 0 && m.comment === undefined" v-model="drafts[i]" :placeholder="t('What went wrong? (optional)')" @keydown.enter="e => { if (!e.isComposing && e.keyCode !== 229) comment(m, i) }" @blur="comment(m, i)" /></div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
         <div class="choices" v-if="!busy && s.pending?.options?.length">
           <span class="choice" v-for="o in s.pending.options" :key="o" @click="input = o; send()">{{ o }}</span>
@@ -156,6 +156,7 @@ let blobMode = ''
 const SLIDES_KEY = 'ai-deck-slides'
 let saveTimer = 0
 let savePending = false // a debounced save has not reached ChatSlide yet
+let saving: Promise<void> = Promise.resolve() // the save that left its timer (it reads the deck after picture uploads)
 let syncTimer = 0
 let saveFailed = false
 let loadingPage = '' // while a project's deck is being converted: never saved, or the blank page replaces the deck
@@ -166,15 +167,15 @@ const save = () => {
     clearTimeout(syncTimer)
     syncTimer = window.setTimeout(() => syncToChatSlide().catch(() => undefined), 15000)
     savePending = true
-    saveTimer = window.setTimeout(async () => {
+    saveTimer = window.setTimeout(() => {
       savePending = false
-      await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
-      chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
-        .then(() => saveFailed = false)
-        .catch(() => { // said once (saying saves again): the next edit retries
-          if (!saveFailed) say('assistant', t('Saving failed; your last edits may not be kept. Check your connection.'))
-          saveFailed = true
-        })
+      saving = (async () => {
+        await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
+        await chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
+      })().then(() => { saveFailed = false }, () => { // said once (saying saves again): the next edit retries
+        if (!saveFailed) say('assistant', t('Saving failed; your last edits may not be kept. Check your connection.'))
+        saveFailed = true
+      })
     }, 2000)
     return
   }
@@ -190,15 +191,20 @@ const save = () => {
     localStorage.removeItem(SLIDES_KEY)
   }
 }
-// The deck on screen saved now (a save still waiting on its timer goes at once): restoring a saved version first keeps
-// the current deck as the newest copy, so a restore never loses work (a user's 21 pages went to 17 with no way back,
-// 2026-11-12). Throws when the save fails.
+// The deck on screen saved before a restore replaces it, so it stays in the version history and a restore never loses
+// work (a user's 21 pages went to 17 with no way back, 2026-11-12). A save already under way finishes first (it reads
+// the deck before this returns, so never the restored one); then the deck is saved again unless that save holds it
+// (a save still waiting on its timer, or a failed one, goes now). Throws when it cannot be saved.
 const saveNow = async () => {
-  if (!chatslide || !savePending) return
+  if (!chatslide) return
+  const waiting = savePending
   clearTimeout(saveTimer)
   savePending = false
+  await saving
+  if (!waiting && !saveFailed) return
   await externalizeImages().catch(() => undefined)
-  await chatslide.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
+  await chatslide.save({ session: JSON.parse(JSON.stringify(s)), slides: JSON.parse(JSON.stringify(slides.value)), theme: theme.value, viewportRatio: viewportRatio.value })
+  saveFailed = false
 }
 // Inline pictures (data: URLs from AI images, attachments, pasted images) become their own files, uploaded once; the
 // slide keeps the link. A 10-page deck with a few AI pictures was 6 MB and took ~4 s to open; links keep it small.
@@ -747,17 +753,17 @@ const spans = (ps: number[]) => {
 }
 // Thumbs up/down on a chat reply: recorded at once, tied to its turn; a thumbs-down then takes an optional comment,
 // sent as its own record of the same turn (the classic chat records a 👎 and then its reason the same way)
-const why = ref('')
+const drafts = reactive<Record<number, string>>({}) // each reply's own comment box (by its place in the chat)
 const rate = (m: Session['history'][number], good: boolean) => {
   if (!m.turn || m.rating !== undefined) return
   m.rating = good ? 1 : 0
   save()
   chatslide?.feedback?.(m.turn, good, '', m.text).catch(() => undefined)
 }
-const comment = (m: Session['history'][number]) => {
+const comment = (m: Session['history'][number], i: number) => {
   if (m.comment !== undefined) return
-  m.comment = why.value.trim().slice(0, 300)
-  why.value = ''
+  m.comment = (drafts[i] || '').trim().slice(0, 300)
+  delete drafts[i]
   save()
   if (m.comment && m.turn) chatslide?.feedback?.(m.turn, false, m.comment, m.text).catch(() => undefined)
 }
@@ -768,11 +774,19 @@ const localDay = (at: string | number) => {
 const listVersions = async (text: string, day = ''): Promise<string> => {
   if (!chatslide?.versions) fail(t('Version history is not available here. Undo goes back through the changes of this session.'))
   busy.value = t('Looking up the saved versions…')
-  // one candidate per hour, newest first: the copies of the last minutes are steps Undo already covers, and listed
-  // first they would hide yesterday's version
+  // every copy of the last hour (the deck saved just before a restore must stay reachable, and the restored deck's own
+  // save lands in the same minute), then one per hour, newest first; at most 3 recent ones are offered, so the copies
+  // of the last minutes never hide yesterday's version
   const hours = new Set<string>()
-  const perHour = (await chatslide.versions()).filter(v => { const h = String(v.at).slice(0, 13); if (hours.has(h)) return false; hours.add(h); return true })
-  const all = (day ? perHour.filter(v => localDay(v.at) === day) : perHour).slice(0, 24)
+  const recent = (v: { at: string }) => Date.now() - +new Date(v.at) < 3600e3
+  const perHour = (await chatslide.versions()).filter(v => {
+    if (recent(v)) return true
+    const h = String(v.at).slice(0, 13)
+    if (hours.has(h)) return false
+    hours.add(h)
+    return true
+  })
+  const all = (day ? perHour.filter(v => localDay(v.at) === day) : perHour).slice(0, 40)
   if (day && !all.length) return t('There is no saved version from {p0}. Saved versions go back 7 days.', { p0: new Date(`${day}T12:00:00`).toLocaleDateString(lang, { month: 'short', day: 'numeric' }) })
   const sig = (d: any[]) => { // content, places, colours, backgrounds, notes
     // what a person would see as a difference; not the fields the editor fills in on load
@@ -784,10 +798,13 @@ const listVersions = async (text: string, day = ''): Promise<string> => {
   }
   const seen = new Set([sig(slides.value)]) // versions that differ from the deck on screen, one per distinct state
   const choices: Record<string, string> = {}
+  let recentShown = 0
   for (let k = 0; k < all.length && Object.keys(choices).length < 6; k += 8) {
     const batch = await Promise.all(all.slice(k, k + 8).map(v => fetch(v.url, { cache: 'no-store' }).then(r => r.json()).then(d => ({ v, d })).catch(() => null)))
     for (const x of batch) {
       if (!x?.d?.slides?.length || seen.has(sig(x.d.slides)) || Object.keys(choices).length >= 6) continue
+      if (recent(x.v) && recentShown >= 3) continue
+      if (recent(x.v)) recentShown++
       seen.add(sig(x.d.slides))
       const when = new Date(x.v.at).toLocaleString(lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       choices[`${when} · ${t('{p0} pages', { p0: x.d.slides.length })}`] = x.v.url
@@ -2185,13 +2202,15 @@ const deckTurn = async (text: string) => {
     if (!saved?.slides?.length) fail(t('That version could not be loaded.'))
     // the deck on screen is saved first, so it stays in the version history
     await saveNow().catch(() => fail(t('The deck you have now could not be saved, so nothing was restored. Check your connection and try again.')))
+    // one Undo step, theme and page size included: the deck on screen is recorded first, then the restored one
+    await snapshotStore.addSnapshot()
     if (saved.theme) slidesStore.setTheme(saved.theme)
     if (saved.viewportRatio) slidesStore.setViewportRatio(saved.viewportRatio)
     slidesStore.setSlides(saved.slides)
     slidesStore.updateSlideIndex(0)
     deckBeforeCreate = null // Undo steps back to the deck that was on screen, by the snapshot
     s.edited = true
-    addHistorySnapshot()
+    await snapshotStore.addSnapshot()
     const line = t('Went back to the version from {p0}: {p1} pages. Undo brings back the deck you had.', { p0: text.trim().split(' · ')[0], p1: saved.slides.length })
     say('assistant', line)
     recordTurn(text, line, ['load_version'], true)

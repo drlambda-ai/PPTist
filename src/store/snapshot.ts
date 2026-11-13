@@ -41,6 +41,8 @@ export const useSnapshotStore = defineStore('snapshot', {
       const newFirstSnapshot = {
         index: slidesStore.slideIndex,
         slides: JSON.parse(JSON.stringify(slidesStore.slides)),
+        theme: JSON.parse(JSON.stringify(slidesStore.theme)),
+        viewportRatio: slidesStore.viewportRatio,
       }
       await db.snapshots.add(newFirstSnapshot)
       this.setSnapshotCursor(0)
@@ -51,19 +53,19 @@ export const useSnapshotStore = defineStore('snapshot', {
     addSnapshot() {
       const slidesStore = useSlidesStore()
       // the deck as it is now, not when the queue gets to it: queued edits B and C were both recorded as C
-      const snapshot = { index: slidesStore.slideIndex, slides: JSON.parse(JSON.stringify(slidesStore.slides)) }
+      const snapshot = { index: slidesStore.slideIndex, slides: JSON.parse(JSON.stringify(slidesStore.slides)), theme: JSON.parse(JSON.stringify(slidesStore.theme)), viewportRatio: slidesStore.viewportRatio }
       adding = adding.then(() => this.addSnapshotNow(snapshot)).catch(() => undefined)
       return adding
     },
 
-    async addSnapshotNow(snapshot: { index: number, slides: any[] }) {
+    async addSnapshotNow(snapshot: { index: number, slides: any[], theme?: any, viewportRatio?: number }) {
       const slidesStore = useSlidesStore()
 
       // 获取当前indexeddb中全部快照的ID
       const allKeys = await db.snapshots.orderBy('id').keys()
       if (allKeys.length && this.snapshotCursor === allKeys.length - 1) {
         const latest = await db.snapshots.get(allKeys[this.snapshotCursor] as number)
-        if (latest && JSON.stringify(latest.slides) === JSON.stringify(snapshot.slides)) return
+        if (latest && JSON.stringify([latest.slides, latest.theme, latest.viewportRatio]) === JSON.stringify([snapshot.slides, snapshot.theme, snapshot.viewportRatio])) return
       }
   
       let needDeleteKeys: IndexableTypeArray = []
@@ -113,6 +115,9 @@ export const useSnapshotStore = defineStore('snapshot', {
   
       const slideIndex = index > slides.length - 1 ? slides.length - 1 : index
   
+      // the theme and page size of that state too (a restored saved version changes them along with the slides)
+      if (snapshot.theme && JSON.stringify(snapshot.theme) !== JSON.stringify(slidesStore.theme)) slidesStore.setTheme(snapshot.theme)
+      if (snapshot.viewportRatio && snapshot.viewportRatio !== slidesStore.viewportRatio) slidesStore.setViewportRatio(snapshot.viewportRatio)
       slidesStore.setSlides(slides)
       slidesStore.updateSlideIndex(slideIndex)
       this.setSnapshotCursor(snapshotCursor)
@@ -132,6 +137,9 @@ export const useSnapshotStore = defineStore('snapshot', {
   
       const slideIndex = index > slides.length - 1 ? slides.length - 1 : index
   
+      // the theme and page size of that state too (a restored saved version changes them along with the slides)
+      if (snapshot.theme && JSON.stringify(snapshot.theme) !== JSON.stringify(slidesStore.theme)) slidesStore.setTheme(snapshot.theme)
+      if (snapshot.viewportRatio && snapshot.viewportRatio !== slidesStore.viewportRatio) slidesStore.setViewportRatio(snapshot.viewportRatio)
       slidesStore.setSlides(slides)
       slidesStore.updateSlideIndex(slideIndex)
       this.setSnapshotCursor(snapshotCursor)

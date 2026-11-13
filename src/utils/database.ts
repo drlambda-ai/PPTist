@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { databaseId } from '@/store/main'
-import type { Slide } from '@/types/slides'
+import type { Slide, SlideTheme } from '@/types/slides'
 import { LOCALSTORAGE_KEY_DISCARDED_DB } from '@/configs/storage'
 
 export interface writingBoardImg {
@@ -12,6 +12,8 @@ export interface Snapshot {
   id: number
   index: number
   slides: Slide[]
+  theme?: SlideTheme // with the slides: Undo of a version restore brings the old theme and page size back too
+  viewportRatio?: number
 }
 
 const databaseNamePrefix = 'PPTist'
