@@ -116,7 +116,6 @@ interface Session {
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
   pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
-  removeAsked?: string // pages (ids, joined) the user was asked to confirm removing pictures from
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -1253,14 +1252,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return reply
     }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
-    // no figures in the deck or the files: look them up once rather than ask the user for numbers ("Añadir un
-    // gráfico de barras" got "can you give me the figures?", eval 2026-11-13)
-    const added = await addChartPage(text, args.instruction, args.chart_type || 'column', after).catch(async (e) => {
-      if (!(e instanceof StepFailed) || e instanceof NoChange) throw e
-      await runCall(text, 'web_search', { query: String(args.instruction).slice(0, 200) }, ids).catch(() => { throw e })
-      return addChartPage(text, `${args.instruction}\n\nFigures found online (use them; their source goes in "note"):\n${memo.slice(0, 6000)}`, args.chart_type || 'column', after)
-    })
-    return added || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
+    return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
   }
   if (action === 'add_table_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
@@ -1451,15 +1443,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     // several pages go only after a yes, like deleting pages: an attached picture plus "every slide" removed all 14
     // pictures of the deck (2026-11-12)
-    if (targets.length > 1 && removeConfirmable !== targets.join()) {
-      const q = t('Remove the pictures from {p0} pages? Nothing is removed yet.', { p0: targets.length })
-      s.removeAsked = targets.join()
-      s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')] }
+    // and on one page only when the router says the user's words asked for it ("..." after "like page 6" removed one,
+    // eval 2026-11-13). The yes button runs exactly this removal, page by page, without asking the router again
+    const logos = logoSpots()
+    if (!args.confirmed && (targets.length > 1 || args.user_asked_to_remove !== true)) {
+      const count = targets.reduce((k, id) => k + (args.images?.length || Math.max(1, pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length)), 0)
+      const q = t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: targets.length })
+      s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')], offer: true,
+        repeat: [{ action: 'remove_images', args: { ...args, confirmed: true } }], pages: targets.map(id => pos(id) + 1) }
       askedThisTurn = true
       save()
       return q
     }
-    const logos = logoSpots()
     let n = 0
     for (const id of targets) {
       // the numbering the router saw (pageText): 0 = the full-slide background picture, 1.. = the content pictures; with
@@ -1762,15 +1757,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
+    const todo: string[] = args.pages?.length ? nums(args.pages) : all // a whole-presentation page edit leaves out the cover and the closing page
     const viewing = slides.value[slideIndex.value]?.id // fitting shows each page; come back to this one
-    let done = 0, next = 0, stop = false
+    let done = 0, next = 0, stop = false, landed = 0
     const same: number[] = [], failed: number[] = []
     let noChangeWhy = ''
     const worker = async () => {
-      while (next < all.length && !stop) {
-        const id = all[next++]
+      while (next < todo.length && !stop) {
+        const id = todo[next++]
         try {
           await editSlide(pos(id), args.instruction)
+          landed++
         }
         catch (e) { // one page never stops the others; an unexpected error stops them all
           if (e instanceof NoChange) {
@@ -1783,13 +1780,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             throw e
           }
         }
-        busy.value = t('Working on the pages: {p0} of {p1}…', { p0: ++done, p1: all.length })
+        busy.value = t('Working on the pages: {p0} of {p1}…', { p0: ++done, p1: todo.length })
       }
     }
     // wait for every worker (an edit in flight still lands), then report the first unexpected error
     const settled = await Promise.allSettled(Array.from({ length: Math.min(5, all.length) }, worker))
     const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
-    if (err) throw err.reason
+    if (err) {
+      // the pages already rewritten are kept (the turn's crash handling keeps lastGoodSlides): a crash on page 9 of 12
+      // never takes back the eight done
+      if (landed) lastGoodSlides = JSON.parse(JSON.stringify(slides.value))
+      throw err.reason
+    }
     // the request applies to every page, and some came back unchanged: one more try for those, naming that
     if (args.every_page) {
       const again = same.splice(0).map(p => all[p - 1])
@@ -1808,7 +1810,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (viewing && pos(viewing) >= 0) slidesStore.updateSlideIndex(pos(viewing))
     const earlier = same.filter(p => editedThisTurn.has(all[p - 1])) // done by an earlier step of this turn
     const untouched = same.filter(p => !editedThisTurn.has(all[p - 1]))
-    const changedNow = all.length - same.length - failed.length
+    const changedNow = todo.length - same.length - failed.length
     if (!changedNow && earlier.length && !untouched.length && !failed.length) return t('No further change: the earlier step already covered these pages.')
     const ok = changedNow + earlier.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(', ')
@@ -2196,7 +2198,6 @@ let memo = ''
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
-let removeConfirmable = '' // the pages the previous message asked to remove pictures from, answered yes
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
 let deleteAnswered: string[] = [] // the same, answered in words: deletable when the router asks for exactly them again
 let askedThisTurn = false // a question for the user ends the message
@@ -2250,8 +2251,6 @@ const deckTurn = async (text: string) => {
   deleteConfirmable = s.deleteAsked && text.trim() === t('Yes, delete them') ? s.deleteAsked : []
   deleteAnswered = s.deleteAsked && text.trim() !== t('No, keep them') ? s.deleteAsked : []
   s.deleteAsked = undefined
-  removeConfirmable = s.removeAsked && text.trim() === t('Yes, remove them') ? s.removeAsked : '' // the button only: any other reply let the router remove them unasked
-  s.removeAsked = undefined
   askedThisTurn = false
   userText = text
   editedThisTurn.clear()
@@ -2304,7 +2303,7 @@ const deckTurn = async (text: string) => {
   // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
   // "Do the same on the other pages": the editor repeats the steps that ran on the first page, page by page, without
   // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
-  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.some(o => o.trim() === text.trim())
+  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
     ? [...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.map(c => ({ action: c.action,
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
@@ -2362,11 +2361,12 @@ const deckTurn = async (text: string) => {
     // is re-planned against the updated deck in the next round
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
     // "make the presentation more detailed" edited pages 2 and 1 and offered the rest as a tap (3 of 3 eval runs,
-    // 2026-11-13): an edit the router itself says is for the whole presentation runs on every page, once
+    // 2026-11-13): an edit the router itself says is for the whole presentation runs on every page, once. Not a
+    // redesign or a hard edit: those keep edit_page, its paywall and the advanced model (with the offer for the rest)
     for (const c of work) {
-      if (c.action === 'edit_page' && c.args?.user_said_whole_deck === true && c.args?.page_named !== true && !c.args?.source_pages?.length) {
-        const instruction = await forAnyPage(String(c.args.instruction || ''))
-        Object.assign(c, { action: 'edit_all_pages', args: { instruction, every_page: true, language: c.args.language || '' } })
+      if (c.action === 'edit_page' && c.args?.user_said_whole_deck === true && c.args?.page_named !== true && !c.args?.source_pages?.length
+        && !c.args?.redesign && !c.args?.hard) {
+        Object.assign(c, { action: 'edit_all_pages', args: { instruction: String(c.args.instruction || ''), every_page: false, language: c.args.language || '', from_page_edit: c.args } })
       }
     }
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
@@ -2392,8 +2392,6 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
-      // pictures go only when the user's words ask for it: "..." after "like page 6" deleted one (eval, 2026-11-13)
-      || work.find((c: any) => c.action === 'remove_images' && c.args?.user_asked_to_remove === false)
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
@@ -2440,7 +2438,6 @@ const deckTurn = async (text: string) => {
     }
     if (extra) {
       const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
-        : extra.action === 'remove_images' ? 'the user\'s latest message does not ask to remove pictures. Do not remove any: do what it asks, or ask_user what they want'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
           : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
             ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
@@ -2496,6 +2493,22 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
       }
+      if (c.action === 'edit_all_pages' && c.args?.from_page_edit) {
+        const n = slides.value.length
+        const one = c.args.from_page_edit
+        if (n > 12) { // a long deck: the page count first, one tap runs it page by page (each page kept as it lands)
+          const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
+          s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true,
+            repeat: [{ action: 'edit_page', args: { ...one, whole_deck_option: '', user_said_whole_deck: false } }], pages: slides.value.map((_, k) => k + 1), from: Number(one.index) || 1 }
+          askedThisTurn = true
+          save()
+          replies.push(q)
+          terse.push(q)
+          break
+        }
+        c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
+          pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
+      }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
       try {
@@ -2503,6 +2516,7 @@ const deckTurn = async (text: string) => {
       }
       catch (e) {
         if (!(e instanceof StepFailed)) throw e
+        memo = '' // what a failed step read never rides along with a later step
         replies.push(e.message)
         terse.push(e.message)
         if (repeating && e instanceof NoChange) continue // one page already as asked: the other pages still get it

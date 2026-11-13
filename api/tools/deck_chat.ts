@@ -134,7 +134,7 @@ const TOOLS = [
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
     no_pictures_at_all: { type: 'boolean', description: 'true when the user wants no pictures left at all, the full-slide background picture included' },
-    user_asked_to_remove: { type: 'boolean', description: 'true ONLY if the user\'s latest message (or the question it answers) asks to remove, delete or take away pictures; false for anything else ("make it like page 6", "...", a complaint)' },
+    user_asked_to_remove: { type: 'boolean', description: 'true ONLY if the user\'s latest message (or the question it answers) asks to remove, delete or take away pictures; false for anything else ("make it like page 6", "...", a complaint): the editor then asks the user first' },
   }, ['pages', 'images', 'no_pictures_at_all', 'user_asked_to_remove']),
   fn('move_element_to_page', 'Move or copy an image or text box from one page to another page (same position).', {
     from: page, to: page,
@@ -230,7 +230,7 @@ const TOOLS = [
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
-  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it. Never to ask what a new picture should show (change_image picks one for the page\'s topic) or what a requested chart should show (add_chart_page on the deck\'s topic).', {
+  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it. Never to ask what a new picture should show (change_image picks one for the page\'s topic).', {
     user_language: { type: 'string', description: 'The language of the user\'s latest message' },
     question: { type: 'string', description: 'The question, in that language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
@@ -393,8 +393,8 @@ Rules:
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
-   "Add a chart (slide)" with no data or topic -> add_chart_page on the deck's main topic, with the figures the deck has
-   (web_search first when it has none); never ask what it should show.
+   "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck. A chart's numbers
+   come only from the user, the deck or a file: never invented, never from the web unless the user asks to look them up.
    "Change the picture" (one) on a page with two or more pictures and nothing to tell them apart -> ask_user which.
    "The pictures" (plural, any language) means all of them: change_image with all_pictures true, never a question.
    create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction
