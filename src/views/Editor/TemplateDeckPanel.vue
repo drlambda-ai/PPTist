@@ -1102,8 +1102,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     slidesStore.updateSlideIndex(after)
     return t('Added a table page "{p0}".', { p0: titleAt(after) })
   }
-  // with a selection sent, the router's page is the one it was on (the user may have moved on since)
-  if (args.page_named === false && !turnSelected && !turnKeepPages && typeof args.index === 'number' && ['use_file_images', 'add_image', 'change_image'].includes(action)) args.index = slideIndex.value + 1 // no page named: the one the user is looking at
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
     if (!file) {
@@ -1143,7 +1141,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (t('Placed {p0} picture(s) from {p1} on page {p2}.', { p0: placed, p1: file.name, p2: pos(id) + 1 })) + (placed < chosen.length ? (t(' (no room for the other {p0})', { p0: chosen.length - placed })) : '')
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
-    const sl = slides.value[pos(idOf(args.page_named === false ? slideIndex.value + 1 : args.index))]
+    const sl = slides.value[pos(idOf(args.index))]
     if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: false }, ids)
   }
   // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
@@ -1185,7 +1183,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const srcs: string[] = []
     for (const x of r.images as any[]) if (await loads(x.src)) srcs.push(x.src)
     if (!srcs.length) fail(t('I could not get pictures from that website ({p0}).', { p0: r.page || '' }))
-    const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
+    const pg = Number(args.index)
     const pictures = () => slides.value.reduce((n, sl) => n + sl.elements.filter(e => e.type === 'image').length, 0)
     const before = pictures()
     directAllowed = true
@@ -1195,7 +1193,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     const items = args.items.filter(Boolean).slice(0, 4)
-    const pg = args.page_named === false && !turnSelected && !turnKeepPages ? slideIndex.value + 1 : Number(args.index)
+    const pg = Number(args.index)
     const at = pos(idOf(pg))
     const setKey = picKey(ids[at], items.join('|'))
     if (picturedThisTurn.has(setKey)) fail(t('Those pictures were already added in this message.'))
@@ -1445,17 +1443,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'edit_page') {
     // text from other pages ("slide 7: the text of slide 10, points 1-3"): the edit sees only its own page, so it
     // answered "send me slide 10's text" (2026-11-11)
-    const editing = args.page_named === false && !turnKeepPages && !turnSelected ? slideIndex.value + 1 : Number(args.index)
+    const editing = Number(args.index)
     const sources = nums((args.source_pages || []).map(Number).filter((n: number) => n >= 1 && n <= slides.value.length && n !== editing))
     if (sources.length) args = { ...args, whole_deck_option: '', instruction: `${args.instruction}\n\n${sources.map((id: string) => `Text of page ${pos(id) + 1} (the source to use):\n${readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')}`).join('\n\n').slice(0, 4000)}` }
     // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
     // after "slide 5: <text>" (2026-11-11)
     if (args.new_content && !args.page_named) return runCall(text, 'add_page', { instruction: args.instruction, count: 1, after: slideIndex.value + 1, layout_from: slideIndex.value + 1, after_named: false, message_new_pages: 1, topics: [], hard: args.hard }, ids)
-    // no page named: the page the user is looking at, like the classic assistant
-    // (the first page edit of a message only: the router walking pages 1-4 marked 2-4 unnamed, and all four landed on page 1)
-    // (never when answering a question that listed pages: "redo these slides, keep the first" sent page 2's edit to page 1)
-    const target = args.page_named === false && !turnKeepPages && !turnSelected && !editedThisTurn.size && !deleteAnswered.length && args.index !== slideIndex.value + 1 ? slideIndex.value + 1 : args.index
-    const i = pos(idOf(target))
+    // the router's page, always: replacing it with the page on screen when page_named was false sent "change slide 2"
+    // to page 8 (2026-11-13), and earlier pages 1-4 all onto page 1
+    const i = pos(idOf(args.index))
     const before = slides.value[i].elements.map(elText).filter(Boolean)
     const was = JSON.parse(JSON.stringify(slides.value[i].elements)) as PPTElement[]
     // the advanced model: a hard request (the router says), or an edit the standard model could not do. It costs
@@ -2018,7 +2014,6 @@ let directAllowed = false // true only while add_site_pictures places the pictur
 const usedBackgrounds = new Set<string>() // background photos already tried in this session: "again" never brings one back
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
-let turnKeepPages = false // answering an offer: the router's page numbers stand
 let advancedOffered = false // the paid-model offer, shown once per session
 let openedSlides: Record<string, any> = {} // slide id -> the page as it was when this project was first opened here
 const helperPages = new Set<string>() // pages the editor added for pictures: not "new pages the user asked for"
@@ -2071,7 +2066,6 @@ const deckTurn = async (text: string) => {
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
-  turnKeepPages = !!pendingAtStart?.offer // the router names the pages for an accepted offer: keep its numbers
   const done: string[] = []
   const replies: string[] = []
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
@@ -2187,7 +2181,7 @@ const deckTurn = async (text: string) => {
     if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)).length >= 2)) break
     // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
-    const landsOn = (c: any) => ids[(c.args?.page_named === false ? slideIndex.value + 1 : Number(c.args?.index)) - 1]
+    const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 4).join('|') : c.args?.query)))
