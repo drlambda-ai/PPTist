@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: /code-review medium (Claude Code; Codex workspace out of credits)
+Reviewed-At: 2026-11-13T07:16:38Z
+Fixed: content-based guard blocked templates on the standalone demo deck and after Start a new deck, and missed background-only decks; guard now keys on s.edited (verified both paths in the local editor)
+Declined-By: Claude Code
+Declined: several .pptx dropped at once on an empty editor each learn - pre-existing, needs a multi-template drop; cost if wrong is 10 credits per extra file
+Declined: attach aria-label wording and template-chip removal gating - cosmetic, no data or money path
