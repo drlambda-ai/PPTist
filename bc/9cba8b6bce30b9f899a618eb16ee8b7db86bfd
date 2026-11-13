@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: Claude Code
+Reviewed-At: 2026-11-13T17:01:07Z
+Note: pure revert of c584bf0d; tree equals reviewed fcbeb563
