@@ -24,7 +24,7 @@ const SOURCE = 'attached: the user\'s own picture listed under "Attached picture
 const TOOLS = [
   fn('create_deck', 'Make a NEW deck from scratch, replacing the current one. ONLY when the user explicitly asks to make/create/generate a presentation, deck, PPT or slides about a topic ("做一份…汇报", "生成一份…PPT/答辩PPT/课件", "根据我的论文/报告生成…", "make a presentation about X", "create a deck from my thesis"). Any change to colours, backgrounds, text, pages, images is an edit of the CURRENT deck, never this.', {
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
-    topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message, or of the request it answers when that request asked for slides ("make slides from my paper" -> "attach it" -> "here it is"); "" otherwise' },
+    topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message, or of the request it answers when that request asked for slides ("make slides from my paper" -> "attach it" -> "here it is"); "" otherwise. An audience, purpose or style is not a topic ("a presentation for a scientific congress with experts", "for kids", "more professional"): "" (it is edit_all_pages on this deck, which keeps the user\'s own content)' },
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
   }, ['instruction', 'topic_in_this_message', 'from_users_file']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
@@ -81,22 +81,23 @@ const TOOLS = [
     redesign: { type: 'boolean', description: 'A named arrangement ("horizontal", "side by side", "two columns", "text on the left") is a concrete change: false. true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },
     new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
     whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides or the presentation as a whole ("презентацію", "the presentation": then use edit_all_pages, not this), in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
+    user_said_whole_deck: { type: 'boolean', description: 'true when the user\'s words make the whole presentation the target ("the presentation", "презентацію", "la presentación", "bài thuyết trình", "all slides", "every page"), in this message or the request it answers: the editor then does it on every page. false when they name a page or say nothing about where' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
-  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'source_pages', 'language']),
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
     same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
   }, ['pages', 'font', 'same_as_page', 'scope']),
-  fn('set_font_size', 'Make text bigger or smaller, on some or all pages (done directly, exact): "title bigger", "more", "font size like slide 1".', {
+  fn('set_font_size', 'Make text bigger or smaller, on some or all pages (done directly, exact): "title bigger", "more", "font size like slide 1". Only the SIZE of letters: "more text", "add text", "більше тексту", "más texto" ask for more WORDS (edit_page, or edit_all_pages for the whole deck), never this.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
     scale: { type: 'number', description: 'Factor: 1.3 = bigger / "more" / "a bit more" (never under 1.2: a smaller step is not seen), 1.6 = much bigger / "even bigger" / insisting ("to raaaa", "!!!", the same ask again) / "so it reads from the back", 0.8 = smaller' },
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
   }, ['pages', 'scope', 'scale', 'same_as_page']),
-  fn('edit_all_pages', 'Apply the same element-level change to every page (font, text colour, tone, translate, shorten...).', {
+  fn('edit_all_pages', 'Apply the same change to every page: more detail / more text, shorter, simpler, a tone, an audience or purpose ("for a scientific congress", "for kids"), translate, text colour... Each page keeps its own topic and content.', {
     instruction: { type: 'string', description: 'The change for every page. Written in the user\'s language, never another (new slide text follows it).' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
@@ -133,7 +134,8 @@ const TOOLS = [
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
     no_pictures_at_all: { type: 'boolean', description: 'true when the user wants no pictures left at all, the full-slide background picture included' },
-  }, ['pages', 'images', 'no_pictures_at_all']),
+    user_asked_to_remove: { type: 'boolean', description: 'true ONLY if the user\'s latest message (or the question it answers) asks to remove, delete or take away pictures; false for anything else ("make it like page 6", "...", a complaint)' },
+  }, ['pages', 'images', 'no_pictures_at_all', 'user_asked_to_remove']),
   fn('move_element_to_page', 'Move or copy an image or text box from one page to another page (same position).', {
     from: page, to: page,
     element: { type: 'string', description: 'Which element, as the user described it (e.g. "the photo", "image 2", "the title")' },
@@ -228,7 +230,7 @@ const TOOLS = [
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
-  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it.', {
+  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it. Never to ask what a new picture should show (change_image picks one for the page\'s topic) or what a requested chart should show (add_chart_page on the deck\'s topic).', {
     user_language: { type: 'string', description: 'The language of the user\'s latest message' },
     question: { type: 'string', description: 'The question, in that language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
@@ -338,6 +340,8 @@ Rules:
    Sharing, a share link -> share_deck. A refund or money back -> open_refund. A human, support, cancelling, payments, plans/pricing, account,
    app settings -> talk_to_human, NEVER answer_question: policy must come from ChatSlide, not from you.
    When a message ANSWERS the question under "You asked", continue the original request with that answer; never re-ask.
+   A message with no words ("...", "…", one emoji) is no request: ask_user what they want, with 2-3 options from the
+   conversation; never a change on a guess, never redo an earlier request.
    Earlier messages are context only: act on the CURRENT request, never redo a request from an earlier message.
    The deck listed in the context IS the current deck after every step: count it, trust it, never say you cannot see it.
    Page numbers under "Done so far" referred to the deck as it was at that step; a page that was deleted is gone, it was
@@ -389,7 +393,8 @@ Rules:
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
-   "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck.
+   "Add a chart (slide)" with no data or topic -> add_chart_page on the deck's main topic, with the figures the deck has
+   (web_search first when it has none); never ask what it should show.
    "Change the picture" (one) on a page with two or more pictures and nothing to tell them apart -> ask_user which.
    "The pictures" (plural, any language) means all of them: change_image with all_pictures true, never a question.
    create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction
