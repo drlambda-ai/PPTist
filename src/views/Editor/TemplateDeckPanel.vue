@@ -477,9 +477,15 @@ const pictures = (sl: Slide) => {
 const pictureNo = (sl: Slide, image: number | undefined) => (image === 0 && !pictures(sl).some(e => !isBackdrop(e)) && firstBackdrop(sl) ? 1 : (image ?? 1))
 // A page that is one flat picture: ChatSlide's pages rendered to one image (Blank_layout background_url, which the
 // editor's first open imports as the slide's background picture) with nothing on it. Its text and pictures are inside
-// that image, so none can be changed on its own, and replacing or repainting the background wipes the page. A photo
-// slide made in the editor is a picture element, and stays a normal picture.
-const isFlat = (sl: Slide) => sl.background?.type === 'image' && !sl.elements.some((e: any) => e.type !== 'shape' || elText(e))
+// that image, so none can be changed on its own, and replacing or repainting the background wipes the page. Only a
+// background that came with the import counts: a photo background set in the editor (set_background replaces the whole
+// background, marker included) stays an ordinary background, and a photo slide made in the editor is a picture element.
+const isFlat = (sl: Slide) => sl.background?.type === 'image' && !!sl.background.image?.imported && !sl.elements.some((e: any) => e.type !== 'shape' || elText(e))
+// A page whose one picture is a full-slide picture element and nothing else (a pasted screenshot: its text is inside it)
+const onlyFullPicture = (sl: Slide) => {
+  const imgs = sl.elements.filter((e: any) => e.type === 'image')
+  return imgs.length === 1 && isBackdrop(imgs[0]) && !sl.elements.some((e: any) => e.type === 'chart' || e.type === 'table' || elText(e))
+}
 
 const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>()) => {
   if (isFlat(sl)) return '[image 1: one picture covering the whole page; the page has no separate text]'
@@ -1445,7 +1451,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // "no pictures at all" includes the full-slide one ("no image at all in the last slide" answered "there is no
       // picture to remove", prod 2026-11-13) when it is the only picture there; with content pictures it stays ("remove
       // the last photo" came as no_pictures_at_all and took page 10's background with it, replay 2026-11-13)
-      const all = content.length ? content : sl.elements.filter((e: any) => e.type === 'image' && !logos.has(imgSpot(e)))
+      // never the one full-slide picture of a page that is nothing else (a pasted screenshot): that would blank the page
+      const all = content.length ? content : onlyFullPicture(sl) ? [] : sl.elements.filter((e: any) => e.type === 'image' && !logos.has(imgSpot(e)))
       const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? all : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
@@ -1463,6 +1470,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (photo.length) { touched(photo); return t('Removed {p0} picture(s).', { p0: photo.length }) }
       if (flat.length) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: flat.map(id => pos(id) + 1).join(', ') }))
     }
+    const pasted = targets.filter(id => onlyFullPicture(slides.value[pos(id)]))
+    if (!n && pasted.length) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: pasted.map(id => pos(id) + 1).join(', ') }))
     if (!n) fail(t('There is no picture to remove.'))
     return t('Removed {p0} picture(s).', { p0: n })
   }

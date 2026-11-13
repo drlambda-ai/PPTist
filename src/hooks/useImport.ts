@@ -711,6 +711,7 @@ export default () => {
             image: {
               src: value.base64,
               size: 'cover',
+              imported: true,
             },
           }
         }

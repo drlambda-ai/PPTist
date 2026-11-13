@@ -731,6 +731,8 @@ export type SlideBackgroundImageSize = 'cover' | 'contain' | 'repeat'
 export interface SlideBackgroundImage {
   src: string
   size: SlideBackgroundImageSize,
+  // came with an imported .pptx (a page rendered to one picture comes in this way), not set in the editor
+  imported?: boolean
 }
 
 /**
