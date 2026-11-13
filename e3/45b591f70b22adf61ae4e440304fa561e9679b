@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code) on net diff 953763e7..e345b591, no findings
+Reviewed-At: 2026-11-13T18:29:10Z
+Verified: ed-pictures-every-slide 6/6, full editor-cases 67/67, no case looping
+Also-In-e345b591: the pptist-c7 session's Session.pics change (picture search words listed as 'shows "..."', set in add_image and changeImage); read, no defects; its eval ed-named-picture-other-page 3/3
+Known-Flaky: ed-logo-move-no-logo reply sometimes omits 'attach' (about 2 of 8 runs)
