@@ -2757,6 +2757,7 @@ onMounted(() => {
         chatslide!.files().then(files => {
           const add = files.filter(f => f.text.trim() && !s.docs.some(d => d.name === f.name))
           s.docs.push(...add.map(f => ({ name: f.name, text: f.text, project: true })))
+          if (!files.length) return // none yet (still being read, or not this user's to read): asked again next open
           s.projectFiles = true // kept with the next save
           if (add.length) save()
         }, () => undefined) // unreadable now: asked again next time the deck opens
