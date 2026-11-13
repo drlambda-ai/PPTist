@@ -1,3 +1,4 @@
+import { jsonrepair } from 'jsonrepair'
 import { FALLBACK_MODEL, addUsage, chat, getKey, metered, readBody, vendorDown } from '../_llm.js'
 
 // Deck-level chat router, modelled on ChatSlide's assistant menu (chatslide-backend util/assistant/slide_tools.json)
@@ -596,37 +597,61 @@ async function handler(req: any, res: any) {
       // lines follow the app language, but these come in whatever language the router chose. An English user got a
       // Chinese line after "Updated page 1." (2026-11-10), a Vietnamese user a Spanish "Aplicar a toda la presentación"
       const strs = (x: unknown) => (Array.isArray(x) ? x : []).map(v => String(v)).filter(v => v.trim()).slice(0, 8)
-      const free = strs(body.free).map(v => v.slice(0, 1500)), buttons = strs(body.options).map(v => v.slice(0, 120))
+      const original = String(body.localize).slice(0, 4000)
+      // each router line is already inside the reply: it goes out once, as a marker in the reply plus its own entry,
+      // never twice (the doubled text truncated the JSON and the whole reply fell back untranslated, review 2026-11-13)
+      const free = strs(body.free).map(v => v.trim()).filter(v => original.includes(v)), buttons = strs(body.options).map(v => v.slice(0, 120))
+      const mark = (i: number) => `⟦${i + 1}⟧`
+      const marked = free.reduce((r, f, i) => r.split(f).join(mark(i)), original)
       const raw = await chat([
         // the language is named first: asked to translate in one step, gpt-6-luna answered an English message in Spanish
         // "на англіській" (in English) earlier made a Ukrainian user's next reply English (2026-11-12): the language the
         // user writes in, never one their messages ask the slides to be in
-        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). It is the language the words are WRITTEN in, never a language they ask for: "на англіській" or "en español" asks the slides to change language and is written in Ukrainian or Spanish. Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. A reply is in it only when EVERY sentence is: translate each sentence that is not, and keep the others word for word ("Page 3 was not changed. Trang này chỉ có một hình ảnh." for a Vietnamese user -> both sentences in Vietnamese). Do the same for each of the "Lines" and each of the "Buttons" (short button labels) when given, one entry per item, in order. Return JSON {"user_language": "<language of the user\'s message>", "code": "<its ISO 639-1 code, lowercase; zh-CN or zh-TW for Chinese>", "reply": "<the reply in that language>", "lines": ["<each line in that language>"], "buttons": ["<each button label in that language>"]}.' },
+        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). It is the language the words are WRITTEN in, never a language they ask for: "на англіській" or "en español" asks the slides to change language and is written in Ukrainian or Spanish. Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. A reply is in it only when EVERY sentence is: translate each sentence that is not, and keep the others word for word ("Page 3 was not changed. Trang này chỉ có một hình ảnh." for a Vietnamese user -> both sentences in Vietnamese). Do the same for each of the "Lines" and each of the "Buttons" (short button labels) when given, one entry per item, in order. Markers ⟦1⟧, ⟦2⟧... in the reply stand for line 1, 2...: keep each marker exactly where it is in the reply, and never put a marker in "lines". Return JSON, keys in this order: {"user_language": "<language of the user\'s message>", "code": "<its ISO 639-1 code, lowercase; zh-CN or zh-TW for Chinese>", "buttons": ["<each button label in that language>"], "lines": ["<each line in that language>"], "reply": "<the reply in that language, markers kept>"}.' },
         // a short or accent-less message ("VIDEO DC HCX", "DC R") reads as English: the user's earlier messages say
         // which language they write in (a Vietnamese user got four English replies, 2026-11-11)
-        { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\n${Array.isArray(body.earlier) && body.earlier.length ? `Only if that message alone cannot tell, the language their earlier messages are written in: ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}Assistant reply:\n${String(body.localize).slice(0, 4000)}${free.length ? `\n\nLines: ${JSON.stringify(free)}` : ''}${buttons.length ? `\n\nButtons: ${JSON.stringify(buttons)}` : ''}` },
-      ], { model: process.env.FINALIZE_MODEL || 'gpt-6-luna', maxTokens: 1500, jsonMode: true }) // follows the "be conservative" rule better than Haiku
-      let reply = '', code = '', lines: string[] = [], labels: string[] = []
+        { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\n${Array.isArray(body.earlier) && body.earlier.length ? `Only if that message alone cannot tell, the language their earlier messages are written in: ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}Assistant reply:\n${marked}${free.length ? `\n\nLines: ${JSON.stringify(free)}` : ''}${buttons.length ? `\n\nButtons: ${JSON.stringify(buttons)}` : ''}` },
+      ], {
+        model: process.env.FINALIZE_MODEL || 'gpt-6-luna', jsonMode: true, // follows the "be conservative" rule better than Haiku
+        // sized to what comes back: a translation is about as long as its source (a token per character at worst)
+        maxTokens: Math.min(16000, 1500 + marked.length + free.join('').length + buttons.join('').length),
+      }).catch(() => '')
+      // a cut-off answer keeps what came complete: the keys come in order, so every key before the last one present
+      // is whole. Only a reply that parsed whole is used as the reply
+      let j: any = null, whole = false
       try {
-        const j = JSON.parse(raw)
-        reply = String(j.reply || ''); code = String(j.code || '').toLowerCase()
-        if (Array.isArray(j.lines) && j.lines.length === free.length) lines = j.lines.map((v: unknown) => String(v || ''))
-        if (Array.isArray(j.buttons) && j.buttons.length === buttons.length) labels = j.buttons.map((v: unknown) => String(v || '').trim().slice(0, 120))
+        j = JSON.parse(raw); whole = true
       }
-      catch { reply = '' }
+      catch {
+        try {
+          j = JSON.parse(jsonrepair(raw))
+        }
+        catch {
+          j = null
+        }
+      }
+      const code = String(j?.code || '').toLowerCase()
+      const has = (k: string) => !!j && k in j
+      const labels: string[] = (whole || has('lines')) && Array.isArray(j?.buttons) && j.buttons.length === buttons.length ? j.buttons.map((v: unknown) => String(v || '').trim().slice(0, 120)) : []
+      const lines: string[] = (whole || has('reply')) && Array.isArray(j?.lines) && j.lines.length === free.length ? j.lines.map((v: unknown) => String(v || '').replace(/⟦\d+⟧/g, '').trim()) : []
+      const line = (i: number) => lines[i] || free[i]
+      // the translated reply with each marker back as its line; unusable when cut off or a marker went missing
+      let reply = whole ? String(j?.reply || '') : ''
+      if (reply && free.every((_, i) => reply.includes(mark(i)))) {
+        free.forEach((_, i) => {
+          reply = reply.split(mark(i)).join(line(i))
+        })
+      }
+      else reply = ''
       const options = buttons.length ? (labels.length && labels.every(Boolean) ? labels : buttons) : undefined
       // the user writes in the editor's own language: the reply is already in it, kept as written. Asked to
       // "copy it unchanged", the model still turned a Vietnamese reply into English about 1 time in 30 (2026-11-11)
       const ui = String(body.ui_language || '').toLowerCase()
       const sameAsUi = !!ui && !!code && (ui.startsWith('zh') ? code === ui : code.split('-')[0] === ui.split('-')[0])
-      // kept as written, except the router's own lines: each is swapped for its translation, by its exact text
-      let kept = String(body.localize)
-      if (sameAsUi) {
-        free.forEach((f, i) => {
-          if (lines[i]?.trim() && kept.includes(f)) kept = kept.split(f).join(lines[i].trim())
-        })
-      }
-      res.status(200).json({ reply: sameAsUi ? kept : reply.trim() || body.localize, options }); return
+      // kept as written (also when the translation came back unusable), except the router's own lines: each is
+      // swapped for its translation, by its exact text
+      const kept = free.reduce((r, f, i) => r.split(f).join(line(i)), String(body.localize))
+      res.status(200).json({ reply: !sameAsUi && reply.trim() ? reply.trim() : kept, options }); return
     }
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
