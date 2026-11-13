@@ -1310,7 +1310,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Added {p0} picture(s) from {p1}.', { p0: pictures() - before, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') })
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
-    const items = args.items.filter(Boolean).slice(0, 4)
+    const items = args.items.filter(Boolean).slice(0, 6) // "6 pictures" got 4 (prod 2026-11-12, b1b)
     const pg = Number(args.index)
     const at = pos(idOf(pg))
     const setKey = picKey(ids[at], items.join('|'))
@@ -1318,7 +1318,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const { width: W, height: H } = slideSize()
     const row = { left: 0.05 * W, top: 0.6 * H, width: 0.9 * W, height: 0.3 * H }
     const fb = freeBox(slides.value[at], row)
-    const roomy = !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8
+    const roomy = items.length <= 4 && !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8 // five or six: a grid page
     // a full page: the pictures go on a new page right after it, in a grid, under that page's title (on a full slide
     // four pictures landed in the corners and off the edge, 2026-11-11)
     let pageId = ''
@@ -1333,7 +1333,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       pageId = page.id
       helperPages.add(page.id) // not a page the user asked for: it must not satisfy "new content goes on the new page"
     }
-    const cols = roomy ? items.length : items.length <= 2 ? items.length : 2, rows = Math.ceil(items.length / cols)
+    const cols = roomy ? items.length : items.length <= 2 ? items.length : items.length <= 4 ? 2 : 3, rows = Math.ceil(items.length / cols)
     const lines: string[] = []
     let added = 0
     for (const [k, q] of items.entries()) {
@@ -2330,7 +2330,7 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
-      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 4).join('|') : c.args?.query)))
+      || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
       || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
