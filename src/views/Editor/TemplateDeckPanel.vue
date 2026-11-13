@@ -2502,7 +2502,7 @@ const deckTurn = async (text: string) => {
         if (n > 12) { // a long deck: the page count first, one tap runs it page by page (each page kept as it lands)
           const q = t('Edit all {p0} pages? Nothing is changed yet.', { p0: n })
           s.pending = { request: userText, question: q, options: [t('Yes, edit all {p0} pages', { p0: n })], offer: true, localize: true,
-            repeat: [{ action: 'edit_page', args: { ...one, whole_deck_option: '', user_said_whole_deck: false } }], pages: slides.value.map((_, k) => k + 1), from: Number(one.index) || 1 }
+            repeat: [{ action: 'edit_page', args: { ...one, whole_deck_option: '', user_said_whole_deck: false } }], pages: slides.value.map((_, k) => k + 1).slice(1, -1), from: Number(one.index) || 1 } // cover and closing kept, as below
           askedThisTurn = true
           save()
           replies.push(q)
