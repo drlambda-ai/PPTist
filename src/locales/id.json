@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Terjadi kesalahan di pihak kami di tengah proses; perubahan yang sudah dibuat sebelumnya tetap disimpan. Silakan minta sisanya lagi.",
   "The changes made before it are kept.": "Perubahan yang dibuat sebelumnya tetap disimpan.",
   "The AI service is unavailable right now. Please try again in a moment.": "Layanan AI sedang tidak tersedia saat ini. Silakan coba lagi sebentar lagi.",
-  "Page {p0} already got 4 new pictures in this message.": "Halaman {p0} sudah mendapat 4 gambar baru di pesan ini.",
+  "Page {p0} already got 6 new pictures in this message.": "Halaman {p0} sudah mendapat 6 gambar baru di pesan ini.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Halaman ini ditambahkan setelah deck dibuka, jadi tidak ada versi sebelumnya.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Memulihkan {p0} halaman seperti saat Anda membuka presentasi.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Halaman {p0} penuh, jadi gambar berada di halaman baru {p1}.",

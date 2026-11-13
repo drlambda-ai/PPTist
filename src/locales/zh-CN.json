@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "处理中途我们这边出了点问题；之前所做的更改已保留。请再请求剩余部分。",
   "The changes made before it are kept.": "在此之前所做的更改会保留。",
   "The AI service is unavailable right now. Please try again in a moment.": "AI 服务当前不可用。请稍后再试。",
-  "Page {p0} already got 4 new pictures in this message.": "第 {p0} 页在此消息中已经有 4 张新图片。",
+  "Page {p0} already got 6 new pictures in this message.": "第 {p0} 页在此消息中已经有 6 张新图片。",
   "This page was added after the deck was opened, so there is no earlier version of it.": "此页面是在打开演示文稿后添加的，因此没有较早版本。",
   "Restored {p0} page(s) to how they were when you opened the deck.": "已将 {p0} 页恢复到你打开演示文稿时的状态。",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "第 {p0} 页已满，所以图片在新的一页 {p1} 上。",

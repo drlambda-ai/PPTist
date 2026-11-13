@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Algo deu errado do nosso lado no meio do processo; as alterações feitas antes disso foram mantidas. Peça o restante novamente.",
   "The changes made before it are kept.": "As alterações feitas antes dele são mantidas.",
   "The AI service is unavailable right now. Please try again in a moment.": "O serviço de IA não está disponível no momento. Tente novamente daqui a pouco.",
-  "Page {p0} already got 4 new pictures in this message.": "A página {p0} já recebeu 4 novas imagens nesta mensagem.",
+  "Page {p0} already got 6 new pictures in this message.": "A página {p0} já recebeu 6 novas imagens nesta mensagem.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Esta página foi adicionada depois que a apresentação foi aberta, então não há uma versão anterior dela.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "{p0} página(s) restaurada(s) ao estado em que estavam quando você abriu a apresentação.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "A página {p0} estava cheia, então as imagens estão em uma nova página {p1}.",

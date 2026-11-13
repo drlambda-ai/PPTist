@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "حدث خطأ من جانبنا في منتصف العملية؛ تم الاحتفاظ بالتغييرات التي أُجريت قبل ذلك. يُرجى طلب الباقي مرة أخرى.",
   "The changes made before it are kept.": "التغييرات التي أُجريت قبله محفوظة.",
   "The AI service is unavailable right now. Please try again in a moment.": "خدمة الذكاء الاصطناعي غير متاحة الآن. يُرجى المحاولة مرة أخرى بعد لحظة.",
-  "Page {p0} already got 4 new pictures in this message.": "الصفحة {p0} لديها بالفعل 4 صور جديدة في هذه الرسالة.",
+  "Page {p0} already got 6 new pictures in this message.": "الصفحة {p0} لديها بالفعل 6 صور جديدة في هذه الرسالة.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "تمت إضافة هذه الصفحة بعد فتح العرض، لذا لا توجد نسخة سابقة منها.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "تمت استعادة {p0} من الصفحات إلى حالتها عند فتح العرض التقديمي.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "كانت الصفحة {p0} ممتلئة، لذا فالصور في صفحة جديدة {p1}.",

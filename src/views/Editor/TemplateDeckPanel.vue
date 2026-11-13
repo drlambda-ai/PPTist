@@ -1369,8 +1369,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const clamp = (v: number) => Math.min(Math.max(v || 0, 0), 100) / 100
     const sl = slides.value[pos(id)]
     const wanted = { left: clamp(b.x) * W, top: clamp(b.y) * H, width: Math.max(clamp(b.w), 0.05) * W, height: Math.max(clamp(b.h), 0.05) * H }
-    // at most 4 new pictures on a page per message (a reworded re-plan would otherwise keep adding near-duplicates)
-    if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 4) fail(t('Page {p0} already got 4 new pictures in this message.', { p0: pos(id) + 1 }))
+    // at most 6 new pictures on a page per message, as a picture set may hold (a reworded re-plan would otherwise keep
+    // adding near-duplicates)
+    if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 6) fail(t('Page {p0} already got 6 new pictures in this message.', { p0: pos(id) + 1 }))
     let box = freeBox(sl, wanted)
     if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
     if (!box) { // a full page: make room rather than refuse

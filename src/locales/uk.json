@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "На нашому боці щось пішло не так у процесі; зміни, внесені до цього моменту, збережено. Будь ласка, запитайте решту ще раз.",
   "The changes made before it are kept.": "Зміни, внесені до нього, зберігаються.",
   "The AI service is unavailable right now. Please try again in a moment.": "Сервіс ШІ зараз недоступний. Будь ласка, спробуйте ще раз за мить.",
-  "Page {p0} already got 4 new pictures in this message.": "Сторінка {p0} уже отримала 4 нові зображення в цьому повідомленні.",
+  "Page {p0} already got 6 new pictures in this message.": "Сторінка {p0} уже отримала 6 нових зображень в цьому повідомленні.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Цю сторінку було додано після відкриття презентації, тому попередньої версії немає.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Відновлено {p0} слайдів до стану на момент відкриття презентації.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Сторінка {p0} була заповнена, тож зображення на новій сторінці {p1}.",

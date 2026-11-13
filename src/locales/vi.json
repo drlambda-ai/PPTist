@@ -1193,7 +1193,7 @@
   "Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.": "Đã có lỗi xảy ra từ phía chúng tôi ở giữa chừng; các thay đổi đã thực hiện trước đó vẫn được giữ lại. Vui lòng yêu cầu phần còn lại مرة nữa.",
   "The changes made before it are kept.": "Các thay đổi được thực hiện trước đó sẽ được giữ lại.",
   "The AI service is unavailable right now. Please try again in a moment.": "Dịch vụ AI hiện không khả dụng. Vui lòng thử lại sau ít phút.",
-  "Page {p0} already got 4 new pictures in this message.": "Trang {p0} đã có 4 hình ảnh mới trong tin nhắn này.",
+  "Page {p0} already got 6 new pictures in this message.": "Trang {p0} đã có 6 hình ảnh mới trong tin nhắn này.",
   "This page was added after the deck was opened, so there is no earlier version of it.": "Trang này được thêm sau khi bản trình bày được mở, nên không có phiên bản trước đó.",
   "Restored {p0} page(s) to how they were when you opened the deck.": "Đã khôi phục {p0} trang về trạng thái khi bạn mở bản trình chiếu.",
   "Page {p0} was full, so the pictures are on a new page {p1}.": "Trang {p0} đã đầy, nên các hình ảnh ở trên một trang mới {p1}.",
