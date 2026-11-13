@@ -1232,5 +1232,7 @@
   "Bad reply": "Bad reply",
   "What went wrong? (optional)": "What went wrong? (optional)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "There is no saved version from {p0}. Saved versions go back 7 days.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "The deck you have now could not be saved, so nothing was restored. Check your connection and try again."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.",
+  "Moved the logo on {p0} page(s).": "Moved the logo on {p0} page(s)."
 }

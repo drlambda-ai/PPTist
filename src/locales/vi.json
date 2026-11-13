@@ -1232,5 +1232,7 @@
   "Bad reply": "Trả lời chưa tốt",
   "What went wrong? (optional)": "Có gì chưa ổn? (không bắt buộc)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Không có phiên bản nào được lưu vào {p0}. Các phiên bản đã lưu được giữ trong 7 ngày.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Không lưu được bản trình bày hiện tại nên chưa khôi phục gì. Hãy kiểm tra kết nối và thử lại."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Không lưu được bản trình bày hiện tại nên chưa khôi phục gì. Hãy kiểm tra kết nối và thử lại.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Chưa có logo trên các trang chiếu. Hãy đính kèm logo bằng biểu tượng 📎 và cho tôi biết đặt ở đâu.",
+  "Moved the logo on {p0} page(s).": "Đã di chuyển logo trên {p0} trang."
 }

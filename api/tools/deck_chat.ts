@@ -91,6 +91,11 @@ const TOOLS = [
     same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
   }, ['pages', 'font', 'same_as_page', 'scope']),
+  fn('move_logo', 'Move or resize the user\'s logo, or their own attached picture, where it already is on the slides ("move my logo to the top right and make it small", "logo smaller", "mueve mi logotipo arriba a la derecha"). Done directly, exact. When the slides have no logo the editor itself asks the user to attach it.', {
+    pages: { ...pages, description: 'Pages to change; empty = every page that has the logo' },
+    corner: { type: 'string', enum: ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'same'], description: 'Where it goes; "same" when only the size changes' },
+    size: { type: 'string', enum: ['smaller', 'bigger', 'same'], description: '"same" when only the place changes' },
+  }, ['pages', 'corner', 'size']),
   fn('set_font_size', 'Make text bigger or smaller, on some or all pages (done directly, exact): "title bigger", "more", "font size like slide 1". Only the SIZE of letters: "more text", "add text", "більше тексту", "más texto" ask for more WORDS (edit_page, or edit_all_pages for the whole deck), never this.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
@@ -362,9 +367,8 @@ Rules:
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
    ask_user per request; if already answered once, act on the best reading.
    The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): when the deck lists a picture as
-   logo or as their attached picture and they want it moved or resized ("move my logo to the top right and make it
-   small") -> edit_page on the page it is on, edit_all_pages when it is on every page and they mean all of them. A small
-   image or icon in a corner is the logo they mean when they say so: never refuse because it is listed as an icon. To add
+   logo or as their attached picture, or any request to move or resize their logo ("move my logo to the top right and
+   make it small") -> move_logo (it finds the logo itself and asks them to attach it when there is none). To add
    or replace with it: if it is under "Attached pictures", change_image or add_image with source attached (query = its
    file name), on the pages they name (all pages only if they say so). Otherwise (no such picture listed, none
    attached) answer_question asking them to attach it with the 📎 icon.

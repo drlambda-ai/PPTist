@@ -1232,5 +1232,7 @@
   "Bad reply": "回答不好",
   "What went wrong? (optional)": "哪裡不對？（選填）",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "沒有 {p0} 儲存的版本。儲存的版本保留 7 天。",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "目前的簡報未能儲存，因此沒有還原任何內容。請檢查網路連線後再試一次。"
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "目前的簡報未能儲存，因此沒有還原任何內容。請檢查網路連線後再試一次。",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "投影片上還沒有標誌。請用 📎 圖示附上您的標誌，並告訴我放在哪裡。",
+  "Moved the logo on {p0} page(s).": "已在 {p0} 頁移動標誌。"
 }

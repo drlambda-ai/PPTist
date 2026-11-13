@@ -1232,5 +1232,7 @@
   "Bad reply": "回答不好",
   "What went wrong? (optional)": "哪里不对？（可选）",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "没有 {p0} 保存的版本。保存的版本保留 7 天。",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "当前的演示文稿未能保存，因此没有恢复任何内容。请检查网络连接后重试。"
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "当前的演示文稿未能保存，因此没有恢复任何内容。请检查网络连接后重试。",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "幻灯片上还没有标志。请用 📎 图标附上您的标志，并告诉我放在哪里。",
+  "Moved the logo on {p0} page(s).": "已在 {p0} 页移动标志。"
 }

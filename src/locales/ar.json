@@ -1232,5 +1232,7 @@
   "Bad reply": "رد سيئ",
   "What went wrong? (optional)": "ما الخطأ؟ (اختياري)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "لا توجد نسخة محفوظة من {p0}. تعود النسخ المحفوظة إلى 7 أيام.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "تعذّر حفظ العرض الحالي، لذلك لم تتم استعادة أي شيء. تحقّق من اتصالك وحاول مرة أخرى."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "تعذّر حفظ العرض الحالي، لذلك لم تتم استعادة أي شيء. تحقّق من اتصالك وحاول مرة أخرى.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "لا يوجد شعار على الشرائح بعد. أرفق شعارك بأيقونة 📎 وأخبرني أين أضعه.",
+  "Moved the logo on {p0} page(s).": "تم نقل الشعار في {p0} صفحة."
 }

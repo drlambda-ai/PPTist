@@ -1232,5 +1232,7 @@
   "Bad reply": "Mala respuesta",
   "What went wrong? (optional)": "¿Qué salió mal? (opcional)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "No hay ninguna versión guardada del {p0}. Las versiones guardadas abarcan los últimos 7 días.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "No se pudo guardar la presentación actual, así que no se restauró nada. Revisa tu conexión e inténtalo de nuevo."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "No se pudo guardar la presentación actual, así que no se restauró nada. Revisa tu conexión e inténtalo de nuevo.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Todavía no hay ningún logotipo en las diapositivas. Adjunta tu logotipo con el icono 📎 y dime dónde ponerlo.",
+  "Moved the logo on {p0} page(s).": "Logotipo movido en {p0} página(s)."
 }

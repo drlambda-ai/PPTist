@@ -1449,6 +1449,32 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const where = t('{p0} {p1}', { p0: cy < 1 / 3 ? t('top') : cy > 2 / 3 ? t('bottom') : t('middle'), p1: cx < 1 / 3 ? t('left') : cx > 2 / 3 ? t('right') : t('centre') })
     return (t('Added a picture ({p0}) for "{p1}" at the {p2}{p3}.', { p0: how, p1: String(args.query || '').slice(0, 60), p2: where, p3: movedNote })) + (pictureNote ? ` ${pictureNote}` : '')
   }
+  // the user's logo moves and resizes directly: the logo is the picture at the same small spot on most pages, or the
+  // picture they attached. Routed through edit_page it moved without shrinking, or the reply said "no logo found"
+  // without asking them to attach one (eval 2026-11-14)
+  if (action === 'move_logo') {
+    const logos = logoSpots()
+    const own = new Set((s.images || []).map(m => m.url))
+    const { width: W, height: H } = slideSize()
+    const f = args.size === 'smaller' ? 0.6 : args.size === 'bigger' ? 1.5 : 1
+    const corner = String(args.corner || 'same'), pad = W * 0.03
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const moved: string[] = []
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      for (const e of sl.elements as any[]) {
+        if (e.type !== 'image' || isBackdrop(e) || !(logos.has(imgSpot(e)) || own.has(e.src))) continue
+        const w = Math.min(e.width * f, W * 0.4), h = e.height * (w / e.width)
+        const left = corner.endsWith('right') ? W - w - pad : corner.endsWith('left') ? pad : e.left + (e.width - w) / 2
+        const top = corner.startsWith('top') ? pad : corner.startsWith('bottom') ? H - h - pad : e.top + (e.height - h) / 2
+        slidesStore.updateElement({ id: e.id, props: { width: w, height: h, left, top } as any, slideId: id })
+        if (!moved.includes(id)) moved.push(id)
+      }
+    }
+    if (!moved.length) fail(t('There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.'))
+    touched(moved)
+    return t('Moved the logo on {p0} page(s).', { p0: moved.length })
+  }
   if (action === 'remove_images') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     // several pages go only after a yes, like deleting pages: an attached picture plus "every slide" removed all 14

@@ -1232,5 +1232,7 @@
   "Bad reply": "Погана відповідь",
   "What went wrong? (optional)": "Що пішло не так? (необов’язково)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Немає збереженої версії від {p0}. Збережені версії зберігаються 7 днів.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не вдалося зберегти поточну презентацію, тому нічого не відновлено. Перевірте з’єднання та спробуйте ще раз."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не вдалося зберегти поточну презентацію, тому нічого не відновлено. Перевірте з’єднання та спробуйте ще раз.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "На слайдах поки немає логотипа. Прикріпіть логотип значком 📎 і скажіть, куди його поставити.",
+  "Moved the logo on {p0} page(s).": "Логотип переміщено на {p0} стор."
 }

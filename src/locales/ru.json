@@ -1232,5 +1232,7 @@
   "Bad reply": "Плохой ответ",
   "What went wrong? (optional)": "Что пошло не так? (необязательно)",
   "There is no saved version from {p0}. Saved versions go back 7 days.": "Нет сохранённой версии от {p0}. Сохранённые версии хранятся 7 дней.",
-  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не удалось сохранить текущую презентацию, поэтому ничего не восстановлено. Проверьте подключение и попробуйте ещё раз."
+  "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не удалось сохранить текущую презентацию, поэтому ничего не восстановлено. Проверьте подключение и попробуйте ещё раз.",
+  "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "На слайдах пока нет логотипа. Прикрепите логотип значком 📎 и скажите, куда его поставить.",
+  "Moved the logo on {p0} page(s).": "Логотип перемещён на {p0} стр."
 }
