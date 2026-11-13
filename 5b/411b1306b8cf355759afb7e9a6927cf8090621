@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code); one finding (clamp) fixed in 5a9f566b
+Reviewed-At: 2026-11-13T18:49:46Z
+Verified: ed-logo-move-en 4/4, -es 4/4, -no-logo 6/6, ed-more-text-uk 3/3, full editor-cases 66/67 (the miss passed 2/2 on rerun)
