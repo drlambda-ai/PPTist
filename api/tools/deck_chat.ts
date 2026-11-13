@@ -79,7 +79,7 @@ const TOOLS = [
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
     redesign: { type: 'boolean', description: 'A named arrangement ("horizontal", "side by side", "two columns", "text on the left") is a concrete change: false. true when the user asks to make the page look better in general with no concrete change named ("mejora el diseño", "make it look better/more attractive/professional", "improve the design", "keep the images and improve it"); false when they name what to change (a colour, size, font, text, position)' },
     new_content: { type: 'boolean', description: 'true when the user pastes a lot of new material or asks for a new slide (it then becomes a new page). false for changing what is already there, adding an example or detail to it, or when the user says "this slide" or "here"' },
-    whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides, in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
+    whole_deck_option: { type: 'string', description: '"" when the user named the page ("slide 5: ...") or already said every/each/all slides or the presentation as a whole ("презентацію", "the presentation": then use edit_all_pages, not this), in this message or in the request they are answering (then do each page). Otherwise: When the request does not say where and could also mean the whole deck: a short button label in the user\'s language offering that ("Apply to the whole deck"). "" when it is clearly about this page' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'source_pages', 'language']),
@@ -378,7 +378,8 @@ Rules:
    A change that does not say where and could mean this slide or the whole deck ("make this more persuasive", "make it
    shorter", "too much text", "add (historical) images", "fix it", "try a different layout"), plural or not -> the
    CURRENT page only; the editor then offers the other pages as one tap. Only "all slides"/"every page"/"the whole
-   deck" (or the answer to that offer) means every page. For edit_page, set
+   deck"/"the presentation" (in any language: "презентацію", "bài thuyết trình"), or the answer to that offer, means
+   every page. For edit_page, set
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
