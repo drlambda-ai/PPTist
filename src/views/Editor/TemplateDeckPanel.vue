@@ -2016,6 +2016,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       a.href = s.versions[s.versions.length - 1].deckUrl
       a.download = 'deck.pptx'
       a.click()
+      chatslide?.exported?.('pptx') // ChatSlide counts every saved file (refund eligibility)
       return t('Downloading the .pptx now.')
     }
     if (args.format === 'pdf' || args.format === 'images') {
@@ -2753,6 +2754,7 @@ const download = (): 'started' | 'dialog' | 'plans' => {
     a.href = s.versions[s.versions.length - 1].deckUrl
     a.download = 'deck.pptx'
     a.click()
+    chatslide?.exported?.('pptx')
     return 'started'
   }
   mainStore.setDialogForExport('pptx')
@@ -2812,6 +2814,7 @@ const downloadRendered = (format: 'pdf' | 'images', progress: (i: number, n: num
       shots.forEach((p, i) => zip.file(`${name}-${String(i + 1).padStart(2, '0')}.jpg`, p.bytes))
       saveAs(await zip.generateAsync({ type: 'blob' }), `${name}-images.zip`)
     }
+    chatslide?.exported?.(format)
     return shots.length
   }
   finally {
