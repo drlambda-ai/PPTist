@@ -66,6 +66,7 @@ import { ref, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useSlidesStore } from '@/store'
 import { print } from '@/utils/print'
+import { host } from '@/embed'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 import Switch from '@/components/Switch.vue'
@@ -93,6 +94,7 @@ const expPDF = () => {
     margin: padding.value ? 50 : 0,
   }
   print(pdfThumbnailsRef.value, pageSize)
+  host?.exported?.('pdf')
 }
 </script>
 

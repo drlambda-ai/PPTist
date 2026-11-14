@@ -6,6 +6,7 @@ export interface ChatSlideHost {
   title: string
   token: () => Promise<string>
   canExport: () => boolean // false: ChatSlide shows its upgrade prompt
+  exported?: (format: string) => void // a file was saved: ChatSlide records it (an export counts against eligibility)
   load: () => Promise<{ session: any, slides: any[], theme: any, viewportRatio?: number } | null>
   save: (state: { session: any, slides: any[], theme: any, viewportRatio?: number }) => Promise<void>
   // the deck back into the project; returns the picture links of the pages it uploaded, by key

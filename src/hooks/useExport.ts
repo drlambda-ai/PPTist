@@ -13,6 +13,7 @@ import { type SvgPoints, toPoints } from '@/utils/svgPathParser'
 import { encrypt } from '@/utils/crypto'
 import { svg2Base64 } from '@/utils/svg2Base64'
 import message from '@/utils/message'
+import { host } from '@/embed'
 
 import BaseLatexElement from '@/views/components/element/LatexElement/BaseLatexElement.vue'
 import BaseShapeElement from '@/views/components/element/ShapeElement/BaseShapeElement.vue'
@@ -71,6 +72,7 @@ export default () => {
       toImage(domRef, config).then(dataUrl => {
         exporting.value = false
         saveAs(dataUrl, `${title.value}.${format}`)
+        host?.exported?.(format)
       }).catch(() => {
         exporting.value = false
         message.error(t('导出图片失败'))
@@ -111,7 +113,10 @@ export default () => {
             h: viewportSize.value * viewportRatio.value / ratioPx2Inch.value,
           })
         }
-        pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false)
+        pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => {
+          exporting.value = false
+          host?.exported?.('pptx-image')
+        })
       }).catch(() => {
         exporting.value = false
         message.error(t('导出失败'))
@@ -1000,7 +1005,10 @@ export default () => {
     }
 
     setTimeout(() => {
-      pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => exporting.value = false).catch(() => {
+      pptx.writeFile({ fileName: `${title.value}.pptx` }).then(() => {
+        exporting.value = false
+        host?.exported?.('pptx')
+      }).catch(() => {
         exporting.value = false
         message.error(t('导出失败'))
       })
