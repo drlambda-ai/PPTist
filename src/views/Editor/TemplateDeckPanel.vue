@@ -546,7 +546,7 @@ const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
 const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
-let sitePaywalledThisTurn = false // a free user was just told the brand's own pictures are a paid feature
+let sitePaywalledPage = '' // the page a free user was just told the brand's own pictures are a paid feature for
 const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
 const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" replaced in the current message
 // The words the router quoted as the user asking for the background, kept only when the user wrote them in THIS
@@ -1311,7 +1311,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
     const sl = slides.value[pos(idOf(args.index))]
-    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: '' }, ids)
+    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: '', real_person: args.real_person }, ids)
   }
   // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
   // calls, the router added one picture and stopped, 2026-11-11)
@@ -1330,7 +1330,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if ((action === 'add_image' || action === 'change_image') && args.medical && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'medical' }
   // a named person comes only from Wikimedia: its stock fallback put a stranger on the slide labelled as Daniel Stufflebeam,
   // three times (2026-11-14)
-  if ((action === 'add_image' || action === 'change_image') && String(args.real_person || '').trim() && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'person' }
+  if ((action === 'add_image' || action === 'change_image') && String(args.real_person || '').trim() && ['photo', 'wikimedia'].includes(args.source) && !(args.items?.length > 1)) {
+    args = { ...args, source: 'person', query: String(args.real_person).trim() } // searched by the name, not a description
+  }
   // a picture of one brand's own things asked for as an ordinary picture: it comes from that brand's website (the router
   // split "more photos of the brand's products" into generic stock searches when the message had a second wish)
   if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
@@ -1342,7 +1344,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'add_site_pictures') {
     if (!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)) {
       (chatslide?.offerPaid || chatslide?.offerAdvanced)?.()
-      sitePaywalledThisTurn = true
+      sitePaywalledPage = ids[Number(args.index) - 1] || ''
       // said as a step that did not happen: the other parts of the message still run
       fail(t('Real pictures from a brand or company website are a paid feature. Upgrade your plan and I will take them from the site.'))
     }
@@ -1424,6 +1426,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // adding near-duplicates)
     if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 6) fail(t('Page {p0} already got 6 new pictures in this message.', { p0: pos(id) + 1 }))
     // a named person may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
+    if (args.source === 'person') busy.value = t('Finding a picture…')
     const early = args.source === 'person' ? await findPicture(args.query, args.source, wanted.width >= wanted.height) : ''
     let box = freeBox(sl, wanted)
     if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
@@ -2310,7 +2313,7 @@ const deckTurn = async (text: string) => {
   editedThisTurn.clear()
   picturedThisTurn.clear()
   roomMadeThisTurn.clear()
-  sitePaywalledThisTurn = false
+  sitePaywalledPage = ''
   replacedThisTurn.clear()
   const pagesAtStart = slides.value.length
   takeSpend() // spend from an earlier, failed turn never lands in this footnote
@@ -2455,6 +2458,8 @@ const deckTurn = async (text: string) => {
     // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
+    const stockForBrand = (c: any) => !!sitePaywalledPage && ['add_image', 'change_image'].includes(c.action) && landsOn(c) === sitePaywalledPage
+      && !['attached', 'wikimedia', 'person'].includes(c.args?.source)
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
@@ -2468,7 +2473,7 @@ const deckTurn = async (text: string) => {
       // in "Not done yet … tap Continue", 2026-11-11); what is really left it names in finish
       || work.find((c: any) => c.action === 'edit_all_pages' && done.some(d => d.startsWith('edit_all_pages ')))
       // stock photos are not the brand's products: after the paid-feature answer the router added three anyway (2 of 4 eval runs)
-      || work.find((c: any) => sitePaywalledThisTurn && ['add_image', 'change_image'].includes(c.action) && !['attached', 'wikimedia'].includes(c.args?.source))
+      || work.find(stockForBrand)
       // a request about pictures is never a background change: "replace the photos ... the last one" swapped page 10's
       // background (2026-11-10, replayed 2026-11-13)
       || work.find((c: any) => c.action === 'set_background' && c.args?.photo_query && !saidBackground(text, c.args?.said_background))
@@ -2515,7 +2520,7 @@ const deckTurn = async (text: string) => {
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
                 : extra.action === 'set_background' ? 'the user\'s words do not ask for the page background, so it stays: for pictures use change_image (all_pictures for every picture on a page), add_image or remove_images'
                 : extra.action === 'edit_all_pages' ? 'a deck-wide edit already ran in this message (see Done so far); finish, and put in not_done only a part of the request it did not cover'
-                : sitePaywalledThisTurn && ['add_image', 'change_image'].includes(extra.action) ? 'the brand\'s own pictures are a paid feature the user was just told about; a stock photo is not their product: finish'
+                : stockForBrand(extra) ? 'the brand\'s own pictures are a paid feature the user was just told about; a stock photo is not their product: finish'
                 : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       // a router that keeps proposing what was just refused is done: "khác đi" replanned the same picture for 16 rounds
