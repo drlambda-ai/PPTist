@@ -2061,10 +2061,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'apply_theme') {
     const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
     if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(t('That theme has invalid colours.'))
-    for (const sl of slides.value) fadeBackdrop(sl.id) // a full-slide picture would hide it
-    applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true)
-    touched(slides.value.map(x => x.id))
-    return t('Applied a new theme to the whole deck.')
+    // "only the first page, the rest as it was": the theme went on the whole deck twice, then a paywalled redesign (2026-11-14)
+    const only = args.pages?.length ? nums(args.pages) : []
+    const ids = only.length && only.length < slides.value.length ? only : slides.value.map(x => x.id)
+    for (const id of ids) fadeBackdrop(id) // a full-slide picture would hide it
+    applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true, ids.length < slides.value.length ? ids : undefined)
+    touched(ids)
+    return ids.length < slides.value.length ? t('Applied a new theme to {p0} page(s).', { p0: ids.length }) : t('Applied a new theme to the whole deck.')
   }
   if (action === 'say_unable') {
     // only says "recorded" when it was: outside ChatSlide nothing records it

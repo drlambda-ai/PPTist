@@ -342,8 +342,9 @@ export default () => {
   }
   
   // 应用预置主题
-  const applyPresetTheme = (theme: PresetTheme, resetSlides = false) => {
-    slidesStore.setTheme({
+  // only: restyle just these slides and keep the deck's theme ("a new theme on the cover only, the rest as it was")
+  const applyPresetTheme = (theme: PresetTheme, resetSlides = false, only?: string[]) => {
+    if (!only) slidesStore.setTheme({
       backgroundColor: theme.background,
       themeColors: theme.colors,
       fontColor: theme.fontColor,
@@ -358,7 +359,7 @@ export default () => {
     if (resetSlides) {
       const newSlides: Slide[] = JSON.parse(JSON.stringify(slides.value))
       for (const slide of newSlides) {
-        setSlideTheme(slide, theme)
+        if (!only || only.includes(slide.id)) setSlideTheme(slide, theme)
       }
       slidesStore.setSlides(newSlides)
       addHistorySnapshot()

@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "正在打开退款页面。",
   "That theme has invalid colours.": "该主题的颜色无效。",
   "Applied a new theme to the whole deck.": "已为整个演示文稿应用新主题。",
+  "Applied a new theme to {p0} page(s).": "已将新主题应用到 {p0} 页。",
   "I have recorded this as a feature request.": "已将此项记录为功能请求。",
   "Which page size?": "要使用哪种页面尺寸？",
   "Slide shape set to {p0}:{p1}.": "幻灯片比例已设为 {p0}:{p1}。",

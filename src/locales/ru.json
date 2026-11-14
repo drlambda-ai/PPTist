@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Открываем страницу возврата средств.",
   "That theme has invalid colours.": "В этой теме указаны недопустимые цвета.",
   "Applied a new theme to the whole deck.": "Новая тема применена ко всей презентации.",
+  "Applied a new theme to {p0} page(s).": "К {p0} странице(ам) применена новая тема.",
   "I have recorded this as a feature request.": "Я записал это как запрос на новую функцию.",
   "Which page size?": "Какой размер слайда?",
   "Slide shape set to {p0}:{p1}.": "Формат слайда задан: {p0}:{p1}.",

@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Membuka halaman pengembalian dana.",
   "That theme has invalid colours.": "Tema itu memiliki warna yang tidak valid.",
   "Applied a new theme to the whole deck.": "Menerapkan tema baru ke seluruh presentasi.",
+  "Applied a new theme to {p0} page(s).": "Tema baru telah diterapkan ke {p0} halaman.",
   "I have recorded this as a feature request.": "Saya sudah mencatatnya sebagai permintaan fitur.",
   "Which page size?": "Ukuran slide yang mana?",
   "Slide shape set to {p0}:{p1}.": "Format slide diatur ke {p0}:{p1}.",

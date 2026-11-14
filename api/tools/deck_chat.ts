@@ -107,12 +107,13 @@ const TOOLS = [
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['instruction', 'every_page', 'language']),
-  fn('apply_theme', 'Give the whole deck a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look"). Done directly, keeps the wording.', {
+  fn('apply_theme', 'Give the whole deck, or only the pages the user limits it to, a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look", "a new theme only on the cover, leave the rest"). Done directly, keeps the wording.', {
+    pages: { ...pages, description: 'Only when the user limits the new look to some pages ("only the first page", "just the cover, the rest as it was"): those pages; else [] = the whole deck' },
     background: { type: 'string', description: 'Slide background #RRGGBB' },
     font_color: { type: 'string', description: 'Text #RRGGBB, readable on that background' },
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
-  }, ['background', 'font_color', 'colors', 'font']),
+  }, ['pages', 'background', 'font_color', 'colors', 'font']),
   fn('add_site_pictures', 'Put REAL pictures taken from a website on a page: a specific brand\'s or company\'s own products, store, team or app ("more photos of the brand\'s products", "pictures from their site", "use images from <url>"). Stock photos cannot show one brand\'s products, so never use add_image/change_image for that. It is a paid feature; the editor tells free users.', {
     index: page,
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide", "here" or nothing' },
@@ -404,6 +405,8 @@ Rules:
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck. A chart's numbers
    come only from the user, the deck or a file: never invented, never from the web unless the user asks to look them up.
+   A new theme, look or colours for only some pages ("change only the first page, leave the rest") -> apply_theme with
+   those pages, never edit_page.
    "Change the picture" (one) on a page with two or more pictures and nothing to tell them apart -> ask_user which.
    "The pictures" (plural, any language) means all of them: change_image with all_pictures true, never a question.
    create_deck ONLY when this message itself asks for a new presentation on a topic; never for a complaint, a correction

@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Відкриваємо сторінку відшкодування.",
   "That theme has invalid colours.": "У цій темі некоректні кольори.",
   "Applied a new theme to the whole deck.": "Нову тему застосовано до всієї презентації.",
+  "Applied a new theme to {p0} page(s).": "До {p0} сторінки(сторінок) застосовано нову тему.",
   "I have recorded this as a feature request.": "Я зафіксував це як запит на нову функцію.",
   "Which page size?": "Який формат сторінки?",
   "Slide shape set to {p0}:{p1}.": "Формат слайда встановлено: {p0}:{p1}.",

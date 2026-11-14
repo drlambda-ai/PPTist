@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "در حال بازکردن صفحه بازپرداخت.",
   "That theme has invalid colours.": "رنگ‌های آن تم نامعتبرند.",
   "Applied a new theme to the whole deck.": "تم جدیدی روی کل ارائه اعمال شد.",
+  "Applied a new theme to {p0} page(s).": "یک تم جدید برای {p0} صفحه اعمال شد.",
   "I have recorded this as a feature request.": "این مورد را به‌عنوان درخواست قابلیت ثبت کردم.",
   "Which page size?": "اندازه اسلاید چقدر باشد؟",
   "Slide shape set to {p0}:{p1}.": "نسبت اسلاید روی {p0}:{p1} تنظیم شد.",

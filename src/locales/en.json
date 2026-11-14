@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Opening the refund page.",
   "That theme has invalid colours.": "That theme has invalid colours.",
   "Applied a new theme to the whole deck.": "Applied a new theme to the whole deck.",
+  "Applied a new theme to {p0} page(s).": "Applied a new theme to {p0} page(s).",
   "I have recorded this as a feature request.": "I have recorded this as a feature request.",
   "Which page size?": "Which page size?",
   "Slide shape set to {p0}:{p1}.": "Slide shape set to {p0}:{p1}.",

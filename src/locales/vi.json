@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Đang mở trang yêu cầu hoàn tiền.",
   "That theme has invalid colours.": "Chủ đề đó có màu không hợp lệ.",
   "Applied a new theme to the whole deck.": "Đã áp dụng chủ đề mới cho toàn bộ bộ trình chiếu.",
+  "Applied a new theme to {p0} page(s).": "Đã áp dụng một chủ đề mới cho {p0} trang.",
   "I have recorded this as a feature request.": "Tôi đã ghi nhận đây là yêu cầu tính năng.",
   "Which page size?": "Bạn muốn kích thước trang chiếu nào?",
   "Slide shape set to {p0}:{p1}.": "Đã đặt tỷ lệ trang chiếu thành {p0}:{p1}.",

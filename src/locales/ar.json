@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "جارٍ فتح صفحة استرداد المبلغ.",
   "That theme has invalid colours.": "ألوان هذه السمة غير صالحة.",
   "Applied a new theme to the whole deck.": "طُبّقت سمة جديدة على العرض بأكمله.",
+  "Applied a new theme to {p0} page(s).": "تم تطبيق سمة جديدة على {p0} صفحة(صفحات).",
   "I have recorded this as a feature request.": "سجّلت هذا الطلب كاقتراح لميزة.",
   "Which page size?": "ما حجم الصفحة؟",
   "Slide shape set to {p0}:{p1}.": "ضُبط شكل الشريحة على {p0}:{p1}.",

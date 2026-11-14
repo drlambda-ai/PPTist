@@ -1114,6 +1114,7 @@
   "Opening the refund page.": "Abrindo a página de reembolso.",
   "That theme has invalid colours.": "Esse tema tem cores inválidas.",
   "Applied a new theme to the whole deck.": "Novo tema aplicado a toda a apresentação.",
+  "Applied a new theme to {p0} page(s).": "Um novo tema foi aplicado a {p0} página(s).",
   "I have recorded this as a feature request.": "Registrei essa solicitação de recurso.",
   "Which page size?": "Qual tamanho de página?",
   "Slide shape set to {p0}:{p1}.": "Formato dos slides definido como {p0}:{p1}.",
