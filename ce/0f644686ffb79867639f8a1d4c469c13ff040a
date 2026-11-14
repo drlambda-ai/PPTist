@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: /code-review (Claude Code, medium) of ce0f6446..acc95d6a; 7 findings, 6 fixed in 6f4a29ea, 1 (refactor) skipped
+Reviewed-At: 2026-11-14T19:01:36Z
+Verified: editor-cases 70/70 + 72/74 after fixes (2 network misses passed on rerun); luna100 80/3/17 vs HEAD 75/12/13
