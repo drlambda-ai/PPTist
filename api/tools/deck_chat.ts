@@ -134,8 +134,9 @@ const TOOLS = [
     picture_named: { type: 'boolean', description: 'true if the words pick this picture (its place, its subject, "the second one", an answer naming it) or ask for all of them; false when the page has several and the words do not say which' },
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
+    real_person: { type: 'string', description: 'When the picture must show one real, named person ("a photo of Daniel Stufflebeam", the researcher a slide is about): their name; else "". A stock photo would show someone else.' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'wants_additional_picture']),
+  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'real_person', 'wants_additional_picture']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -162,8 +163,9 @@ const TOOLS = [
     medical: { type: 'boolean', description: 'true when the picture is of a medical subject (a disease or its types, a sign, symptom, organ, scan, X-ray, histology)' },
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     every_page: { type: 'boolean', description: 'true when the user asked for pictures on every / each / all slides (one add_image per page, one per round, each on that page\'s own topic; the editor then lists the pages still without one); false otherwise' },
+    real_person: { type: 'string', description: 'When the picture must show one real, named person ("a photo of Daniel Stufflebeam", the researcher a slide is about): their name; else "". A stock photo would show someone else.' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'every_page', 'own_brand']),
+  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'every_page', 'own_brand', 'real_person']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo"). Only when the user asks for the background: a request about pictures, photos or images is change_image/add_image/remove_images, even for the last or largest picture.', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },

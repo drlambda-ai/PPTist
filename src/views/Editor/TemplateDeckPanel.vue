@@ -1071,7 +1071,8 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     return query
   }
   const nearest = source === 'medical' // a medical picture may be the nearest real one of the same subject
-  if (nearest) source = 'wikimedia'
+  const person = source === 'person'
+  if (nearest || person) source = 'wikimedia'
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   if (source === 'attached') { // the query names one of the user's attached pictures
     const pics = s.images || []
@@ -1085,6 +1086,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
   }
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest }) })).json()
+    if (!r.src && person) fail(t('Wikimedia Commons has no free picture of {p0}, and a stock photo would show someone else. Attach a photo of them with the 📎 icon and I will put it on the slide.', { p0: query.slice(0, 60) }))
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
       const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))
       const alt = (sp.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u))
@@ -1325,6 +1327,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // вариант" drew 4 AI pictures, 40 credits, unasked, 2026-11-11)
   if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && !args.asked_for_ai) args = { ...args, source: 'photo' }
   if ((action === 'add_image' || action === 'change_image') && args.medical && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'medical' }
+  // a named person comes only from Wikimedia: its stock fallback put a stranger on the slide labelled as Daniel Stufflebeam,
+  // three times (2026-11-14)
+  if ((action === 'add_image' || action === 'change_image') && String(args.real_person || '').trim() && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'person' }
   // a picture of one brand's own things asked for as an ordinary picture: it comes from that brand's website (the router
   // split "more photos of the brand's products" into generic stock searches when the message had a second wish)
   if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
@@ -1416,6 +1421,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // at most 6 new pictures on a page per message, as a picture set may hold (a reworded re-plan would otherwise keep
     // adding near-duplicates)
     if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 6) fail(t('Page {p0} already got 6 new pictures in this message.', { p0: pos(id) + 1 }))
+    // a named person may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
+    const early = args.source === 'person' ? await findPicture(args.query, args.source, wanted.width >= wanted.height) : ''
     let box = freeBox(sl, wanted)
     if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
     if (!box) { // a full page: make room rather than refuse
@@ -1431,7 +1438,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: pos(id) + 1 }))
     busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
-    const src = await findPicture(args.query, args.source, box.width >= box.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
+    const src = early || await findPicture(args.query, args.source, box.width >= box.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
     if (!src) fail(t('Could not get a picture.'))
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
     if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
