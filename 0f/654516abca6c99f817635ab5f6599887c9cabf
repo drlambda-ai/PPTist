@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review (Codex workspace out of credits)
+Reviewed-At: 2026-11-15T17:56:09Z
+Fixed: the redirect moved to the dispatch loop (undo snapshot, turn continuation, step log); presentation_look carries colours/logo/both; only a readable .pptx is redirected; the file-list note only when one .pptx is listed
+Declined-By: Claude Code
+Declined: 'exactly one .pptx listed' may not be the presentation the user means — they asked for their own presentation and one is listed; a wrong pick is one undo
+Declined: the listed-.pptx filter is written in three places — three one-line filters, no shared helper added
