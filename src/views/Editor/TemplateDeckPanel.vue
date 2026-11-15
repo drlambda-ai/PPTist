@@ -1934,6 +1934,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // ("insert real photos of X" swapped the background)
     // the page is one flat picture: the pictures the user sees are inside it, and replacing it would replace the page
     if (isFlat(sl) && !args.wants_additional_picture) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: pos(id) + 1 }))
+    // "replace the pictures on all slides" has nothing to replace on a page without one: no new picture there (eval
+    // 2026-11-15 added pictures to the two pages that had none)
+    if (args.every_page && !said && !content.length && !args.wants_additional_picture) return t('Page {p0} has no picture to replace.', { p0: pos(id) + 1 })
     if (!said && !content.length && (args.wants_additional_picture || !firstBackdrop(sl))) {
       return runCall(text, 'add_image', { index: args.index, query: args.query, source: args.source, page_named: true, replaces_existing: false }, ids)
     }
@@ -2395,6 +2398,7 @@ const deckTurn = async (text: string) => {
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
   const picturedPages = new Set<string>() // pages that got a picture for an every-page request in this message
   let picNudgedAt = 0 // picturedPages.size when the router was last sent back for the pages left
+  let everyPageAction = 'add_image' // which every-page picture step this message runs: a replace lists only pages with a picture
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
   // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
   const animatedThisTurn = (pages?: number[]) => done.some((d) => {
@@ -2474,10 +2478,10 @@ const deckTurn = async (text: string) => {
     }
     // "pictures on every slide": a finish with pages still without one goes back to the router, once per page done
     // (it stopped after page 1 in 1 of 5 runs although told which pages were left); no progress, no second nudge
-    const picLeft = picturedPages.size ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) ? k + 1 : 0)).filter(Boolean) : []
+    const picLeft = picturedPages.size ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) && (everyPageAction === 'add_image' || pictures(x).length) ? k + 1 : 0)).filter(Boolean) : []
     if (!work.length && picLeft.length && picturedPages.size > picNudgedAt) {
       picNudgedAt = picturedPages.size
-      done.push(`not finished: every page was asked for a picture; pages still without one: ${picLeft.join(', ')}. Call add_image for the next one, on that page's own topic.`)
+      done.push(`not finished: every page was asked for a picture; pages still to do: ${picLeft.join(', ')}. Call ${everyPageAction} for the next one, on that page's own topic.`)
       continue
     }
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
@@ -2667,10 +2671,13 @@ const deckTurn = async (text: string) => {
       else if (offerOrder && s.pending?.offer && offerOrder !== slides.value.map(x => x.id).join()) { s.pending = null; offerOrder = '' } // pages added, deleted or moved since: its numbers are stale
       // "pictures on every slide": the router added one and stopped, listing the rest for the user (2026-11-13). It is told
       // which of the deck's pages still have no new picture, so it goes on page by page (each step its usual checks)
-      if (c.action === 'add_image' && c.args?.every_page) picturedPages.add(ids[Number(c.args?.index) - 1])
-      const left = c.action === 'add_image' && c.args?.every_page
-        ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) ? k + 1 : 0)).filter(Boolean) : []
-      const rest = left.length ? `\n(Every page was asked for: pages still without a new picture: ${left.join(', ')}. Call add_image for the next one, on that page's own topic.)` : ''
+      // the same for "replace the pictures on all slides": change_image touched page 2 and stopped (2026-11-14); only
+      // pages that have a picture to replace are listed
+      const everyPage = (c.action === 'add_image' || c.action === 'change_image') && c.args?.every_page
+      if (everyPage) { picturedPages.add(ids[Number(c.args?.index) - 1]); everyPageAction = c.action }
+      const left = everyPage
+        ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) && (c.action === 'add_image' || pictures(x).length) ? k + 1 : 0)).filter(Boolean) : []
+      const rest = left.length ? `\n(Every page was asked for: pages still without a ${c.action === 'add_image' ? 'new' : 'replaced'} picture: ${left.join(', ')}. Call ${c.action} for the next one, on that page's own topic.)` : ''
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}${rest}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true

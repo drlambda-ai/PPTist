@@ -126,6 +126,7 @@ const TOOLS = [
   fn('change_image', 'No subject named ("change the image", "refresh this picture") -> choose one that fits the page, never ask what to change it to. "The pictures"/"these photos" (plural) on a page -> ONE call with all_pictures true, never a question. Replace a picture on a page with a new one: a stock photo, a real picture from Wikimedia (medical subjects, real named things), or an AI-generated image.', {
     index: page,
     all_pictures: { type: 'boolean', description: 'true when the words mean every picture on that page ("the pictures", "all the images", "these photos", "All of them"): this one step replaces each of them (never the background); false for one picture' },
+    every_page: { type: 'boolean', description: 'true when the user asked to replace the pictures on every / each / all slides ("replace the pictures on all slides"): one change_image per page, one per round, each on that page\'s own topic; the editor then lists the pages still to do; false otherwise' },
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
@@ -137,7 +138,7 @@ const TOOLS = [
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     specific_thing: { type: 'string', description: 'When the picture must show one specific, named real thing that a look-alike would misrepresent: a person ("a photo of Daniel Stufflebeam", "Elon Musk"), a building or landmark ("the Sydney Opera House"), an artwork, a product model ("the iPhone 15"), an event, a named animal: its full, correctly spelled name. "" for anything a general photo can show (a doctor, a city at night, coffee beans, a laptop). It comes from Wikimedia only; with no match the user is asked to upload one.' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture']),
+  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture', 'every_page']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
