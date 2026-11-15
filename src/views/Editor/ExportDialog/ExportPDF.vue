@@ -93,8 +93,8 @@ const expPDF = () => {
     height: rangeType.value === 'all' ? 1600 * viewportRatio.value * count.value : 1600 * viewportRatio.value,
     margin: padding.value ? 50 : 0,
   }
-  print(pdfThumbnailsRef.value, pageSize)
-  host?.exported?.('pdf')
+  // reported once the print dialog closed: a print that never opened is no export (a cancel looks the same as a save)
+  print(pdfThumbnailsRef.value, pageSize, () => host?.exported?.('pdf'))
 }
 </script>
 

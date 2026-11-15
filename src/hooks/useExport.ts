@@ -135,6 +135,7 @@ export default () => {
     }
     const blob = new Blob([encrypt(JSON.stringify(json))], { type: '' })
     saveAs(blob, `${title.value}.pptist`)
+    host?.exported?.('pptist')
   }
   
   // 导出JSON文件
@@ -148,6 +149,7 @@ export default () => {
     }
     const blob = new Blob([JSON.stringify(json)], { type: '' })
     saveAs(blob, `${title.value}.json`)
+    host?.exported?.('json')
   }
 
   // 格式化颜色值为 透明度 + HexString，供pptxgenjs使用

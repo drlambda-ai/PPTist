@@ -64,7 +64,7 @@ const writeContent = (doc: Document, printNode: HTMLElement, size: PageSize) => 
   doc.close()
 }
 
-export const print = (printNode: HTMLElement, size: PageSize) => {
+export const print = (printNode: HTMLElement, size: PageSize, onAfterprint?: () => void) => {
   const iframe = createIframe()
   const iframeContentWindow = iframe.contentWindow
 
@@ -80,6 +80,7 @@ export const print = (printNode: HTMLElement, size: PageSize) => {
     iframe.removeEventListener('load', handleLoadIframe)
     iframeContentWindow.removeEventListener('afterprint', handleAfterprint)
     document.body.removeChild(iframe)
+    onAfterprint?.()
   }
 
   iframe.addEventListener('load', handleLoadIframe)
