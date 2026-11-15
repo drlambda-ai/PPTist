@@ -1072,8 +1072,8 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     return query
   }
   const nearest = source === 'medical' // a medical picture may be the nearest real one of the same subject
-  const person = source === 'person'
-  if (nearest || person) source = 'wikimedia'
+  const specific = source === 'specific' // one specific, named real thing: only Wikimedia, never a look-alike
+  if (nearest || specific) source = 'wikimedia'
   pictureSource = source === 'wikimedia' ? 'wikimedia' : source === 'ai' ? 'ai' : 'photo'
   if (source === 'attached') { // the query names one of the user's attached pictures
     const pics = s.images || []
@@ -1087,7 +1087,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
   }
   if (source === 'wikimedia') {
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest }) })).json()
-    if (!r.src && person) fail(t('Wikimedia Commons has no free picture of {p0}, and a stock photo would show someone else. Attach a photo of them with the 📎 icon and I will put it on the slide.', { p0: query.slice(0, 60) }))
+    if (!r.src && specific) fail(t('Wikimedia Commons has no free picture of {p0}, and a stock photo would show something else. Would you like to upload one? Attach it with the 📎 icon and I will put it on the slide.', { p0: query.slice(0, 60) }))
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
       const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))
       const alt = (sp.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u))
@@ -1311,7 +1311,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
     const sl = slides.value[pos(idOf(args.index))]
-    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: '', real_person: args.real_person }, ids)
+    if (sl?.elements.some((e: any) => e.type === 'image' && !isBackdrop(e))) return runCall(text, 'change_image', { index: pos(sl.id) + 1, image: 1, query: args.query, source: args.source, page_named: true, said_background: '', specific_thing: args.specific_thing }, ids)
   }
   // several listed things: one picture each, in a row along the free bottom or right of the page (asked as separate
   // calls, the router added one picture and stopped, 2026-11-11)
@@ -1328,14 +1328,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // вариант" drew 4 AI pictures, 40 credits, unasked, 2026-11-11)
   if ((action === 'add_image' || action === 'change_image') && args.source === 'ai' && !args.asked_for_ai) args = { ...args, source: 'photo' }
   if ((action === 'add_image' || action === 'change_image') && args.medical && ['photo', 'wikimedia'].includes(args.source)) args = { ...args, source: 'medical' }
-  // a named person comes only from Wikimedia: its stock fallback put a stranger on the slide labelled as Daniel Stufflebeam,
-  // three times (2026-11-14)
-  if ((action === 'add_image' || action === 'change_image') && String(args.real_person || '').trim() && ['photo', 'wikimedia'].includes(args.source) && !(args.items?.length > 1)) {
-    args = { ...args, source: 'person', query: String(args.real_person).trim() } // searched by the name, not a description
+  // one specific, named real thing (a person, a building, an artwork, a product model; the router decides) comes only from
+  // Wikimedia, and with no match the user is asked to upload one: the stock fallback put a stranger on the slide labelled
+  // as Daniel Stufflebeam, three times (2026-11-14); Quanlai, 2026-11-15: "not a real person... a specific item"
+  if ((action === 'add_image' || action === 'change_image') && String(args.specific_thing || '').trim() && ['photo', 'wikimedia'].includes(args.source) && !(args.items?.length > 1)) {
+    args = { ...args, source: 'specific', query: String(args.specific_thing).trim() } // searched by the name, not a description
   }
   // a picture of one brand's own things asked for as an ordinary picture: it comes from that brand's website (the router
   // split "more photos of the brand's products" into generic stock searches when the message had a second wish)
-  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'person' && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
+  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'specific' && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
     const items = (args.items || []).filter(Boolean)
     return runCall(text, 'add_site_pictures', { index: args.index, page_named: args.page_named, site: '', brand: args.own_brand, what: [args.query, ...items].filter(Boolean).join('; '), count: items.length || 1 }, ids)
   }
@@ -1367,9 +1368,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Added {p0} picture(s) from {p1}.', { p0: pictures() - before, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') })
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
-    // the router names the person each picture must show, so each one goes to Wikimedia on its own ("Einstein, Curie
-    // and Bohr" drew three stock strangers, review 2026-11-15)
-    const people: string[] = (Array.isArray(args.item_people) ? args.item_people : []).filter((_: any, k: number) => args.items[k])
+    // the router names the specific thing each picture must show, so each one goes to Wikimedia on its own ("Einstein,
+    // Curie and Bohr" drew three stock strangers, review 2026-11-15)
+    const specifics: string[] = (Array.isArray(args.item_specifics) ? args.item_specifics : []).filter((_: any, k: number) => args.items[k])
     const items = args.items.filter(Boolean).slice(0, 6) // "6 pictures" got 4 (prod 2026-11-12, b1b)
     const pg = Number(args.index)
     const at = pos(idOf(pg))
@@ -1402,7 +1403,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         : { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 }
       try {
         // each item is a new picture of its own: never "replace", which overwrote the previous item
-        lines.push(await runCall(text, 'add_image', { ...args, items: [], item_people: [], real_person: String(people[k] || ''), replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
+        lines.push(await runCall(text, 'add_image', { ...args, items: [], item_specifics: [], specific_thing: String(specifics[k] || ''), replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
         added++
       }
       catch (e: any) {
@@ -1428,9 +1429,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // at most 6 new pictures on a page per message, as a picture set may hold (a reworded re-plan would otherwise keep
     // adding near-duplicates)
     if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 6) fail(t('Page {p0} already got 6 new pictures in this message.', { p0: pos(id) + 1 }))
-    // a named person may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
-    if (args.source === 'person') busy.value = t('Finding a picture…')
-    const early = args.source === 'person' ? await findPicture(args.query, args.source, wanted.width >= wanted.height) : ''
+    // a specific thing may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
+    if (args.source === 'specific') busy.value = t('Finding a picture…')
+    const early = args.source === 'specific' ? await findPicture(args.query, args.source, wanted.width >= wanted.height) : ''
     let box = freeBox(sl, wanted)
     if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
     if (!box) { // a full page: make room rather than refuse
@@ -2468,7 +2469,7 @@ const deckTurn = async (text: string) => {
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const stockForBrand = (c: any) => !!sitePaywalledPage && ['add_image', 'change_image'].includes(c.action) && landsOn(c) === sitePaywalledPage
-      && !['attached', 'wikimedia', 'person'].includes(c.args?.source)
+      && !['attached', 'wikimedia', 'specific'].includes(c.args?.source)
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
