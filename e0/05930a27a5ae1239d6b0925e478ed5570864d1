@@ -5,3 +5,12 @@ Fixed: the redirect moved to the dispatch loop (undo snapshot, turn continuation
 Declined-By: Claude Code
 Declined: 'exactly one .pptx listed' may not be the presentation the user means — they asked for their own presentation and one is listed; a wrong pick is one undo
 Declined: the listed-.pptx filter is written in three places — three one-line filters, no shared helper added
+
+Codex-Review: passed
+Reviewer: Claude Code /code-review, second pass (Codex workspace out of credits)
+Reviewed-At: 2026-11-15T18:07:20Z
+Fixed: redirect once per message; lookFile is the one test shared with the router (files[].look); re-attached duplicate names count once; only colors/logo/both redirect
+Declined-By: Claude Code
+Declined: with one readable presentation listed, a user who means a different, unattached presentation gets the listed one's look instead of the question — they can undo and attach the other; the alternative re-opens the production miss this fixes
+Declined: the router prompt still says not to ask for a listed .pptx when two are listed — it then picks one or the step fails with a plain message; rare, no data loss
+Declined: further de-duplication of the .pptx test — two remaining one-line uses
