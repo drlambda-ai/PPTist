@@ -2341,10 +2341,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Showing page {p0}.', { p0: pos(id) + 1 })
   }
   if (action === 'ask_user') {
-    // asking for the presentation the chat already has: its look is taken from that file instead (with a surgeon's
-    // file listed the router still asked him to attach it, production 2026-11-16)
-    const own = s.docs.filter(d => /\.pptx$/i.test(d.name))
-    if (args.wants_presentation_look && own.length === 1) return runCall(text, 'use_file_look', { file: own[0].name, colors: true, logo: true }, ids)
     const opts = (args.options || []).filter(Boolean).slice(0, 4)
     s.pending = { request: userText, question: args.question || '', options: opts }
     save()
@@ -2620,6 +2616,16 @@ const deckTurn = async (text: string) => {
       return
     }
     if (calls.some((c: any) => c.action === 'rebuild_from_template') && s.template) return templateTurn(text)
+    // A question asking for the presentation the chat already has becomes the step itself, here, so it is recorded,
+    // undone and continued like any use_file_look (with a surgeon's file listed the router still asked him to attach
+    // it, production 2026-11-16). Only for the one .pptx that can be read now: a project file or one attached here.
+    for (const c of calls) {
+      const want = c.action === 'ask_user' ? String(c.args?.presentation_look || 'none') : 'none'
+      const own = s.docs.filter(d => /\.pptx$/i.test(d.name))
+      if (want === 'none' || own.length !== 1 || !(own[0].project || docFiles.has(own[0].name))) continue
+      c.action = 'use_file_look'
+      c.args = { file: own[0].name, colors: want !== 'logo', logo: want !== 'colors' }
+    }
     // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
     // is re-planned against the updated deck in the next round
     const work = calls.filter((c: any) => !['finish', 'rebuild_from_template', 'create_deck'].includes(c.action)).slice(0, 1)
