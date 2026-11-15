@@ -32,6 +32,8 @@ export interface ChatSlideHost {
   extractImages?: (file: File) => Promise<{ images?: { url: string, page?: number, name?: string }[], error?: string }>
   // the files the user gave this project in ChatSlide (the text read from them), so the chat uses them without a re-attach
   files?: () => Promise<{ name: string, text: string }[]>
+  // a question answered from the project's files in full (a long file is more than one read holds)
+  askFiles?: (question: string) => Promise<{ answer: string, source: string } | null>
   // AI picture through ChatSlide's image route (its credits, gates and moderation); { src } or { error }
   generateImage?: (prompt: string, aspectRatio: '16:9' | '9:16') => Promise<{ src?: string, error?: string }>
 }

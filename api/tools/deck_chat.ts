@@ -198,7 +198,8 @@ const TOOLS = [
   fn('read_file', 'Read an attached file (or some of its pages/sheets), or the TEXT in an attached picture ("write what is in my image into the slides"), before using it. Use it whenever the user refers to their file, PDF, article, document, data, "page N of the PDF", or a table/figure in it. The text is returned under "Done so far"; then use it in the next step (edit_page, add_page, add_table_page...).', {
     file: { type: 'string', description: 'The attached file or picture name exactly as listed' },
     pages: { type: 'array', items: { type: 'integer' }, description: 'PDF page numbers to read; empty = the whole file' },
-  }, ['file', 'pages']),
+    about: { type: 'string', description: 'What the user wants from the file, as a question ("the table comparing dosing schedules", "what the paper says about sleep in newborns", "the authors and journal"), when they want one thing in it rather than the whole file; "" to read it' },
+  }, ['file', 'pages', 'about']),
   fn('use_file_images', 'Put the pictures/figures/charts/images that are INSIDE an attached PDF, PPTX or DOCX onto a slide ("use the figures from my paper", "extract the images from the PDF", "add the chart from page 3 of my file").', {
     file: { type: 'string', description: 'The attached file name exactly as listed' },
     file_pages: { type: 'array', items: { type: 'integer' }, description: 'Pages of the FILE whose pictures to use; empty = any' },

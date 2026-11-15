@@ -106,7 +106,7 @@ interface Session {
   mode: '' | 'template' | 'native'
   template: { name: string, templateUrl: string, analysis: any, profile: any, chrome: any[] } | null
   docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
-  projectFiles?: boolean // the project's files were added once (a removed one stays removed)
+  projectFiles?: boolean | 2 // the project's files were added once (a removed one stays removed); 2 = the originals
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
   // what each picture the chat added or replaced shows (element id -> its search words): "the police photo" names one.
   // Without it every picture read "large image" and the router changed the page on screen, not page 6 (2026-11-13)
@@ -1620,6 +1620,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       fail(s.docs.length ? (t('There is no attached file "{p0}". Attached: {p1}.', { p0: args.file, p1: s.docs.map(d => d.name).join(', ') }))
         : (t('No file is attached yet: attach it with the 📎 icon in the chat box.')))
     }
+    // one thing from a project file longer than one read: answered from the whole file on the server (a 100-page PDF
+    // read from the top showed the chat only its first 4-5 pages, 2026-11-15)
+    const about = String(args.about || '').trim()
+    if (doc.project && about && doc.text.length > 12000 && !(args.pages || []).length && chatslide?.askFiles) {
+      busy.value = t('Reading {p0}…', { p0: doc.name })
+      const got = await chatslide.askFiles(about).catch(() => null)
+      if (got) {
+        memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}" about="${about.replace(/["<>]/g, '').slice(0, 120)}">\n${fence(got.answer.slice(0, 12000))}${got.source ? `\n(from: ${got.source.slice(0, 200)})` : ''}\n</file-content>`
+        return t('Read {p0}{p1}.', { p0: doc.name, p1: '' })
+      }
+    }
     const parts = doc.text.split(/^(?=\[page \d+\]$)/m)
     const want: number[] = args.pages || []
     const total = parts.filter(p => /^\[page \d+\]/.test(p)).length
@@ -2958,13 +2969,16 @@ onMounted(() => {
       }
       // the files the user already gave this project: "use my file" reads them, no re-attach (12 replies asked for
       // the 📎 from users whose file the project already had, 2026-11-10 to 13). Not awaited: the deck opens first.
-      if (chatslide!.files && !s.projectFiles) {
+      // 2: each original file by its own name; a deck opened before (true) held the outline answers under the joined
+      // file names, replaced once (2026-11-15)
+      if (chatslide!.files && s.projectFiles !== 2) {
         chatslide!.files().then(files => {
+          if (s.projectFiles === true && files.length) s.docs = s.docs.filter(d => !d.project)
           const add = files.filter(f => f.text.trim() && !s.docs.some(d => d.name === f.name))
           s.docs.push(...add.map(f => ({ name: f.name, text: f.text, project: true })))
           if (!files.length) return // none yet (still being read, or not this user's to read): asked again next open
-          s.projectFiles = true // kept with the next save
-          if (add.length) save()
+          s.projectFiles = 2 // kept with the next save
+          save()
         }, () => undefined) // unreadable now: asked again next time the deck opens
       }
       // each page as it was when the deck was opened: "back to how it was at first" restores from this
