@@ -1362,8 +1362,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.colors !== false) {
       // the template's own full-slide decoration (shapes on white or see-through) would hide the new background and
       // is not the user's look: it goes; a full-slide photo (a cover picture) stays as it is
-      const decoration = new Map<string, boolean>()
-      const isDecoration = (src: string) => new Promise<boolean>(res => {
+      const decoration = new Map<string, boolean | null>() // null: the picture could not be read
+      const isDecoration = (src: string) => new Promise<boolean | null>(res => {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -1378,21 +1378,29 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             res(plain >= 32 * 32 * 0.55)
           }
           catch {
-            res(false)
+            res(null)
           }
         }
-        img.onerror = () => res(false)
+        img.onerror = () => res(null)
         img.src = src
       })
       for (const sl of slides.value) {
         for (const e of sl.elements as any[]) if (e.type === 'image' && isBackdrop(e) && !decoration.has(e.src)) decoration.set(e.src, await isDecoration(e.src))
       }
+      // a page that is only its picture (a pasted screenshot, an imported flat page) keeps it whatever it looks like;
+      // a page with a photo keeps its own text colours too (a white title on a dark photo stays readable)
+      const themed: string[] = []
       for (const sl of [...slides.value]) {
-        const kept = (sl.elements as any[]).filter(e => !(e.type === 'image' && isBackdrop(e) && decoration.get(e.src)))
-        if (kept.length < sl.elements.length) slidesStore.updateSlide({ elements: kept }, sl.id)
+        const hasText = (sl.elements as any[]).some(e => plain(e.type === 'text' ? e.content : e.text?.content))
+        const back = (sl.elements as any[]).filter(e => e.type === 'image' && isBackdrop(e))
+        const goes = hasText ? back.filter(e => decoration.get(e.src) === true) : []
+        if (goes.length) slidesStore.updateSlide({ elements: (sl.elements as any[]).filter(e => !goes.includes(e)) }, sl.id)
+        const unread = hasText && back.some(e => decoration.get(e.src) === null)
+        if (unread) fadeBackdrop(sl.id) // unreadable picture: faded, as a new theme does, so the background shows
+        if (unread || back.length === goes.length) themed.push(sl.id)
       }
-      applyPresetTheme({ background: look.background, fontColor: look.fontColor, fontname: '', colors: look.colors }, true)
-      slidesStore.setTheme({ themeColors: look.colors.slice(0, 6) })
+      applyPresetTheme({ background: look.background, fontColor: look.fontColor, fontname: '', colors: look.colors }, true, themed)
+      slidesStore.setTheme({ backgroundColor: look.background, fontColor: look.fontColor, themeColors: look.colors.slice(0, 6) })
       said.push(t('Applied the colours of {p0} to the whole deck.', { p0: file!.name }))
     }
     if (args.logo !== false && !look.logo) said.push(t('{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.', { p0: file!.name }))
@@ -1419,8 +1427,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const free = (sl: Slide, c: { left: number, top: number }) => !(sl.elements as any[]).some(e => e.width && e.height && e.width * e.height < W * H * 0.6
         && e.left < c.left + width && e.left + e.width > c.left && e.top < c.top + height && e.top + e.height > c.top)
       const at = corners.map(c => ({ c, pages: slides.value.filter(sl => free(sl, c)) })).sort((x, y) => y.pages.length - x.pages.length)[0]
-      for (const sl of at.pages) slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...at.c, width, height } as any] }, sl.id)
-      said.push(t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: at.pages.length }))
+      // a deck that already has a logo keeps its place: the picture is swapped (asking twice gave two logos)
+      const spots = logoSpots()
+      const has = (sl: Slide) => (sl.elements as any[]).filter(e => e.type === 'image' && spots.has(imgSpot(e)))
+      const swap = slides.value.filter(sl => has(sl).length)
+      for (const sl of swap) for (const e of has(sl)) slidesStore.updateElement({ id: e.id, props: { src, height: e.width / shape }, slideId: sl.id })
+      if (!swap.length) for (const sl of at.pages) slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...at.c, width, height } as any] }, sl.id)
+      said.push(t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: swap.length || at.pages.length }))
     }
     touched(ids)
     return said.join(' ')
@@ -2994,12 +3007,15 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 const fitOverflow = () => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
   try {
-    for (let round = 0; round < 3; round++) {
-      toRender.value = JSON.parse(JSON.stringify(slides.value))
+    await document.fonts?.ready // measured in the deck's fonts, not a fallback's
+    let again = new Set(slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
+    for (let round = 0; round < 3 && again.size; round++) {
+      const pages = slides.value.filter(x => again.has(x.id))
+      toRender.value = JSON.parse(JSON.stringify(pages))
       await nextTick()
       await new Promise(r => setTimeout(r, 400))
-      let changed = false
-      for (const sl of slides.value) {
+      again = new Set()
+      for (const sl of pages) {
         for (const e of sl.elements as any[]) {
           if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
           const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
@@ -3009,20 +3025,20 @@ const fitOverflow = () => withRenderer(async () => {
           const need = node.offsetHeight + pad
           if (need <= e.height + 2) continue
           // what it would run into: anything under it in its columns, except a band that sits behind other elements
-          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top >= e.top + e.height - 2 && o.left < e.left + e.width && o.left + o.width > e.left
+          // (one that starts below this box's top: a picture already under its lower edge counts)
+          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top > e.top + 4 && o.left < e.left + e.width && o.left + o.width > e.left
             && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
           const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
-          if (room <= e.height + 2 && round) continue // nowhere to grow and already shrunk once
+          if (room <= 8 || (room <= e.height + 2 && round)) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
             props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
           }
           slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
-          changed = true
+          again.add(sl.id)
         }
       }
-      if (!changed) break
     }
   }
   finally {
