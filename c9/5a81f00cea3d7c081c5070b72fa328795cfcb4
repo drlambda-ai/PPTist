@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review, second pass (Codex workspace out of credits)
+Reviewed-At: 2026-11-15T18:07:20Z
+Fixed: redirect once per message; lookFile is the one test shared with the router (files[].look); re-attached duplicate names count once; only colors/logo/both redirect
+Declined-By: Claude Code
+Declined: with one readable presentation listed, a user who means a different, unattached presentation gets the listed one's look instead of the question — they can undo and attach the other; the alternative re-opens the production miss this fixes
+Declined: the router prompt still says not to ask for a listed .pptx when two are listed — it then picks one or the step fails with a plain message; rare, no data loss
+Declined: further de-duplication of the .pptx test — two remaining one-line uses
