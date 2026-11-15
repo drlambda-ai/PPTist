@@ -1239,8 +1239,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       list.splice(after + k, 0, cloneSlide(source))
       slidesStore.setSlides(list)
       // each new page from its own topic: with one shared instruction "TikTok and Reddit" became two TikTok pages
+      // in the slide language, not the topic's: the router wrote "Kawa w Brazylii" for an English request (2026-11-15)
       const topic = Array.isArray(args.topics) && args.topics.length === count ? `${args.topics[k]} (part of: ${args.instruction})` : args.instruction
-      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. Write in the language of that text.`, !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced))
+      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. ${args.language ? `Write all its text in ${String(args.language).slice(0, 40)}.` : 'Write in the language of that text.'}`, !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced))
       // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
       // on a new TikTok page): one more pass names those lines
       const copied = new Set(source.elements.map(elText).filter(Boolean))
