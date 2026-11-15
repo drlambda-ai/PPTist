@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review (Codex workspace out of credits)
+Reviewed-At: 2026-11-15T17:09:20Z
+Fixed: decoration no longer removed from a page that is only its picture; photo pages keep their text colours; unreadable backdrop is faded; second request swaps the logo instead of adding one; text fit counts a picture already under the box edge, skips boxes off the slide (NaN), awaits fonts, redraws only changed pages (all in 2d7847ef)
+Declined-By: Claude Code
+Declined: fitOverflow skips type 'text' elements — ChatSlide's PowerPoint build emits shapes with text and the editor grows text elements itself when shown; if a deck arrives with overflowing text elements they still overlap until the page is edited
