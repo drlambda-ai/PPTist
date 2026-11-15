@@ -1367,6 +1367,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Added {p0} picture(s) from {p1}.', { p0: pictures() - before, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') })
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
+    // the router names the person each picture must show, so each one goes to Wikimedia on its own ("Einstein, Curie
+    // and Bohr" drew three stock strangers, review 2026-11-15)
+    const people: string[] = (Array.isArray(args.item_people) ? args.item_people : []).filter((_: any, k: number) => args.items[k])
     const items = args.items.filter(Boolean).slice(0, 6) // "6 pictures" got 4 (prod 2026-11-12, b1b)
     const pg = Number(args.index)
     const at = pos(idOf(pg))
@@ -1399,7 +1402,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         : { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 }
       try {
         // each item is a new picture of its own: never "replace", which overwrote the previous item
-        lines.push(await runCall(text, 'add_image', { ...args, items: [], replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
+        lines.push(await runCall(text, 'add_image', { ...args, items: [], item_people: [], real_person: String(people[k] || ''), replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
         added++
       }
       catch (e: any) {
@@ -1815,11 +1818,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let done = 0, next = 0, stop = false, landed = 0
     const same: number[] = [], failed: number[] = []
     let noChangeWhy = ''
+    // "add references of the articles to each slide so it matches where you got the info": each page matches its own
+    // content against the files; given only a list of citations, pages guessed and wrote "no source can be linked
+    // with certainty" onto the slides (PRO user cancelled, "inaccurate", 2026-11-14)
+    const files = args.cite_files ? s.docs.filter(d => d.text.trim()) : []
+    const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${files.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / files.length)))}\n</file>`).join('\n')}` : args.instruction
     const worker = async () => {
       while (next < todo.length && !stop) {
         const id = todo[next++]
         try {
-          await editSlide(pos(id), args.instruction)
+          await editSlide(pos(id), instruction)
           landed++
         }
         catch (e) { // one page never stops the others; an unexpected error stops them all
@@ -1845,12 +1853,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (landed) lastGoodSlides = JSON.parse(JSON.stringify(slides.value))
       throw err.reason
     }
-    // the request applies to every page, and some came back unchanged: one more try for those, naming that
-    if (args.every_page) {
+    // the request applies to every page, and some came back unchanged: one more try for those, naming that (not when
+    // citing the files: a page none of them informed rightly stays as it was)
+    if (args.every_page && !files.length) {
       const again = same.splice(0).map(p => all[p - 1])
       for (let k = 0; k < again.length; k += 5) {
         // every edit in flight lands before an error is reported: a rollback must not race a page still being written
-        const retried = await Promise.allSettled(again.slice(k, k + 5).map(id => editSlide(pos(id), `${args.instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
+        const retried = await Promise.allSettled(again.slice(k, k + 5).map(id => editSlide(pos(id), `${instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
           if (e instanceof NoChange) same.push(pos(id) + 1)
           else if (e instanceof StepFailed) failed.push(pos(id) + 1)
           else throw e

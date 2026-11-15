@@ -106,7 +106,8 @@ const TOOLS = [
     instruction: { type: 'string', description: 'The change for every page. Written in the user\'s language, never another (new slide text follows it).' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
-  }, ['instruction', 'every_page', 'language']),
+    cite_files: { type: 'boolean', description: 'true when the change cites the user\'s own attached files on the pages they informed ("add references of the articles to each slide so it matches where you got the info", "cite my papers on each slide"): each page is then given the files to match its content against; false otherwise' },
+  }, ['instruction', 'every_page', 'language', 'cite_files']),
   fn('apply_theme', 'Give the whole deck, or only the pages the user limits it to, a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look", "a new theme only on the cover, leave the rest"). Done directly, keeps the wording.', {
     pages: { ...pages, description: 'Only when the user limits the new look to some pages ("only the first page", "just the cover, the rest as it was"): those pages; else [] = the whole deck' },
     background: { type: 'string', description: 'Slide background #RRGGBB' },
@@ -164,8 +165,9 @@ const TOOLS = [
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     every_page: { type: 'boolean', description: 'true when the user asked for pictures on every / each / all slides (one add_image per page, one per round, each on that page\'s own topic; the editor then lists the pages still without one); false otherwise' },
     real_person: { type: 'string', description: 'When the picture must show one real, named person ("a photo of Daniel Stufflebeam", the researcher a slide is about): their name; else "". A stock photo would show someone else.' },
+    item_people: { type: 'array', items: { type: 'string' }, description: 'One entry per items entry, in the same order: the full name of the real, named person that picture must show ("photos of Einstein, Curie and Bohr": ["Albert Einstein", "Marie Curie", "Niels Bohr"]), else "" for that picture; [] when items is []. A stock photo would show someone else.' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'every_page', 'own_brand', 'real_person']),
+  }, ['index', 'query', 'source', 'box', 'page_named', 'replaces_existing', 'items', 'medical', 'asked_for_ai', 'every_page', 'own_brand', 'real_person', 'item_people']),
   fn('set_background', 'Set the background of pages: a colour, or a photo ("background photo", "更好看的背景", "fondo"). Only when the user asks for the background: a request about pictures, photos or images is change_image/add_image/remove_images, even for the last or largest picture.', {
     pages: { ...pages, description: 'Pages to change; empty = every page' },
     color: { type: 'string', description: '#RRGGBB, or "" when a photo is wanted' },
@@ -314,6 +316,9 @@ Rules:
    act on the deck itself (a user was told to attach the PDF the deck already came from).
    What a read_file or web_search step returned goes on the page the user is looking at (edit_page on that page), or
    on the page they named; never on some other page.
+   References to the user's OWN attached files or articles, on the pages they informed ("add references of the articles
+   to each slide so it matches where you got the info") -> edit_all_pages with cite_files true, no find_papers or
+   web_search: those find other sources.
    Academic/medical/scientific citations, references, studies, "peer-reviewed", "APA/Vancouver sources", a bibliography
    slide -> find_papers first. A URL in the user's message (a page or a YouTube video) -> read_link first, then use it.
    Citations, sources, references, evidence, statistics, "latest"/"current" facts, real-world examples, or "search
