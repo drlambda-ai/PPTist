@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "تعذّر حفظ العرض الحالي، لذلك لم تتم استعادة أي شيء. تحقّق من اتصالك وحاول مرة أخرى.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "لا يوجد شعار على الشرائح بعد. أرفق شعارك بأيقونة 📎 وأخبرني أين أضعه.",
   "Moved the logo on {p0} page(s).": "تم نقل الشعار في {p0} صفحة.",
-  "Page {p0} has no picture to replace.": "لا توجد صورة لاستبدالها في الصفحة {p0}."
+  "Page {p0} has no picture to replace.": "لا توجد صورة لاستبدالها في الصفحة {p0}.",
+  "Put the table on page {p0}.": "وضعت الجدول في الشريحة {p0}."
 }

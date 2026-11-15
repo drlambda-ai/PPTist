@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Không lưu được bản trình bày hiện tại nên chưa khôi phục gì. Hãy kiểm tra kết nối và thử lại.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Chưa có logo trên các trang chiếu. Hãy đính kèm logo bằng biểu tượng 📎 và cho tôi biết đặt ở đâu.",
   "Moved the logo on {p0} page(s).": "Đã di chuyển logo trên {p0} trang.",
-  "Page {p0} has no picture to replace.": "Trang {p0} không có hình ảnh nào để thay thế."
+  "Page {p0} has no picture to replace.": "Trang {p0} không có hình ảnh nào để thay thế.",
+  "Put the table on page {p0}.": "Đã đặt bảng lên trang {p0}."
 }

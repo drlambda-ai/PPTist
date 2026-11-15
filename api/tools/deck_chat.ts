@@ -51,10 +51,11 @@ const TOOLS = [
     existing_chart_page: { type: 'integer', description: 'When the user is CHANGING a chart already on a page ("make this chart a pie chart"), that page number; 0 for a new chart' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
   }, ['instruction', 'after', 'chart_type', 'existing_chart_page', 'message_new_pages']),
-  fn('add_table_page', 'Add a new page whose main content is a table.', {
+  fn('add_table_page', 'Add a table: on a new page, or ON an existing page when the user says where ("on this slide", "here", "on slide 4").', {
     instruction: { type: 'string', description: 'What the table shows (rows, columns, values) as the user or deck gives it' },
     after: page,
-  }, ['instruction', 'after']),
+    on_page: { type: 'integer', description: 'The page the table goes ON when the user puts it on a page ("on this slide"/"here" = the current page, "on slide 4" = 4); 0 for a new page' },
+  }, ['instruction', 'after', 'on_page']),
   fn('delete_pages', 'Delete one or more pages.', {
     pages, user_asked_to_cut: { type: 'boolean', description: 'true ONLY if the user\'s words ask to delete, remove or cut pages, or to reduce the deck' },
     yes_to_delete_question: { type: 'boolean', description: 'true ONLY when the user\'s latest message answers the question "Delete N pages?" with a yes ("да", "yes, replace them", "можешь их заменить"); false for a no, a refusal, or any other message' },
@@ -423,7 +424,8 @@ Rules:
    or a follow-up. "A slide" (one) is add_page, never a new deck. "Can you do X in language Y?" -> do X only if it is
    about new content; otherwise answer_question and leave the deck alone. "Repeat that in Y" is about this chat: answer_question. "Open the background/theme/design menu" -> open_design. A diagram on a new page -> add_page with hard true.
    "Add a real-world example" -> edit_page: the example goes ON that page, never a new page.
-   A new diagram, tree, chart or table, or new content -> a new page (new_content true), unless the user named the page. "I can't download / export fails" -> download_deck, try it now.
+   A new diagram, tree, chart or table, or new content -> a new page (new_content true), unless the user named the page.
+   A table or pictures "on this slide" / "here" go ON the current page (add_table_page on_page, add_image index), never a new page. "I can't download / export fails" -> download_deck, try it now.
    "Change the layout of all slides" -> edit_all_pages. A template or theme with no file attached -> open_design.
    "Make a copy / repeat this slide", "N more slides with the same content" -> duplicate_pages of the current page, a
    page number from the listed deck. "I want N slides" with no word about cutting, when the deck has more than N

@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Не вдалося зберегти поточну презентацію, тому нічого не відновлено. Перевірте з’єднання та спробуйте ще раз.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "На слайдах поки немає логотипа. Прикріпіть логотип значком 📎 і скажіть, куди його поставити.",
   "Moved the logo on {p0} page(s).": "Логотип переміщено на {p0} стор.",
-  "Page {p0} has no picture to replace.": "На сторінці {p0} немає зображення для заміни."
+  "Page {p0} has no picture to replace.": "На сторінці {p0} немає зображення для заміни.",
+  "Put the table on page {p0}.": "Таблицю додано на слайд {p0}."
 }

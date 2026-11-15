@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Presentasi Anda saat ini tidak dapat disimpan, jadi tidak ada yang dipulihkan. Periksa koneksi Anda dan coba lagi.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Belum ada logo di slide. Lampirkan logo Anda dengan ikon 📎 dan beri tahu saya di mana menaruhnya.",
   "Moved the logo on {p0} page(s).": "Logo dipindahkan di {p0} halaman.",
-  "Page {p0} has no picture to replace.": "Halaman {p0} tidak memiliki gambar untuk diganti."
+  "Page {p0} has no picture to replace.": "Halaman {p0} tidak memiliki gambar untuk diganti.",
+  "Put the table on page {p0}.": "Tabel sudah ditaruh di halaman {p0}."
 }

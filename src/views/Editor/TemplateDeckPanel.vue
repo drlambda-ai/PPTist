@@ -972,7 +972,7 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   return lead
 }
 
-const addTablePage = async (text: string, instruction: string, at: number) => {
+const tableFor = async (instruction: string) => {
   const res = await fetch('/api/tools/ask_json', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ strong: true, instruction: `Title and cells in the deck's language. Return JSON {"title": "...", "rows": [["header 1", "header 2"], ["cell", "cell"]], "note": "one line on the source, or empty"}. At most 8 rows and 6 columns, short cells. Copy every number exactly from the deck or material and keep each value under its own year/column (check direction: which year is higher). Use only facts the user, the deck or the material give; if there are none, return {"error": "<one sentence asking for them>"}.\n\nTable: ${instruction}\n\nDeck: ${deckLines().join(' | ').slice(0, 3000)}\n\nMaterial: ${material().slice(0, 12000)}` }),
@@ -982,7 +982,7 @@ const addTablePage = async (text: string, instruction: string, at: number) => {
   const { width: W, height: H } = slideSize()
   const cols = Math.max(...d.rows.map((r: any[]) => r.length))
   const style = { fontname: theme.value.fontName, color: theme.value.fontColor, fontsize: '14px' }
-  insertPage(at, d.title, d.note, {
+  return { title: String(d.title || ''), note: String(d.note || ''), table: {
     type: 'table', id: nanoid(10), left: W * 0.08, top: H * 0.22, width: W * 0.84, height: d.rows.length * 40, rotate: 0,
     colWidths: new Array(cols).fill(1 / cols), cellMinHeight: 36,
     outline: { width: 1, style: 'solid', color: '#cccccc' },
@@ -991,7 +991,26 @@ const addTablePage = async (text: string, instruction: string, at: number) => {
       id: nanoid(10), colspan: 1, rowspan: 1, text: String(r[j] ?? ''),
       style: i === 0 ? { ...style, color: '#ffffff', bold: true } : style, // header row sits on the accent colour
     }))),
-  })
+  } as any }
+}
+
+const addTablePage = async (text: string, instruction: string, at: number) => {
+  const { title, note, table } = await tableFor(instruction)
+  insertPage(at, title, note, table)
+}
+
+// A table ON an existing page ("put the table on this slide"): in its free space, made on a full page as for a picture.
+// It became a new, unstyled page, 2026-11-15.
+const addTableOnPage = async (instruction: string, id: string) => {
+  const { table } = await tableFor(instruction)
+  const { width: W, height: H } = slideSize()
+  const box = await roomFor(id, { left: 0.05 * W, top: 0.22 * H, width: 0.9 * W, height: Math.min(table.data.length * 40, 0.64 * H) }, 'a table',
+    { width: 0.36 * W, height: Math.min(table.data.length * 24, 0.6 * H) })
+  const narrow = box.width < 0.6 * W
+  const rowH = Math.max(24, Math.min(40, box.height / table.data.length))
+  const data = table.data.map((r: any[]) => r.map((c: any) => ({ ...c, style: { ...c.style, fontsize: narrow ? '11px' : '14px' } })))
+  slidesStore.updateSlide({ elements: [...slides.value[slides.value.findIndex(x => x.id === id)].elements,
+    { ...table, data, cellMinHeight: rowH - 4, left: box.left, top: box.top, width: box.width, height: rowH * table.data.length }] }, id)
 }
 
 // "Extend page N": new points that go deeper than page N (strong model, grounded in page N, the deck and the material),
@@ -1058,6 +1077,33 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
     if (best) return best
   }
   return null // nowhere free: never cover the page's content
+}
+
+// Free space on a page for something new (a picture, a table, a set of pictures): the nearest free box to `wanted`; on a
+// full page the text is moved aside once per message so the right 40% is free. Fails when there is still no room.
+// `min`: the smallest box that holds it (a set of pictures, a table); a smaller free corner counts as no room.
+const roomFor = async (id: string, wanted: { left: number, top: number, width: number, height: number }, what: string, min = { width: 0, height: 0 }) => {
+  const { width: W, height: H } = slideSize()
+  const at = () => slides.value.findIndex(x => x.id === id)
+  const free = (want: typeof wanted) => {
+    const b = freeBox(slides.value[at()], want)
+    return b && b.width >= min.width && b.height >= min.height ? b : null
+  }
+  let box = free(wanted)
+  if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: at() + 1 })) // made room once: never shrink it again
+  if (!box) { // a full page: make room rather than refuse
+    roomMadeThisTurn.add(id)
+    await editSlide(at(), `Make room for ${what}: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.`).catch(() => undefined)
+    const room = { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H }
+    box = free(room)
+    if (!box) { // the edit did not free it: the page's content moves into the left part, scaled by position and width
+      const page = slides.value[at()]
+      slidesStore.updateSlide({ elements: page.elements.map((e: any) => (e.type === 'image' && isBackdrop(e) ? e : { ...e, left: e.left * 0.56, width: e.width * 0.56 })) }, id)
+      box = free(room)
+    }
+  }
+  if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: at() + 1 }))
+  return box
 }
 
 // Fetch a picture: a stock photo first (unless an AI image is asked for), else gpt-image.
@@ -1279,6 +1325,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     return (await addChartPage(text, args.instruction, args.chart_type || 'column', after)) || (t('Added a chart page "{p0}".', { p0: titleAt(after) }))
   }
+  if (action === 'add_table_page' && Number(args.on_page) > 0) {
+    const id = idOf(Number(args.on_page))
+    await addTableOnPage(args.instruction, id)
+    touched([id])
+    slidesStore.updateSlideIndex(pos(id))
+    return t('Put the table on page {p0}.', { p0: pos(id) + 1 })
+  }
   if (action === 'add_table_page') {
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     await addTablePage(text, args.instruction, after)
@@ -1396,30 +1449,41 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const row = { left: 0.05 * W, top: 0.6 * H, width: 0.9 * W, height: 0.3 * H }
     const fb = freeBox(slides.value[at], row)
     const roomy = items.length <= 4 && !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8 // five or six: a grid page
-    // a full page: the pictures go on a new page right after it, in a grid, under that page's title (on a full slide
-    // four pictures landed in the corners and off the edge, 2026-11-11)
+    // no row free: up to four pictures go on this page in the room made for them ("add photos of A and B on this
+    // slide" became a new, unstyled page, 2026-11-15)
+    let area: { left: number, top: number, width: number, height: number } | null = null
+    if (!roomy && items.length <= 4) {
+      try {
+        area = await roomFor(ids[at], { left: 0.55 * W, top: 0.2 * H, width: 0.4 * W, height: 0.6 * H }, 'pictures', { width: 0.25 * W, height: 0.3 * H })
+      }
+      catch (e) { if (!(e instanceof StepFailed)) throw e }
+    }
+    // still no room: the pictures go on a new page right after it, in a grid, in that page's look (its title, header,
+    // footer and background; on a full slide four pictures landed in the corners and off the edge, 2026-11-11)
     let pageId = ''
-    if (!roomy) {
-      const src = slides.value[at]
-      const title: any = readingOrder(src).find((e: any) => elText(e))
-      const page: any = { id: nanoid(10), background: copiedBackground(src), elements: title ? [{ ...JSON.parse(JSON.stringify(title)), id: nanoid(10) }] : [] }
-      const list = [...slides.value]
-      list.splice(at + 1, 0, page)
-      slidesStore.setSlides(list)
+    if (!roomy && !area) {
+      const title: any = readingOrder(slides.value[at]).find((e: any) => elText(e))
+      insertPage(at + 1, title ? elText(title) : '', '', { type: '__pictures' })
+      const page = slides.value[at + 1]
+      area = page.elements.find((e: any) => e.type === '__pictures') as any
+      slidesStore.updateSlide({ elements: page.elements.filter((e: any) => e.type !== '__pictures') }, page.id)
       ids.splice(0, ids.length, ...slides.value.map(x => x.id))
       pageId = page.id
       helperPages.add(page.id) // not a page the user asked for: it must not satisfy "new content goes on the new page"
     }
-    const cols = roomy ? items.length : items.length <= 2 ? items.length : items.length <= 4 ? 2 : 3, rows = Math.ceil(items.length / cols)
+    const wide = !!area && area.width >= area.height * 1.5
+    const cols = roomy || (wide && items.length <= 4) ? items.length : items.length <= 2 ? (pageId ? items.length : 1) : items.length <= 4 ? 2 : 3
+    const rows = Math.ceil(items.length / cols)
+    const a = area ? { x: area.left / W * 100, y: area.top / H * 100, w: area.width / W * 100, h: area.height / H * 100 } : null
     const lines: string[] = []
     let added = 0
     for (const [k, q] of items.entries()) {
       const c = k % cols, r = Math.floor(k / cols)
-      const box = roomy ? { x: 5 + k * (90 / items.length), y: 62, w: 90 / items.length - 2, h: 33 }
-        : { x: 5 + c * (90 / cols), y: 24 + r * (70 / rows), w: 90 / cols - 3, h: 70 / rows - 4 }
+      const box = roomy || !a ? { x: 5 + k * (90 / items.length), y: 62, w: 90 / items.length - 2, h: 33 }
+        : { x: a.x + c * (a.w / cols), y: a.y + r * (a.h / rows), w: a.w / cols - 1, h: a.h / rows - 1 }
       try {
         // each item is a new picture of its own: never "replace", which overwrote the previous item
-        lines.push(await runCall(text, 'add_image', { ...args, items: [], item_specifics: [], specific_thing: String(specifics[k] || ''), replaces_existing: false, index: roomy ? pg : at + 2, page_named: true, query: q, box }, ids))
+        lines.push(await runCall(text, 'add_image', { ...args, items: [], item_specifics: [], specific_thing: String(specifics[k] || ''), replaces_existing: false, index: pageId ? at + 2 : pg, page_named: true, query: q, box }, ids))
         added++
       }
       catch (e: any) {
@@ -1448,20 +1512,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a specific thing may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
     if (args.source === 'specific') busy.value = t('Finding a picture…')
     const early = args.source === 'specific' ? await findPicture(args.query, args.source, wanted.width >= wanted.height) : ''
-    let box = freeBox(sl, wanted)
-    if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 })) // made room once: never shrink it again
-    if (!box) { // a full page: make room rather than refuse
-      roomMadeThisTurn.add(id)
-      await editSlide(pos(id), 'Make room for a picture: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.').catch(() => undefined)
-      const room = { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H }
-      box = freeBox(slides.value[pos(id)], room)
-      if (!box) { // the edit did not free it: the page's content moves into the left part, scaled by position and width
-        const page = slides.value[pos(id)]
-        slidesStore.updateSlide({ elements: page.elements.map((e: any) => (e.type === 'image' && isBackdrop(e) ? e : { ...e, left: e.left * 0.56, width: e.width * 0.56 })) }, id)
-        box = freeBox(slides.value[pos(id)], room)
-      }
-    }
-    if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: pos(id) + 1 }))
+    const box = await roomFor(id, wanted, 'a picture')
     busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     const src = early || await findPicture(args.query, args.source, box.width >= box.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
     if (!src) fail(t('Could not get a picture.'))
@@ -2400,6 +2451,7 @@ const deckTurn = async (text: string) => {
   let picNudgedAt = 0 // picturedPages.size when the router was last sent back for the pages left
   let everyPageAction = 'add_image' // which every-page picture step this message runs: a replace lists only pages with a picture
   const ADDS = ['add_page', 'add_chart_page', 'add_table_page', 'expand_page']
+  const adds = (c: any) => ADDS.includes(c.action) && !(Number(c.args?.on_page) > 0) // a table ON a page adds no page
   // pages this message animated (an earlier step's arguments, as logged in done); none listed means every page
   const animatedThisTurn = (pages?: number[]) => done.some((d) => {
     if (!d.startsWith('animate_pages ') || d.includes('-> skipped')) return false
@@ -2512,7 +2564,7 @@ const deckTurn = async (text: string) => {
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
-      || work.find((c: any) => ADDS.includes(c.action) && pagesWanted >= 0 && created() >= pagesWanted)
+      || work.find((c: any) => adds(c) && pagesWanted >= 0 && created() >= pagesWanted)
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
       || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
@@ -2558,7 +2610,7 @@ const deckTurn = async (text: string) => {
     if (extra) {
       const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
-          : ADDS.includes(extra.action) && pagesWanted >= 0 && created() >= pagesWanted
+          : adds(extra) && pagesWanted >= 0 && created() >= pagesWanted
             ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
             : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
               ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
@@ -2606,10 +2658,10 @@ const deckTurn = async (text: string) => {
         done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one`)
         continue
       }
-      if (ADDS.includes(c.action) && pagesWanted < 0) pagesWanted = Math.max(1, Number(c.args?.message_new_pages) || Number(c.args?.count) || 1)
+      if (adds(c) && pagesWanted < 0) pagesWanted = Math.max(1, Number(c.args?.message_new_pages) || Number(c.args?.count) || 1)
       // no step adds more than this message still allows
-      if (ADDS.includes(c.action) && Number(c.args?.count) > 0) c.args.count = Math.min(Number(c.args.count), Math.max(1, pagesWanted - created()))
-      else if (ADDS.includes(c.action) && created() >= pagesWanted) { // planned in the same batch as the pages already added
+      if (adds(c) && Number(c.args?.count) > 0) c.args.count = Math.min(Number(c.args.count), Math.max(1, pagesWanted - created()))
+      else if (adds(c) && created() >= pagesWanted) { // planned in the same batch as the pages already added
         done.push(`${c.action} -> skipped: the ${pagesWanted} new page(s) this message asks for are already added`)
         continue
       }

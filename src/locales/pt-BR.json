@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "Não foi possível salvar a apresentação atual, então nada foi restaurado. Verifique sua conexão e tente novamente.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Ainda não há logotipo nos slides. Anexe seu logotipo com o ícone 📎 e diga onde colocá-lo.",
   "Moved the logo on {p0} page(s).": "Logotipo movido em {p0} página(s).",
-  "Page {p0} has no picture to replace.": "A página {p0} não tem nenhuma imagem para substituir."
+  "Page {p0} has no picture to replace.": "A página {p0} não tem nenhuma imagem para substituir.",
+  "Put the table on page {p0}.": "Coloquei a tabela no slide {p0}."
 }

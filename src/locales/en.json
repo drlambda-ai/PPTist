@@ -1237,5 +1237,6 @@
   "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.": "The deck you have now could not be saved, so nothing was restored. Check your connection and try again.",
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.",
   "Moved the logo on {p0} page(s).": "Moved the logo on {p0} page(s).",
-  "Page {p0} has no picture to replace.": "Page {p0} has no picture to replace."
+  "Page {p0} has no picture to replace.": "Page {p0} has no picture to replace.",
+  "Put the table on page {p0}.": "Put the table on page {p0}."
 }
