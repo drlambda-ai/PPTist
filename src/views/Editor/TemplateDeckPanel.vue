@@ -2341,6 +2341,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Showing page {p0}.', { p0: pos(id) + 1 })
   }
   if (action === 'ask_user') {
+    // asking for the presentation the chat already has: its look is taken from that file instead (with a surgeon's
+    // file listed the router still asked him to attach it, production 2026-11-16)
+    const own = s.docs.filter(d => /\.pptx$/i.test(d.name))
+    if (args.wants_presentation_look && own.length === 1) return runCall(text, 'use_file_look', { file: own[0].name, colors: true, logo: true }, ids)
     const opts = (args.options || []).filter(Boolean).slice(0, 4)
     s.pending = { request: userText, question: args.question || '', options: opts }
     save()

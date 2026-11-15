@@ -253,7 +253,8 @@ const TOOLS = [
     user_language: { type: 'string', description: 'The language of the user\'s latest message' },
     question: { type: 'string', description: 'The question, in that language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
-  }, ['user_language', 'question', 'options']),
+    wants_presentation_look: { type: 'boolean', description: 'true when the question asks the user to attach or upload their own presentation so its colours, design or logo can be used; else false' },
+  }, ['user_language', 'question', 'options', 'wants_presentation_look']),
   fn('restore_original', 'Put pages back to how they were when the editor was opened this time ("back to the original", "how it was at first", "như ban đầu", "恢复原样"), in one step. Not for "the previous version" (undo).', {
     pages: { ...pages, description: 'The pages named; empty = the current page' },
     whole_deck: { type: 'boolean', description: 'true when the user means everything / all pages / the whole deck ("mọi thứ", "всё", "todo", "全部")' },
@@ -701,7 +702,7 @@ async function handler(req: any, res: any) {
     // everything that changes (deck, current page, template) comes after it
     const files = (body.files || []) as { name: string, pages?: number, chars?: number }[]
     const pics = (body.pictures || []) as string[]
-    const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters`).join('\n')}` : '\n\nNo files are attached.')
+    const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${/\.pptx$/i.test(x.name) ? ' (the user\'s own presentation: use_file_look takes its colours and logo, never ask for it)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
