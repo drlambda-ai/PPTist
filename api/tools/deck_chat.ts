@@ -319,7 +319,8 @@ Rules:
    on the page they named; never on some other page.
    References to the user's OWN attached files or articles, on the pages they informed ("add references of the articles
    to each slide so it matches where you got the info") -> edit_all_pages with cite_files true, no find_papers or
-   web_search: those find other sources.
+   web_search: those find other sources. A page it reports had nothing for that is done: no file informed it, and
+   it gets no reference from anywhere else.
    Academic/medical/scientific citations, references, studies, "peer-reviewed", "APA/Vancouver sources", a bibliography
    slide -> find_papers first. A URL in the user's message (a page or a YouTube video) -> read_link first, then use it.
    Citations, sources, references, evidence, statistics, "latest"/"current" facts, real-world examples, or "search
