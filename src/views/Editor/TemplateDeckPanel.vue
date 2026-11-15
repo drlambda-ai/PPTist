@@ -1127,6 +1127,15 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
   return ((await r.json()).src || '') as string
 }
 
+// width / height of a picture, 0 when it does not load
+const imageRatio = (src: string) => new Promise<number>((ok) => {
+  const im = new Image()
+  const tm = setTimeout(() => ok(0), 8000)
+  im.onload = () => { clearTimeout(tm); ok(im.naturalWidth && im.naturalHeight ? im.naturalWidth / im.naturalHeight : 0) }
+  im.onerror = () => { clearTimeout(tm); ok(0) }
+  im.src = src
+})
+
 const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
   const sl = slides.value.find(x => x.id === slideId)
   // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
@@ -1134,7 +1143,11 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   if (!sl || !el) fail(t('That page has no picture.'))
   const src = await findPicture(query, source, el.width >= el.height, sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src))
   if (!src) fail(t('Could not get a picture.'))
-  slidesStore.updateElement({ id: el.id, props: { src } as any, slideId })
+  // the new picture fills the old frame cropped to it, centred, never stretched (the template's frame stays as designed)
+  const ratio = await imageRatio(src), frame = el.width / el.height
+  const keep = ratio ? Math.min(1, frame / ratio) * 100 : 100, keepH = ratio ? Math.min(1, ratio / frame) * 100 : 100
+  const clip = { shape: el.clip?.shape || 'rect', range: [[(100 - keep) / 2, (100 - keepH) / 2], [(100 + keep) / 2, (100 + keepH) / 2]] }
+  slidesStore.updateElement({ id: el.id, props: { src, clip } as any, slideId })
   s.pics = { ...s.pics, [el.id]: query }
   if (isBackdrop(el)) showBackdrop(slideId, el.id)
   touched([slideId])
@@ -1451,6 +1464,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!src) fail(t('Could not get a picture.'))
     const now = freeBox(slides.value[pos(id)], box) // re-checked: the page may have changed while the picture loaded
     if (!now) fail(t('Page {p0} has no free space any more.', { p0: pos(id) + 1 }))
+    // the picture keeps its own shape, centred in the box: a 3:4 portrait filled a wide box stretched (2026-11-15)
+    const ratio = await imageRatio(src)
+    if (ratio) {
+      const w = Math.min(now.width, now.height * ratio), h = w / ratio
+      Object.assign(now, { left: now.left + (now.width - w) / 2, top: now.top + (now.height - h) / 2, width: w, height: h })
+    }
     const picId = nanoid(10)
     slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: picId, src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
     s.pics = { ...s.pics, [picId]: String(args.query || '') }
