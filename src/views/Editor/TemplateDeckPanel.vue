@@ -1335,7 +1335,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // a picture of one brand's own things asked for as an ordinary picture: it comes from that brand's website (the router
   // split "more photos of the brand's products" into generic stock searches when the message had a second wish)
-  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
+  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'person' && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
     const items = (args.items || []).filter(Boolean)
     return runCall(text, 'add_site_pictures', { index: args.index, page_named: args.page_named, site: '', brand: args.own_brand, what: [args.query, ...items].filter(Boolean).join('; '), count: items.length || 1 }, ids)
   }
