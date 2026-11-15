@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Chưa có logo trên các trang chiếu. Hãy đính kèm logo bằng biểu tượng 📎 và cho tôi biết đặt ở đâu.",
   "Moved the logo on {p0} page(s).": "Đã di chuyển logo trên {p0} trang.",
   "Page {p0} has no picture to replace.": "Trang {p0} không có hình ảnh nào để thay thế.",
-  "Put the table on page {p0}.": "Đã đặt bảng lên trang {p0}."
+  "Put the table on page {p0}.": "Đã đặt bảng lên trang {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "Chưa có tệp PowerPoint nào của bạn ở đây: hãy đính kèm bằng biểu tượng 📎.",
+  "Reading the look of {p0}…": "Đang đọc giao diện của {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "Tôi không đọc được {p0} dưới dạng tệp PowerPoint.",
+  "Applied the colours of {p0} to the whole deck.": "Đã áp dụng màu của {p0} cho toàn bộ bài thuyết trình.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "Tôi không tìm thấy logo trong {p0} (một hình nhỏ ở góc). Hãy đính kèm logo bằng biểu tượng 📎 và tôi sẽ thêm vào.",
+  "Put the logo from {p0} on {p1} page(s).": "Đã đặt logo từ {p0} lên {p1} trang."
 }

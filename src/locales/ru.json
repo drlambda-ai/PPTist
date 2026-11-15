@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "На слайдах пока нет логотипа. Прикрепите логотип значком 📎 и скажите, куда его поставить.",
   "Moved the logo on {p0} page(s).": "Логотип перемещён на {p0} стр.",
   "Page {p0} has no picture to replace.": "На странице {p0} нет изображения для замены.",
-  "Put the table on page {p0}.": "Таблица добавлена на слайд {p0}."
+  "Put the table on page {p0}.": "Таблица добавлена на слайд {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "Вашего файла PowerPoint здесь пока нет: прикрепите его значком 📎.",
+  "Reading the look of {p0}…": "Читаю оформление {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "Не удалось прочитать {p0} как файл PowerPoint.",
+  "Applied the colours of {p0} to the whole deck.": "Цвета из {p0} применены ко всей презентации.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "В {p0} не нашлось логотипа (небольшой картинки в углу). Прикрепите логотип значком 📎, и я добавлю его.",
+  "Put the logo from {p0} on {p1} page(s).": "Логотип из {p0} размещён на {p1} стр."
 }

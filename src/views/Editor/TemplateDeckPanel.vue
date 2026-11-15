@@ -84,6 +84,9 @@ import useAIPPT from '@/hooks/useAIPPT'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useSlideTheme from '@/hooks/useSlideTheme'
+import { parse } from 'pptxtojson'
+import { normalizePptx } from '@/utils/normalizePptx'
+import { fileLook } from '@/utils/fileLook'
 import api from '@/services'
 import type { Slide, PPTImageElement, PPTElement } from '@/types/slides'
 import type { AIPPTSlide } from '@/types/AIPPT'
@@ -382,6 +385,14 @@ const uploadPicture = (file: File) => run(t('Uploading {p0}…', { p0: file.name
 
 const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
 const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
+// A listed file as the user uploaded it: attached in this session, or one the project already had (asked from ChatSlide)
+const fileOf = async (name: string) => {
+  const here = docFiles.get(name) || (docFiles.size === 1 && !s.docs.some(d => d.name === name) ? [...docFiles.values()][0] : undefined)
+  if (here) return here
+  const doc = s.docs.find(d => d.name === name) || (s.docs.filter(d => d.project).length === 1 ? s.docs.find(d => d.project) : undefined)
+  const blob = doc?.project ? await hostSteps()?.file?.(doc.name).catch(() => null) : null
+  return blob ? new File([blob], doc!.name) : undefined
+}
 const uploadContent = (file: File) => run(t('Reading {p0}…', { p0: file.name }), async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
   s.docs.push({ name: r.name, text: r.text })
@@ -1338,8 +1349,84 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     slidesStore.updateSlideIndex(after)
     return t('Added a table page "{p0}".', { p0: titleAt(after) })
   }
+  // the colours and the logo of the user's own .pptx (the file the deck was made from, or one attached here)
+  if (action === 'use_file_look') {
+    const listed = s.docs.filter(d => /\.pptx$/i.test(d.name))
+    const file = await fileOf(listed.some(d => d.name === args.file) || listed.length !== 1 ? args.file : listed[0].name)
+    if (!file || !/\.pptx$/i.test(file.name)) fail(t('No PowerPoint file of yours is here yet: attach it with the 📎 icon.'))
+    busy.value = t('Reading the look of {p0}…', { p0: file!.name })
+    const look = await file!.arrayBuffer().then(normalizePptx).then(b => parse(b, { imageMode: 'base64', videoMode: 'blob', audioMode: 'blob' })).then(fileLook)
+      .catch(() => fail(t('I could not read {p0} as a PowerPoint file.', { p0: file!.name })))
+    const ids = slides.value.map(x => x.id)
+    const said: string[] = []
+    if (args.colors !== false) {
+      // the template's own full-slide decoration (shapes on white or see-through) would hide the new background and
+      // is not the user's look: it goes; a full-slide photo (a cover picture) stays as it is
+      const decoration = new Map<string, boolean>()
+      const isDecoration = (src: string) => new Promise<boolean>(res => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          try {
+            const c = document.createElement('canvas')
+            c.width = c.height = 32
+            const g = c.getContext('2d')!
+            g.drawImage(img, 0, 0, 32, 32)
+            const px = g.getImageData(0, 0, 32, 32).data
+            let plain = 0
+            for (let i = 0; i < px.length; i += 4) if (px[i + 3] < 32 || (px[i] > 235 && px[i + 1] > 235 && px[i + 2] > 235)) plain++
+            res(plain >= 32 * 32 * 0.55)
+          }
+          catch {
+            res(false)
+          }
+        }
+        img.onerror = () => res(false)
+        img.src = src
+      })
+      for (const sl of slides.value) {
+        for (const e of sl.elements as any[]) if (e.type === 'image' && isBackdrop(e) && !decoration.has(e.src)) decoration.set(e.src, await isDecoration(e.src))
+      }
+      for (const sl of [...slides.value]) {
+        const kept = (sl.elements as any[]).filter(e => !(e.type === 'image' && isBackdrop(e) && decoration.get(e.src)))
+        if (kept.length < sl.elements.length) slidesStore.updateSlide({ elements: kept }, sl.id)
+      }
+      applyPresetTheme({ background: look.background, fontColor: look.fontColor, fontname: '', colors: look.colors }, true)
+      slidesStore.setTheme({ themeColors: look.colors.slice(0, 6) })
+      said.push(t('Applied the colours of {p0} to the whole deck.', { p0: file!.name }))
+    }
+    if (args.logo !== false && !look.logo) said.push(t('{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.', { p0: file!.name }))
+    else if (args.logo !== false) {
+      const logo = look.logo!
+      const src = chatslide?.uploadImage ? await chatslide.uploadImage(await (await fetch(logo.src)).blob()) : logo.src
+      const { width: W, height: H } = slideSize()
+      // under 4% of the slide, so the chat knows it as the logo from then on (logoSpots)
+      const shape = await new Promise<number>(res => {
+        const i = new Image()
+        i.onload = () => res(i.naturalWidth / i.naturalHeight)
+        i.onerror = () => res(logo.ratio)
+        i.src = logo.src
+      })
+      let height = H * Math.min(logo.height, 0.14), width = height * shape
+      const k = Math.min(1, Math.sqrt(0.035 * W * H / (width * height)))
+      width *= k
+      height *= k
+      const m = W * 0.025
+      const right = logo.left + logo.width / 2 > 0.5, bottom = logo.top + logo.height / 2 > 0.5
+      // one corner for the whole deck: the file's own corner unless another is free on more pages
+      const corners = [[right, bottom], [true, false], [false, false], [true, true], [false, true]]
+        .map(([r, b]) => ({ left: r ? W - m - width : m, top: b ? H - m - height : m }))
+      const free = (sl: Slide, c: { left: number, top: number }) => !(sl.elements as any[]).some(e => e.width && e.height && e.width * e.height < W * H * 0.6
+        && e.left < c.left + width && e.left + e.width > c.left && e.top < c.top + height && e.top + e.height > c.top)
+      const at = corners.map(c => ({ c, pages: slides.value.filter(sl => free(sl, c)) })).sort((x, y) => y.pages.length - x.pages.length)[0]
+      for (const sl of at.pages) slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...at.c, width, height } as any] }, sl.id)
+      said.push(t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: at.pages.length }))
+    }
+    touched(ids)
+    return said.join(' ')
+  }
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
-    const file = docFiles.get(args.file) || (docFiles.size === 1 ? [...docFiles.values()][0] : undefined)
+    const file = await fileOf(args.file)
     if (!file) {
       fail(s.docs.some(d => d.name === args.file)
         ? (t('Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).', { p0: args.file }))
@@ -2901,6 +2988,47 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
   renderer = run.catch(() => undefined)
   return run
 }
+// On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
+// over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
+// the next element; when that is not room enough its type shrinks (never under 60%).
+const fitOverflow = () => withRenderer(async () => {
+  const { width: W, height: H } = slideSize()
+  try {
+    for (let round = 0; round < 3; round++) {
+      toRender.value = JSON.parse(JSON.stringify(slides.value))
+      await nextTick()
+      await new Promise(r => setTimeout(r, 400))
+      let changed = false
+      for (const sl of slides.value) {
+        for (const e of sl.elements as any[]) {
+          if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
+          const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
+          const box = node?.parentElement
+          if (!node || !box) continue
+          const pad = parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
+          const need = node.offsetHeight + pad
+          if (need <= e.height + 2) continue
+          // what it would run into: anything under it in its columns, except a band that sits behind other elements
+          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top >= e.top + e.height - 2 && o.left < e.left + e.width && o.left + o.width > e.left
+            && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
+          const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
+          if (room <= e.height + 2 && round) continue // nowhere to grow and already shrunk once
+          const props: any = { height: Math.max(e.height, Math.min(need, room)) }
+          if (need > room) {
+            const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
+            props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
+          }
+          slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+  }
+  finally {
+    toRender.value = []
+  }
+})
 const hashOf = (x: string) => {
   let h = 5381
   for (let i = 0; i < x.length; i++) h = ((h * 33) ^ x.charCodeAt(i)) >>> 0
@@ -2988,47 +3116,6 @@ const syncToChatSlide = () => syncing ||= (async () => {
   }
   finally {
     syncing = null
-// On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
-// over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
-// the next element; when that is not room enough its type shrinks (never under 60%).
-const fitOverflow = () => withRenderer(async () => {
-  const { width: W, height: H } = slideSize()
-  try {
-    for (let round = 0; round < 3; round++) {
-      toRender.value = JSON.parse(JSON.stringify(slides.value))
-      await nextTick()
-      await new Promise(r => setTimeout(r, 400))
-      let changed = false
-      for (const sl of slides.value) {
-        for (const e of sl.elements as any[]) {
-          if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
-          const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
-          const box = node?.parentElement
-          if (!node || !box) continue
-          const pad = parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
-          const need = node.offsetHeight + pad
-          if (need <= e.height + 2) continue
-          // what it would run into: anything under it in its columns, except a band that sits behind other elements
-          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top >= e.top + e.height - 2 && o.left < e.left + e.width && o.left + o.width > e.left
-            && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
-          const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
-          if (room <= e.height + 2 && round) continue // nowhere to grow and already shrunk once
-          const props: any = { height: Math.max(e.height, Math.min(need, room)) }
-          if (need > room) {
-            const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
-          }
-          slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
-          changed = true
-        }
-      }
-      if (!changed) break
-    }
-  }
-  finally {
-    toRender.value = []
-  }
-})
   }
 })()
 
@@ -3061,6 +3148,7 @@ onMounted(() => {
         })
         await showPptx(link)
         await loaded
+        await fitOverflow().catch(() => undefined)
         s.edited = true // the editor copy is the deck from now on
         s.synced = { keys: pageKeys(slides.value), urls: {} } // unchanged: the project keeps its own slides until an edit
         URL.revokeObjectURL(link)
@@ -3148,7 +3236,6 @@ onMounted(() => {
   }
   .attach {
     font-size: 24px;
-        await fitOverflow().catch(() => undefined)
   }
 }
 .chatslide-render {

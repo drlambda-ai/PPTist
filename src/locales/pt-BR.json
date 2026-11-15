@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Ainda não há logotipo nos slides. Anexe seu logotipo com o ícone 📎 e diga onde colocá-lo.",
   "Moved the logo on {p0} page(s).": "Logotipo movido em {p0} página(s).",
   "Page {p0} has no picture to replace.": "A página {p0} não tem nenhuma imagem para substituir.",
-  "Put the table on page {p0}.": "Coloquei a tabela no slide {p0}."
+  "Put the table on page {p0}.": "Coloquei a tabela no slide {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "Ainda não há nenhum arquivo de PowerPoint seu aqui: anexe-o com o ícone 📎.",
+  "Reading the look of {p0}…": "Lendo o visual de {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "Não consegui ler {p0} como arquivo de PowerPoint.",
+  "Applied the colours of {p0} to the whole deck.": "Cores de {p0} aplicadas a toda a apresentação.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "Não encontrei um logotipo em {p0} (uma imagem pequena em um canto). Anexe o logotipo com o ícone 📎 e eu o adiciono.",
+  "Put the logo from {p0} on {p1} page(s).": "Logotipo de {p0} colocado em {p1} página(s)."
 }

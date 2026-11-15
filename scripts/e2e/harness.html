@@ -15,6 +15,8 @@ window.__chatslide = {
   feedback: async (turn, good, comment, reply) => { window.__ev.push('feedback:' + JSON.stringify([turn, good, comment, reply.slice(0, 40)])); return true },
   share: async () => { window.__ev.push('share'); return { url: location.origin + '/shared/test', copied: false } },
   goto: async (s) => window.__ev.push('goto:' + s),
+  // ?file=mine.pptx: a file the project already had (decks/mine.pptx), as ChatSlide hands it over
+  ...(q.get('file') ? { files: async () => [{ name: q.get('file'), text: 'The slides of ' + q.get('file') }], file: async () => (await fetch('decks/' + (q.get('as') || q.get('file')))).blob() } : {}), // &as=x.pptx: its name on disk
   // ?versions=a.json,b.json: the deck's saved copies, newest first (decks/ files), one hour apart (&step=24: a day)
   ...(q.get('versions') ? { versions: async () => q.get('versions').split(',').map((f, k) => ({ url: location.origin + '/decks/' + f, at: new Date(Date.now() - k * (Number(q.get('step')) || 1) * 3600e3).toISOString() })) } : {}),
 }

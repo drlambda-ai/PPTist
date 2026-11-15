@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.",
   "Moved the logo on {p0} page(s).": "Moved the logo on {p0} page(s).",
   "Page {p0} has no picture to replace.": "Page {p0} has no picture to replace.",
-  "Put the table on page {p0}.": "Put the table on page {p0}."
+  "Put the table on page {p0}.": "Put the table on page {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "No PowerPoint file of yours is here yet: attach it with the 📎 icon.",
+  "Reading the look of {p0}…": "Reading the look of {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "I could not read {p0} as a PowerPoint file.",
+  "Applied the colours of {p0} to the whole deck.": "Applied the colours of {p0} to the whole deck.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.",
+  "Put the logo from {p0} on {p1} page(s).": "Put the logo from {p0} on {p1} page(s)."
 }

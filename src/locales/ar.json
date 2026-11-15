@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "لا يوجد شعار على الشرائح بعد. أرفق شعارك بأيقونة 📎 وأخبرني أين أضعه.",
   "Moved the logo on {p0} page(s).": "تم نقل الشعار في {p0} صفحة.",
   "Page {p0} has no picture to replace.": "لا توجد صورة لاستبدالها في الصفحة {p0}.",
-  "Put the table on page {p0}.": "وضعت الجدول في الشريحة {p0}."
+  "Put the table on page {p0}.": "وضعت الجدول في الشريحة {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "لا يوجد ملف PowerPoint خاص بك هنا بعد: أرفقه باستخدام أيقونة 📎.",
+  "Reading the look of {p0}…": "جارٍ قراءة مظهر {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "تعذّرت قراءة {p0} كملف PowerPoint.",
+  "Applied the colours of {p0} to the whole deck.": "تم تطبيق ألوان {p0} على العرض التقديمي كله.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "لم أجد شعارًا في {p0} (صورة صغيرة في إحدى الزوايا). أرفق الشعار باستخدام أيقونة 📎 وسأضيفه.",
+  "Put the logo from {p0} on {p1} page(s).": "تم وضع الشعار من {p0} على {p1} صفحة."
 }

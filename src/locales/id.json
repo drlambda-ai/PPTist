@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "Belum ada logo di slide. Lampirkan logo Anda dengan ikon 📎 dan beri tahu saya di mana menaruhnya.",
   "Moved the logo on {p0} page(s).": "Logo dipindahkan di {p0} halaman.",
   "Page {p0} has no picture to replace.": "Halaman {p0} tidak memiliki gambar untuk diganti.",
-  "Put the table on page {p0}.": "Tabel sudah ditaruh di halaman {p0}."
+  "Put the table on page {p0}.": "Tabel sudah ditaruh di halaman {p0}.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "Belum ada file PowerPoint Anda di sini: lampirkan dengan ikon 📎.",
+  "Reading the look of {p0}…": "Membaca tampilan {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "Saya tidak dapat membaca {p0} sebagai file PowerPoint.",
+  "Applied the colours of {p0} to the whole deck.": "Warna {p0} diterapkan ke seluruh presentasi.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "Saya tidak menemukan logo di {p0} (gambar kecil di sudut). Lampirkan logo dengan ikon 📎 dan saya akan menambahkannya.",
+  "Put the logo from {p0} on {p1} page(s).": "Logo dari {p0} dipasang di {p1} halaman."
 }

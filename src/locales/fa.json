@@ -1238,5 +1238,11 @@
   "There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.": "هنوز لوگویی روی اسلایدها نیست. لوگوی خود را با نماد 📎 پیوست کنید و بگویید کجا بگذارم.",
   "Moved the logo on {p0} page(s).": "لوگو در {p0} صفحه جابه‌جا شد.",
   "Page {p0} has no picture to replace.": "صفحه {p0} تصویری برای جایگزینی ندارد.",
-  "Put the table on page {p0}.": "جدول در اسلاید {p0} قرار گرفت."
+  "Put the table on page {p0}.": "جدول در اسلاید {p0} قرار گرفت.",
+  "No PowerPoint file of yours is here yet: attach it with the 📎 icon.": "هنوز هیچ فایل پاورپوینتی از شما اینجا نیست: آن را با نماد 📎 پیوست کنید.",
+  "Reading the look of {p0}…": "در حال خواندن ظاهر {p0}…",
+  "I could not read {p0} as a PowerPoint file.": "نتوانستم {p0} را به‌عنوان فایل پاورپوینت بخوانم.",
+  "Applied the colours of {p0} to the whole deck.": "رنگ‌های {p0} روی کل ارائه اعمال شد.",
+  "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "لوگویی در {p0} پیدا نکردم (تصویری کوچک در یک گوشه). لوگو را با نماد 📎 پیوست کنید تا اضافه‌اش کنم.",
+  "Put the logo from {p0} on {p1} page(s).": "لوگوی {p0} روی {p1} صفحه قرار گرفت."
 }

@@ -116,6 +116,11 @@ const TOOLS = [
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['pages', 'background', 'font_color', 'colors', 'font']),
+  fn('use_file_look', 'Give the deck the colours and/or the logo OF the user\'s own presentation file (a .pptx listed under "Attached files"): "use the colour and logo of my previous presentation", "make it look like my original slides", "keep my corporate design", "take the logo from my file". Done directly, keeps the wording. Never ask the user to attach a file that is listed.', {
+    file: { type: 'string', description: 'The .pptx file name exactly as listed' },
+    colors: { type: 'boolean', description: 'true when they want its colours, design or look (also when they just say "like my presentation")' },
+    logo: { type: 'boolean', description: 'true when they want its logo (also when they just say "like my presentation")' },
+  }, ['file', 'colors', 'logo']),
   fn('add_site_pictures', 'Put REAL pictures taken from a website on a page: a specific brand\'s or company\'s own products, store, team or app ("more photos of the brand\'s products", "pictures from their site", "use images from <url>"). Stock photos cannot show one brand\'s products, so never use add_image/change_image for that. It is a paid feature; the editor tells free users.', {
     index: page,
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide", "here" or nothing' },
@@ -378,6 +383,10 @@ Rules:
    (e.g. shorter text / different layout / new picture). Never redesign the whole deck on a guess.
    Truly ambiguous requests where a wrong guess costs real work -> ask_user (one question, options). At most one
    ask_user per request; if already answered once, act on the best reading.
+   The colours, design, look or logo OF the user's own presentation ("my previous / original / old presentation",
+   "meiner vorherigen Präsentation", "my company slides") when a .pptx is listed under "Attached files" ->
+   use_file_look with that file (the only .pptx listed = that one), never ask_user and never apply_theme with colours
+   you guess. No .pptx listed -> ask_user to attach it with the 📎 icon.
    The user's OWN logo or picture ("my logo", "mi logotipo", "我的图片", "this photo"): when the deck lists a picture as
    logo or as their attached picture, or any request to move or resize their logo ("move my logo to the top right and
    make it small") -> move_logo (it finds the logo itself and asks them to attach it when there is none). To add
