@@ -386,6 +386,12 @@ const uploadPicture = (file: File) => run(t('Uploading {p0}…', { p0: file.name
 const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
 const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
 // A listed file as the user uploaded it: attached in this session, or one the project already had (asked from ChatSlide)
+// The one presentation whose look can be read now: the only .pptx listed (by name: a re-attached file is listed twice),
+// a project file or one attached in this session. The router is told the same fact (files[].look).
+const lookFile = () => {
+  const names = [...new Set(s.docs.filter(d => /\.pptx$/i.test(d.name)).map(d => d.name))]
+  return names.length === 1 && (s.docs.some(d => d.name === names[0] && d.project) || docFiles.has(names[0])) ? names[0] : ''
+}
 const fileOf = async (name: string) => {
   const here = docFiles.get(name) || (docFiles.size === 1 && !s.docs.some(d => d.name === name) ? [...docFiles.values()][0] : undefined)
   if (here) return here
@@ -2584,7 +2590,7 @@ const deckTurn = async (text: string) => {
         today: localDay(Date.now()), // "yesterday's version", "the version from 11.11"
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
-        files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length })),
+        files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),
       }),
@@ -2618,13 +2624,13 @@ const deckTurn = async (text: string) => {
     if (calls.some((c: any) => c.action === 'rebuild_from_template') && s.template) return templateTurn(text)
     // A question asking for the presentation the chat already has becomes the step itself, here, so it is recorded,
     // undone and continued like any use_file_look (with a surgeon's file listed the router still asked him to attach
-    // it, production 2026-11-16). Only for the one .pptx that can be read now: a project file or one attached here.
+    // it, production 2026-11-16). Once per message: after a look transfer ran or failed, the question is asked.
+    const look = lookFile()
     for (const c of calls) {
-      const want = c.action === 'ask_user' ? String(c.args?.presentation_look || 'none') : 'none'
-      const own = s.docs.filter(d => /\.pptx$/i.test(d.name))
-      if (want === 'none' || own.length !== 1 || !(own[0].project || docFiles.has(own[0].name))) continue
+      const want = c.action === 'ask_user' ? String(c.args?.presentation_look || '') : ''
+      if (!look || !['colors', 'logo', 'both'].includes(want) || done.some((d: string) => d.startsWith('use_file_look'))) continue
       c.action = 'use_file_look'
-      c.args = { file: own[0].name, colors: want !== 'logo', logo: want !== 'colors' }
+      c.args = { file: look, colors: want !== 'logo', logo: want !== 'colors' }
     }
     // one step per round: when the model batches calls it numbers later ones as if earlier ones had run, so the rest
     // is re-planned against the updated deck in the next round

@@ -700,9 +700,9 @@ async function handler(req: any, res: any) {
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
     // SYSTEM and TOOLS are byte-identical on every call so OpenAI caches that prefix (cached input is ~10x cheaper);
     // everything that changes (deck, current page, template) comes after it
-    const files = (body.files || []) as { name: string, pages?: number, chars?: number }[]
+    const files = (body.files || []) as { name: string, pages?: number, chars?: number, look?: boolean }[]
     const pics = (body.pictures || []) as string[]
-    const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${/\.pptx$/i.test(x.name) && files.filter(y => /\.pptx$/i.test(y.name)).length === 1 ? ' (the only presentation file here: use_file_look takes its colours and logo)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
+    const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${x.look ? ' (the user\'s presentation: use_file_look takes its colours and logo)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now. The user is looking at page ${current}. ${template
