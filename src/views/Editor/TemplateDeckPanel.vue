@@ -147,7 +147,7 @@ const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 // eval hook (scripts/deck-eval): a replayed real conversation's earlier messages go straight into the chat history
-;(window as any).__deckPanel = { s, resetUndo: async () => {
+;(window as any).__deckPanel = { s, fitOverflow: () => fitOverflow(), resetUndo: async () => {
   await db.snapshots.clear(); await snapshotStore.initSnapshotDatabase()
 } }
 const input = ref('')
@@ -2988,6 +2988,47 @@ const syncToChatSlide = () => syncing ||= (async () => {
   }
   finally {
     syncing = null
+// On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
+// over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
+// the next element; when that is not room enough its type shrinks (never under 60%).
+const fitOverflow = () => withRenderer(async () => {
+  const { width: W, height: H } = slideSize()
+  try {
+    for (let round = 0; round < 3; round++) {
+      toRender.value = JSON.parse(JSON.stringify(slides.value))
+      await nextTick()
+      await new Promise(r => setTimeout(r, 400))
+      let changed = false
+      for (const sl of slides.value) {
+        for (const e of sl.elements as any[]) {
+          if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
+          const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
+          const box = node?.parentElement
+          if (!node || !box) continue
+          const pad = parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
+          const need = node.offsetHeight + pad
+          if (need <= e.height + 2) continue
+          // what it would run into: anything under it in its columns, except a band that sits behind other elements
+          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top >= e.top + e.height - 2 && o.left < e.left + e.width && o.left + o.width > e.left
+            && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
+          const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
+          if (room <= e.height + 2 && round) continue // nowhere to grow and already shrunk once
+          const props: any = { height: Math.max(e.height, Math.min(need, room)) }
+          if (need > room) {
+            const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
+            props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
+          }
+          slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+  }
+  finally {
+    toRender.value = []
+  }
+})
   }
 })()
 
@@ -3107,6 +3148,7 @@ onMounted(() => {
   }
   .attach {
     font-size: 24px;
+        await fitOverflow().catch(() => undefined)
   }
 }
 .chatslide-render {
