@@ -1623,9 +1623,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // one thing from a project file longer than one read: answered from the whole file on the server (a 100-page PDF
     // read from the top showed the chat only its first 4-5 pages, 2026-11-15)
     const about = String(args.about || '').trim()
-    if (doc.project && about && doc.text.length > 12000 && !(args.pages || []).length && chatslide?.askFiles) {
+    if (doc.project && about && doc.text.length > 12000 && !(args.pages || []).length && hostSteps()?.askFiles) {
       busy.value = t('Reading {p0}…', { p0: doc.name })
-      const got = await chatslide.askFiles(about).catch(() => null)
+      const got = await hostSteps()!.askFiles!(about).catch(() => null)
       if (got) {
         memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}" about="${about.replace(/["<>]/g, '').slice(0, 120)}">\n${fence(got.answer.slice(0, 12000))}${got.source ? `\n(from: ${got.source.slice(0, 200)})` : ''}\n</file-content>`
         return t('Read {p0}{p1}.', { p0: doc.name, p1: '' })
