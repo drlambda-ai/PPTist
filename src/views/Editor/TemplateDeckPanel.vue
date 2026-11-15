@@ -1910,7 +1910,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!changedNow && earlier.length && !untouched.length && !failed.length) return t('No further change: the earlier step already covered these pages.')
     const ok = changedNow + earlier.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(', ')
-    const what = String(args.instruction || '').slice(0, 60)
+    const what = String(args.instruction || '').replace(/^Write all slide text in [^\n]*\n/, '').slice(0, 60) // the user's words, not our language note
     const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) })) : '')
       + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) })) : '')
     void earlier
