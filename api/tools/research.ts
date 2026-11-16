@@ -122,7 +122,7 @@ const scholarOnce = async (query: string) => {
     console.error('[research] OpenAlex failed, using Crossref:', String(e?.message || e).slice(0, 160)) // a quota or outage must show in the logs
     return null
   })
-  return { papers: found ?? await crossref(query) }
+  return { papers: found?.length ? found : await crossref(query).catch(() => found ?? []) } // an empty answer too: no match, or a quota
 }
 
 // OpenAlex matches every word: the router's 20-word queries ("systemic sclerosis contemporary guidelines epidemiology
