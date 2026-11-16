@@ -1303,7 +1303,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // the generator writes up to 10 pages a call; each further call sees the pages already there (deck so far)
       for (let made = 0; made < count; made += 10) {
         const part = count > 10 ? ` (These are new pages ${made + 1}-${Math.min(made + 10, count)} of ${count}; the deck so far already holds the earlier ones: go on with what is not covered yet, no repeats.)` : ''
-        if (!await generatePage(text, args.instruction + topics + part, after + (slides.value.length - n0), Math.min(10, count - made))) {
+        // a later batch that throws keeps the pages already written, and the reply counts them
+        if (!await generatePage(text, args.instruction + topics + part, after + (slides.value.length - n0), Math.min(10, count - made)).catch((e) => { if (!made) throw e; return false })) {
           if (!made) fail(t('Could not write that page.'))
           break
         }
@@ -1330,7 +1331,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const before = written.length && !own1 ? ` The pages before it in this batch are: ${written.map(x => `"${x}"`).join(', ')}; this page takes the next part, never one of those again.` : ''
       // the deck's own language, read from its slides and the user's words: the router named German for an English
       // deck and an English request, and 12 German pages came out (e2e, 2026-11-16)
-      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(text)}.${own}`
+      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(said)}.${own}`
       const advanced = !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)
       try {
         // "this page contains unrelated coffee text, so I left it unchanged" (page 6 of 12, e2e 2026-11-16): once more, plainly
