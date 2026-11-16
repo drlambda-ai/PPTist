@@ -1449,6 +1449,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // the file's own type on every page, photo pages too: the template's handwriting title stayed on a surgeon's
       // deck in his colours (2026-11-16)
       said.push(t('Applied the colours of {p0} to the whole deck.', { p0: file!.name }))
+      if (look.font) said.push(await runCall(text, 'set_font', { pages: [], font: look.font, same_as_page: 0, scope: 'all' }, ids))
     }
     if (args.logo !== false && !look.logo) said.push(t('{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.', { p0: file!.name }))
     else if (args.logo !== false) {
@@ -1488,7 +1489,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'use_file_images') { // figures from the user's own PDF/PPTX/DOCX, extracted by ChatSlide's backend
     const file = await fileOf(args.file)
     if (!file) {
-      if (look.font) said.push(await runCall(text, 'set_font', { pages: [], font: look.font, same_as_page: 0, scope: 'all' }, ids))
       fail(s.docs.some(d => d.name === args.file)
         ? (t('Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).', { p0: args.file }))
         : (t('No file is attached yet: attach it with the 📎 icon.')))
