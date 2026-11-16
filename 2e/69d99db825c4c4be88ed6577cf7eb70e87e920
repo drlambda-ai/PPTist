@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review, verification pass (Codex workspace out of credits)
+Reviewed-At: 2026-11-16T01:41:43Z
+Fixed: n/a in this commit (verified: the surgeon's file picks Arial, 3,066 of ~4,750 characters, the right font and web-safe)
+Declined-By: Claude Code
+Declined: a minority explicit font could win over inherited theme text — on his file the explicit font is the majority; revisit if a user reports the wrong font
+Declined: a desktop-only font (Calibri) falls back in browsers without it — the PowerPoint export keeps the font
+Declined: the font is applied only with colours — 'use my look' requests ask for colours
