@@ -562,6 +562,7 @@ const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 // page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
+const readThisTurn = new Set<string>() // names of the user's files a read_file step read in the current message
 const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
 let sitePaywalledPage = '' // the page a free user was just told the brand's own pictures are a paid feature for
 const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
@@ -1819,6 +1820,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       fail(s.docs.length ? (t('There is no attached file "{p0}". Attached: {p1}.', { p0: args.file, p1: s.docs.map(d => d.name).join(', ') }))
         : (t('No file is attached yet: attach it with the 📎 icon in the chat box.')))
     }
+    readThisTurn.add(doc.name)
     // one thing from a project file longer than one read: answered from the whole file on the server (a 100-page PDF
     // read from the top showed the chat only its first 4-5 pages, 2026-11-15)
     const about = String(args.about || '').trim()
@@ -2054,12 +2056,22 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // content against the files; given only a list of citations, pages guessed and wrote "no source can be linked
     // with certainty" onto the slides (PRO user cancelled, "inaccurate", 2026-11-14)
     const files = args.cite_files ? s.docs.filter(d => d.text.trim()) : []
-    const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${files.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / files.length)))}\n</file>`).join('\n')}` : args.instruction
+    // a file read for this request is its material on every page: the router's instruction said "as in the document"
+    // and each page answered that no document was attached (a teacher asked twice, 2026-11-15)
+    const read = files.length ? [] : s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim())
+    const given = (docs: typeof s.docs) => docs.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / docs.length)))}\n</file>`).join('\n')
+    const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${given(files)}` : args.instruction
+    // a long message is material too (a pasted outline "fill in exactly these infos"): the router's instruction only
+    // describes it, and the pages wrote their own version of it (replayed conversation, 2026-11-16)
+    const said = [s.pending?.request, text].filter((x, k, arr) => x && arr.indexOf(x) === k).join('\n')
+    const forPage = (id: string) => instruction
+      + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
+      + (said.length > 600 && !files.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
     const worker = async () => {
       while (next < todo.length && !stop) {
         const id = todo[next++]
         try {
-          await editSlide(pos(id), instruction)
+          await editSlide(pos(id), forPage(id))
           landed++
         }
         catch (e) { // one page never stops the others; an unexpected error stops them all
@@ -2091,7 +2103,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const again = same.splice(0).map(p => all[p - 1])
       for (let k = 0; k < again.length; k += 5) {
         // every edit in flight lands before an error is reported: a rollback must not race a page still being written
-        const retried = await Promise.allSettled(again.slice(k, k + 5).map(id => editSlide(pos(id), `${instruction}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
+        const retried = await Promise.allSettled(again.slice(k, k + 5).map(id => editSlide(pos(id), `${forPage(id)}\nThis applies to every slide of the deck, this one included: make the change here too.`).catch((e) => {
           if (e instanceof NoChange) same.push(pos(id) + 1)
           else if (e instanceof StepFailed) failed.push(pos(id) + 1)
           else throw e
@@ -2556,6 +2568,7 @@ const deckTurn = async (text: string) => {
   userText = text
   editedThisTurn.clear()
   picturedThisTurn.clear()
+  readThisTurn.clear()
   roomMadeThisTurn.clear()
   sitePaywalledPage = ''
   replacedThisTurn.clear()

@@ -336,6 +336,10 @@ Rules:
    act on the deck itself (a user was told to attach the PDF the deck already came from).
    What a read_file or web_search step returned goes on the page the user is looking at (edit_page on that page), or
    on the page they named; never on some other page.
+   An attached FILE's content onto EVERY slide ("each slide must hold what my document gives for it", "reproduce the
+   presentation in my document, no changes") -> read_file, then ONE edit_all_pages (every_page true): each page is
+   given the file and takes its own part. Never one edit_page per slide for a file (text typed in the message per
+   slide follows the numbered-slides rule below).
    References to the user's OWN attached files or articles, on the pages they informed ("add references of the articles
    to each slide so it matches where you got the info") -> edit_all_pages with cite_files true, no find_papers or
    web_search: those find other sources. A page it reports had nothing for that is done: no file informed it, and
