@@ -2876,8 +2876,10 @@ const deckTurn = async (text: string) => {
         // the end of the message: a question to the user ("Which font?"), a page that is already as asked, a repeat
         // over pages, or a second failure.
         failed++
-        if (repeating || e instanceof NoChange || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
+        // the step that ended the message is kept too: the turn record showed no step at all for "Page 6 was not
+        // changed", so the cause could not be read from it (2026-11-14)
         done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
+        if (repeating || e instanceof NoChange || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
         continue
       }
