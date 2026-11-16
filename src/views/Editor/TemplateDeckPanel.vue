@@ -2642,6 +2642,9 @@ const deckTurn = async (text: string) => {
         // and "add a page after this one" then re-ran after each new page (30 -> 36)
         instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
         today: localDay(Date.now()), // "yesterday's version", "the version from 11.11"
+        // how the deck was when the message came: told only the size it has now, the router took the 12 pages it had
+        // just added for pages that were always there ("it already had 16 slides", then an undo and a delete; e2e 2026-11-16)
+        before: pagesAtStart, added: slides.value.map((x, k) => (idsAtStart.has(x.id) ? 0 : k + 1)).filter(Boolean),
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
@@ -2729,7 +2732,11 @@ const deckTurn = async (text: string) => {
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]
     const stockForBrand = (c: any) => !!sitePaywalledPage && ['add_image', 'change_image'].includes(c.action) && landsOn(c) === sitePaywalledPage
       && !['attached', 'wikimedia', 'specific'].includes(c.args?.source)
+    // pages this message added are what it asked for: after "increase to 16 slides" added 12, the router asked to
+    // delete those 12 (e2e, 2026-11-16)
+    const dropsNew = (c: any) => c.action === 'delete_pages' && (c.args?.pages || []).some((p: number) => !!ids[p - 1] && !idsAtStart.has(ids[p - 1]))
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
+      || work.find(dropsNew)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
@@ -2778,7 +2785,8 @@ const deckTurn = async (text: string) => {
       break
     }
     if (extra) {
-      const why = extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
+      const why = dropsNew(extra) ? 'those pages were added by this message (see Done so far): they are what the user asked for and they stay; finish'
+        : extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
           : adds(extra) && pagesWanted >= 0 && created() >= pagesWanted
             ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
@@ -2790,7 +2798,7 @@ const deckTurn = async (text: string) => {
                 : extra.action === 'set_background' ? 'the user\'s words do not ask for the page background, so it stays: for pictures use change_image (all_pictures for every picture on a page), add_image or remove_images'
                 : extra.action === 'edit_all_pages' ? 'a deck-wide edit already ran in this message (see Done so far); finish, and put in not_done only a part of the request it did not cover'
                 : stockForBrand(extra) ? 'the brand\'s own pictures are a paid feature the user was just told about; a stock photo is not their product: finish'
-                : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one'
+                : extra.action === 'add_image' ? 'that picture was already added to that page in this message' : extra.action === 'change_image' ? 'that picture was already replaced in this message' : 'undo only reverts changes from earlier messages, not this one: the steps already run for this message are what the user asked for and they stay, so never redo one of them on another page or picture. Finish, unless a DIFFERENT part of the message is still to do'
       done.push(`${extra.action} ${JSON.stringify(extra.args || {})} -> skipped: ${why}`)
       // a router that keeps proposing what was just refused is done: "khác đi" replanned the same picture for 16 rounds
       if (done.length >= 2 && done.slice(-2).every(d => d.includes(' -> skipped: '))) break // two in a row
@@ -2825,7 +2833,7 @@ const deckTurn = async (text: string) => {
     for (const c of work) {
       // planned in the same batch as the change it would revert, or a second undo/redo ("Undone. Redone." for "undo")
       if ((c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d)))) {
-        done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one`)
+        done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one: the steps already run for this message are what the user asked for and they stay, so never redo one of them on another page or picture. Finish, unless a DIFFERENT part of the message is still to do`)
         continue
       }
       if (adds(c) && pagesWanted < 0) pagesWanted = Math.max(1, Number(c.args?.message_new_pages) || Number(c.args?.count) || 1)
