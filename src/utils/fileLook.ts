@@ -6,6 +6,7 @@ import tinycolor from 'tinycolor2'
 export interface FileLook {
   background: string
   fontColor: string
+  font: string // the font most of its text is set in, '' when it names none
   colors: string[] // the file's own colours, most used first, then tints (up to 10: a page with more colours than a theme's 6 gets no stray hue); its theme's when it has none of its own
   logo?: { src: string, left: number, top: number, width: number, height: number, ratio: number } // box in fractions of the slide; ratio = its width / height
 }
@@ -28,6 +29,7 @@ export const fileLook = (json: any): FileLook => {
     ;(pagesOf[k] = pagesOf[k] || new Set()).add(page)
   }
   const backgrounds: Record<string, number> = {}
+  const fonts: Record<string, number> = {}
   // a logo is a small picture inside a corner; the same one on many pages (a master's) beats one on the cover only
   const spots: Record<string, { pages: number, first: number, el: any }> = {}
   const inCorner = (e: any) => (e.left + e.width <= W * 0.35 || e.left >= W * 0.65) && (e.top + e.height <= H * 0.3 || e.top >= H * 0.7)
@@ -42,6 +44,11 @@ export const fileLook = (json: any): FileLook => {
       if (e.fill?.type === 'color') add(e.fill.value, area, page)
       if (e.borderWidth) add(e.borderColor, 0.01, page)
       for (const m of String(e.content || '').matchAll(/(?<![-\w])color:\s*([^;"]+)/g)) add(m[1], 0.01, page)
+      // its type: each font weighted by how much text is set in it (a title font on every page wins over one label)
+      for (const m of String(e.content || '').matchAll(/font-family:\s*([^;"]+)[^>]*>([^<]*)/g)) {
+        const name = m[1].split(',')[0].replace(/["']/g, '').trim()
+        if (name && !/^(symbol|wingdings|webdings)/i.test(name)) fonts[name] = (fonts[name] || 0) + m[2].length
+      }
       const src = e.base64 || e.src
       if (e.type === 'image' && src && e.width * e.height <= W * H * 0.06 && inCorner(e)) {
         const k = `${Math.round(e.left / 10)},${Math.round(e.top / 10)},${Math.round(e.width / 10)}`
@@ -73,6 +80,7 @@ export const fileLook = (json: any): FileLook => {
   return {
     background,
     fontColor: tinycolor.mostReadable(background, ['#000000', '#ffffff']).toHexString(),
+    font: Object.keys(fonts).sort((a, b) => fonts[b] - fonts[a])[0] || '',
     colors,
     logo: logo && { src: logo.base64 || logo.src, left: logo.left / W, top: logo.top / H, width: logo.width / W, height: logo.height / H, ratio: logo.width / logo.height },
   }
