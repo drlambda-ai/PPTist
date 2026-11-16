@@ -1286,42 +1286,80 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       args.after = (made.length ? Math.max(...made) : pos(currentAtSend)) + 1 // a 2nd new page follows the 1st
     }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
-    if (s.mode === 'native') {
-      const n0 = slides.value.length
+    // up to 30 new pages in one step: "increase to 30 slides" on a 10-page deck stopped at 20 with "ask again for
+    // more" (2026-11-15), and the router's next step claimed a wrong total
+    const count = Math.min(Math.max(args.count || 1, 1), 30)
+    const capped = (args.count || 1) > 30 ? (t(' ({p0} is the most per request; ask again for more)', { p0: 30 })) : ''
+    const n0 = slides.value.length
+    // a layout to copy needs text boxes: a page that is one flat picture (an imported PDF) or empty has none, and its
+    // copy came back "not changed" and stayed in the deck as a duplicate (three users, 2026-11-14/15). Another page
+    // with text lends its layout; a deck without one gets generated pages
+    const usable = (x?: Slide) => !!x && !isFlat(x) && x.elements.some((e: any) => elText(e))
+    const asked = slides.value[pos(idOf(args.layout_from || args.after))]
+    const source = usable(asked) ? asked : slides.value.find(usable)
+    if (s.mode === 'native' || !source) {
       const topics = Array.isArray(args.topics) && args.topics.length > 1 ? ` One page per topic, in this order: ${args.topics.join('; ')}.` : ''
-      if (!await generatePage(text, args.instruction + topics, after, Math.min(Math.max(args.count || 1, 1), 10))) fail(t('Could not write that page.'))
+      // the generator writes up to 10 pages a call; each further call sees the pages already there (deck so far)
+      for (let made = 0; made < count; made += 10) {
+        const part = count > 10 ? ` (These are new pages ${made + 1}-${Math.min(made + 10, count)} of ${count}; the deck so far already holds the earlier ones: go on with what is not covered yet, no repeats.)` : ''
+        if (!await generatePage(text, args.instruction + topics + part, after + (slides.value.length - n0), Math.min(10, count - made))) {
+          if (!made) fail(t('Could not write that page.'))
+          break
+        }
+      }
       const added = slides.value.length - n0
-      const capped = (args.count || 1) > 10 ? (t(' (at most 10 topics per request; ask again for more)')) : ''
       return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: added, p1: after, p2: newTitles(after, added) })) + capped
     }
-    const count = Math.min(Math.max(args.count || 1, 1), 10)
-    for (let k = 0; k < count; k++) {
+    // text the user pasted for the pages (in this message or the request this message answers) goes to each page as
+    // written: the router's instruction for 21 pasted slides said only "add them after the presentation" (2026-11-15)
+    const said = [s.pending?.request, text].filter((x, k, all) => x && all.indexOf(x) === k).join('\n')
+    const own = said.length > 600 ? `\nThe user's own text (where it gives this page's content, use that word for word):\n${fence(said.slice(0, 12000))}` : ''
+    const written: string[] = [] // titles of the pages written in this step
+    let k = 0
+    for (; k < count; k++) {
       busy.value = t('Writing page {p0} of {p1}…', { p0: k + 1, p1: count })
       const list = [...slides.value]
-      const source = slides.value[pos(idOf(args.layout_from || args.after))]
-      list.splice(after + k, 0, cloneSlide(source))
+      const page = cloneSlide(source)
+      list.splice(after + k, 0, page)
       slidesStore.setSlides(list)
       // each new page from its own topic: with one shared instruction "TikTok and Reddit" became two TikTok pages
       // in the slide language, not the topic's: the router wrote "Kawa w Brazylii" for an English request (2026-11-15)
-      const topic = Array.isArray(args.topics) && args.topics.length === count ? `${args.topics[k]} (part of: ${args.instruction})` : args.instruction
-      await editSlide(after + k, `This is NEW page ${k + 1} of ${count} on: ${topic}. Replace all its text with that page's own content (no repeats across pages). Keep the layout and styling. ${args.language ? `Write all its text in ${String(args.language).slice(0, 40)}.` : 'Write in the language of that text.'}`, !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced))
+      const own1 = Array.isArray(args.topics) && args.topics.length >= count && args.topics.length === Math.max(args.count || 1, 1) ? String(args.topics[k]) : ''
+      const topic = own1 ? `${own1} (part of: ${args.instruction})` : args.instruction
+      const before = written.length && !own1 ? ` The pages before it in this batch are: ${written.map(x => `"${x}"`).join(', ')}; this page takes the next part, never one of those again.` : ''
+      // the deck's own language, read from its slides and the user's words: the router named German for an English
+      // deck and an English request, and 12 German pages came out (e2e, 2026-11-16)
+      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(text)}.${own}`
+      const advanced = !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)
+      try {
+        // "this page contains unrelated coffee text, so I left it unchanged" (page 6 of 12, e2e 2026-11-16): once more, plainly
+        await editSlide(after + k, write, advanced).catch((e) => {
+          if (!(e instanceof NoChange)) throw e
+          return editSlide(after + k, `${write}\nThe text now on this page is NOT its content: replace every line of it.`, advanced)
+        })
+      }
+      catch (e) {
+        // the copy that could not be written is taken out again: it is the page it was copied from, a second time
+        slidesStore.setSlides(slides.value.filter(x => x.id !== page.id))
+        if (!(e instanceof StepFailed) || !k) throw e
+        break // the pages written so far stay, and the reply counts them
+      }
       // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
       // on a new TikTok page): one more pass names those lines
       const copied = new Set(source.elements.map(elText).filter(Boolean))
       const stale = slides.value[after + k].elements.map(elText).filter(t => t && copied.has(t))
-      if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
+      if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${own1 || args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
+      written.push(titleAt(after + k))
       // pictures still the copied page's (a new "coffee prices" page kept slide 2's barista photos, 2026-11-11): a stock
       // photo for this page's topic in the same frame, so the layout stays and nothing repeats
       const copiedPics = new Set(source.elements.filter((e: any) => e.type === 'image' && !isBackdrop(e)).map((e: any) => e.src))
-      const page = slides.value[after + k]
       const { width: SW, height: SH } = slideSize()
-      for (const [n, e] of pictures(page).entries()) {
+      for (const [n, e] of pictures(slides.value[after + k]).entries()) {
         if (isBackdrop(e) || !copiedPics.has(e.src) || e.width * e.height < 0.02 * SW * SH) continue // keep backdrops and logos
-        await changeImage(text, page.id, n + 1, String(Array.isArray(args.topics) ? args.topics[k] : args.instruction).slice(0, 80), 'photo').catch(() => undefined)
+        await changeImage(text, page.id, n + 1, String(own1 || written[k] || args.instruction).slice(0, 80), 'photo').catch(() => undefined)
       }
     }
-    const capped = (args.count || 1) > 10 ? (t(' (10 is the most per request; ask again for more)')) : ''
-    return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: count, p1: after, p2: newTitles(after, count) })) + capped
+    return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: k, p1: after, p2: newTitles(after, k) })) + capped
   }
   if (action === 'expand_page') {
     const i = pos(idOf(args.index))
