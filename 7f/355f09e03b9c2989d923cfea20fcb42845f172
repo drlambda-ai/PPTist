@@ -1,0 +1,13 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review medium over 2e69d99d..a7e2132b (Codex not run: earlier runs found its workspace out of credits)
+Reviewed-At: 2026-11-16T18:39:40Z
+Tests: vue-tsc green; editor-cases.jsonl 91/92 locally (ed-delete-most-confirm flaky, passes 2/2 on rerun; ed-failed-part-then-rest fails because Wikimedia has no match for its query, already failing 7 of 26 earlier runs); the add-page cases pass again after the review fixes
+Fixed: fffd1879 Crossref when OpenAlex is empty; a7e2132b new pages take the language of the request being answered, and a later 10-page batch that throws keeps the pages written
+Declined-By: Claude Code
+Declined: pending request text injected after a new request: the page is told to use it only where it gives that page's content
+Declined: file text attached to an unrelated edit_all_pages in the same message: rare, and the instruction says "as the request says"
+Declined: a flat deck's replacement layout is the cover: cosmetic, it crashed before
+Declined: readThisTurn lost when a file edit continues into the next message: rare; revisit if a user reports it
+Declined: dropsNew blocks deleting pages added this message: it exists because the router deleted 12 pages it had just added
+Declined: keepLanguage translates dictated CJK text: older than this range
+Declined: duplicated 'said' expression and its prompt size: cheap model, works
