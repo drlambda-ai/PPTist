@@ -1715,7 +1715,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Moved the logo on {p0} page(s).', { p0: moved.length })
   }
   if (action === 'remove_images') {
-    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const targets = args.only?.length ? nums(args.only) : args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     // several pages go only after a yes, like deleting pages: an attached picture plus "every slide" removed all 14
     // pictures of the deck (2026-11-12)
     // and on one page only when the router says the user's words asked for it ("..." after "like page 6" removed one,
@@ -1728,7 +1728,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const count = withPictures.reduce((k, id) => k + (args.images?.length || pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length), 0)
       const q = t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: withPictures.length })
       s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')], offer: true,
-        repeat: [{ action: 'remove_images', args: { ...args, confirmed: true } }], pages: withPictures.map(id => pos(id) + 1) }
+        // the yes removes them in one step: page by page, the reply read "Removed 1 picture(s). Removed 3 picture(s)."
+        // for 10 pictures on 6 pages (2026-11-16)
+        repeat: [{ action: 'remove_images', args: { ...args, confirmed: true, only: withPictures.map(id => pos(id) + 1) } }], pages: [pos(withPictures[0]) + 1] }
       askedThisTurn = true
       save()
       return q
