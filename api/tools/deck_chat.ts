@@ -28,7 +28,7 @@ const TOOLS = [
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
   }, ['instruction', 'topic_in_this_message', 'from_users_file']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
-    instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
+    instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete' },
     count: { type: 'integer', description: 'How many new pages, usually 1' },
     after: page,
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
@@ -75,7 +75,7 @@ const TOOLS = [
     instruction: { type: 'string', description: 'Anything the user said about how to combine; empty if nothing' },
   }, ['pages', 'instruction']),
   fn('edit_page', 'Never adds pictures (that is add_image). Never for a question put to you ("tell me…", "what is…", "explain…": that is answer_question, in the chat, not on the slide). Change what is ON one page: wording, numbers, font family/size/colour/bold/italic/alignment, moving or resizing text, images or shapes, deleting elements, adding a text box or shape.', {
-    index: page, instruction: { type: 'string', description: 'The edit, specific and complete Written in the user\'s language, never another (new slide text follows it).' },
+    index: page, instruction: { type: 'string', description: 'The edit, specific and complete' },
     page_named: { type: 'boolean', description: 'true if the user named or clearly identified the page: a number, "the cover", "the last slide", a title, "the other / remaining slides", "these slides" when the question they answer listed them, or a plan that lists pages; false ONLY when they mean the page they are looking at ("this slide", "here", or nothing about pages)' },
     translate_to: { type: 'string', description: 'The target language when this edit is a translation of the page, else ""' },
     hard: { type: 'boolean', description: 'true when it needs real spatial or structural work: a diagram, flowchart, family tree, timeline, Gantt chart, or redesigning a crowded layout. false for wording, style and small moves' },
@@ -104,7 +104,7 @@ const TOOLS = [
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
   }, ['pages', 'scope', 'scale', 'same_as_page']),
   fn('edit_all_pages', 'Apply the same change to every page: more detail / more text, shorter, simpler, a tone, an audience or purpose ("for a scientific congress", "for kids"), translate, text colour... Each page keeps its own topic and content.', {
-    instruction: { type: 'string', description: 'The change for every page. Written in the user\'s language, never another (new slide text follows it).' },
+    instruction: { type: 'string', description: 'The change for every page.' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
     cite_files: { type: 'boolean', description: 'true when the change cites the user\'s own attached files on the pages they informed ("add references of the articles to each slide so it matches where you got the info", "cite my papers on each slide"): each page is then given the files to match its content against; false otherwise' },
@@ -270,14 +270,25 @@ const TOOLS = [
     not_done: { type: 'string', description: 'e.g. "I can\'t add the table from your PDF: the file isn\'t attached here." Empty if everything was done.' },
   }, ['not_done']),
   fn('answer_question', 'Answer a question about the deck or the editor without changing anything, or ask what the user means when the request is truly ambiguous.', {
-    answer: { type: 'string' },
+    answer: { type: 'string', description: 'Only in the language and script of the user\'s message. A heading or line of a slide written in another language is given by its meaning in the user\'s language ("Project Overview"), without the original words: no "项目概览 (Project Overview)"' },
   }, ['answer']),
 ]
 
+// LANGUAGE: asked to write its instructions in the deck's language, the router wrote Spanish, German, Russian or
+// Indonesian for an English message on an English deck about every second time (24 of 24 in English once told to
+// write English, 2026-11-16); "$3.40" from the user's file reached the slide as "$3,40" and twelve new pages came out
+// German. The editor's own steps name the slide language (the "language" argument, or the deck's own text).
 const SYSTEM = `You turn a user's request about their slide deck into tool calls.
-LANGUAGE: every argument you write (instructions, topics, titles, questions, answers) is in the language the slide text
-must be in: the deck's language, or the one the user asks for. Never Chinese for a deck that is not in Chinese: an English
-user's new pages came out in Chinese (2026-11-12). Search words for pictures are English.
+LANGUAGE, three separate things:
+(1) What you write for the editor (instruction, topics) is in ENGLISH, whatever language the user or the deck uses.
+    Only text the user dictates for a slide stays inside it word for word in its own language, and numbers, prices
+    and names are copied exactly ("$3.40" stays "$3.40").
+(2) The "language" argument names the language the slide text must be in (the deck's, or the one the user asks
+    for): the editor writes the slides in it.
+(3) What you write for the user (a question and its options, an answer, a message, not_done) is only in the language
+    of the user's message, also when the deck is in another language: say what a slide says in the user's language,
+    without the slide's original words.
+Search words for pictures are English.
 The deck is listed in the next message, one line per page: number, then its elements, with the page the user is looking
 at and whether a company template is in use.
 Rules:
