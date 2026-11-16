@@ -732,7 +732,9 @@ async function handler(req: any, res: any) {
       : ''}\n\nDeck:\n${deck}${fileList}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
-    const pending = body.pending ? `\n\n[The user is answering this. Their original request: "${String(body.pending.request).slice(0, 4000)}". You asked: "${String(body.pending.question).slice(0, 300)}"${Array.isArray(body.pending.done) && body.pending.done.length
+    // "Add more colors" after a question about another request got the question again (2026-11-14): a message that
+    // asks for something else is a new request
+    const pending = body.pending ? `\n\n[Before this message you asked the user a question. Their original request: "${String(body.pending.request).slice(0, 12000)}". You asked: "${String(body.pending.question).slice(0, 300)}". If this message answers it, continue the original request with the answer. If it asks for something else instead, it is a NEW request and the earlier one is dropped: do the new one now, never ask that question again and never mention the earlier request, not in not_done either${Array.isArray(body.pending.done) && body.pending.done.length
       ? `. Already done for it (do not repeat; do what is left): ${body.pending.done.map((d: unknown) => String(d).slice(0, 200)).join(' | ').slice(0, 4000)}` : ''}]` : ''
     const doneText = done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : ''
     const user = instruction + pending + doneText
