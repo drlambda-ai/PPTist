@@ -92,19 +92,37 @@ const wikimedia = async (query: string, nearest = false) => {
   }
 }
 
-// Academic papers (OpenAlex: free, no key, the same corpus as Semantic Scholar without its anonymous rate limit)
-const scholarOnce = async (query: string) => {
-  const params = new URLSearchParams({ search: query, 'per-page': '6', select: 'display_name,publication_year,doi,authorships,primary_location,cited_by_count', mailto: 'contact@chatslide.ai' })
+// Academic papers. OpenAlex first; since it meters requests without a key by the caller's IP (a shared daily budget),
+// every paper search from production came back empty and the chat cited web pages instead (6 of 6, 2026-11-14/15).
+// OPENALEX_API_KEY lifts that; Crossref (free, no key, the DOI registry itself) answers when OpenAlex does not.
+const openalex = async (query: string) => {
+  const params = new URLSearchParams({ search: query, 'per-page': '6', select: 'display_name,publication_year,doi,authorships,primary_location,cited_by_count', mailto: 'contact@chatslide.ai', ...(process.env.OPENALEX_API_KEY ? { api_key: process.env.OPENALEX_API_KEY } : {}) })
   const r = await fetch(`https://api.openalex.org/works?${params}`)
   if (!r.ok) throw new Error(`openalex ${r.status}`)
   const works = ((await r.json()).results || []) as any[]
-  return {
-    papers: works.map(w => ({
-      title: w.display_name, year: w.publication_year, cited: w.cited_by_count,
-      authors: (w.authorships || []).slice(0, 3).map((a: any) => a.author?.display_name).filter(Boolean).join(', ') + ((w.authorships || []).length > 3 ? ' et al.' : ''),
-      venue: w.primary_location?.source?.display_name || '', url: w.doi || w.primary_location?.landing_page_url || '',
-    })).filter(p => p.title),
-  }
+  return works.map(w => ({
+    title: w.display_name, year: w.publication_year, cited: w.cited_by_count,
+    authors: (w.authorships || []).slice(0, 3).map((a: any) => a.author?.display_name).filter(Boolean).join(', ') + ((w.authorships || []).length > 3 ? ' et al.' : ''),
+    venue: w.primary_location?.source?.display_name || '', url: w.doi || w.primary_location?.landing_page_url || '',
+  })).filter(p => p.title)
+}
+export const crossref = async (query: string) => {
+  const params = new URLSearchParams({ 'query.bibliographic': query, rows: '6', filter: 'type:journal-article', select: 'title,author,issued,container-title,DOI,is-referenced-by-count', mailto: 'contact@chatslide.ai' })
+  const r = await fetch(`https://api.crossref.org/works?${params}`)
+  if (!r.ok) throw new Error(`crossref ${r.status}`)
+  const items = ((await r.json()).message?.items || []) as any[]
+  return items.map(w => ({
+    title: String(w.title?.[0] || '').replace(/<[^>]+>/g, ''), year: w.issued?.['date-parts']?.[0]?.[0] || '', cited: w['is-referenced-by-count'] || 0,
+    authors: (w.author || []).slice(0, 3).map((a: any) => [a.given, a.family].filter(Boolean).join(' ') || a.name).filter(Boolean).join(', ') + ((w.author || []).length > 3 ? ' et al.' : ''),
+    venue: String(w['container-title']?.[0] || ''), url: w.DOI ? `https://doi.org/${w.DOI}` : '',
+  })).filter(p => p.title)
+}
+const scholarOnce = async (query: string) => {
+  const found = await openalex(query).catch((e) => {
+    console.error('[research] OpenAlex failed, using Crossref:', String(e?.message || e).slice(0, 160)) // a quota or outage must show in the logs
+    return null
+  })
+  return { papers: found ?? await crossref(query) }
 }
 
 // OpenAlex matches every word: the router's 20-word queries ("systemic sclerosis contemporary guidelines epidemiology
