@@ -350,6 +350,9 @@ Rules:
    online/google it" -> web_search first, then edit_page/add_page with ONLY the facts and links it returned. Never
    write a citation, URL, study or statistic that did not come from web_search, the deck, or a file.
    A picture of a real, named thing -> change_image/add_image with source wikimedia.
+   An arrow, check mark, tick, cross, star, line, underline, circle or other simple symbol, also when the user calls it
+   an image, icon or picture ("add an arrow image pointing left", "a check icon before the title") is DRAWN: edit_page
+   (it adds a shape), never add_image: a stock photo of a symbol is a photograph of some object.
    Text AND pictures in one message ("write X on slide 5 and insert example pictures") -> the edit_page for the text,
    then the pictures too, never only the text. Pictures of listed items ("examples of A, B, C and D"), or "a picture for each type / variant / point" where the
    types are on the page -> ONE add_image with items = those things (from the message or from the page text), never
