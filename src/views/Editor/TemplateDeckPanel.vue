@@ -2625,8 +2625,13 @@ const deckTurn = async (text: string) => {
   // ponytail: one step per round; 16 lets a pasted 'Slide 1 … Slide 12' finish in one message (10 cut it off)
   // "Do the same on the other pages": the editor repeats the steps that ran on the first page, page by page, without
   // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
+  // a font change takes every page in one step: page by page, identical lines merged and the reply listed 4 changes
+  // for 9 pages, and the user asked again (2026-11-17)
+  const allAtOnce = ['set_font_size', 'set_font']
   const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
-    ? [...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.map(c => ({ action: c.action,
+    ? [...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action)).map(c => ({ action: c.action,
+        args: { ...c.args, pages: pendingAtStart.pages || [], page_named: true, whole_deck_option: '' } })),
+      ...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.filter(c => !allAtOnce.includes(c.action)).map(c => ({ action: c.action,
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
     : []
   const repeating = repeat.length > 0
