@@ -1801,7 +1801,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       save()
       return q
     }
+    const gone = del.map(id => pos(id) + 1)
     slidesStore.deleteSlide(del)
+    // the router is told which pages went: after "slide 4 hapus" on 4 pages it saw 3 and added "there is no slide 4,
+    // nothing deleted" to a reply that had just deleted it (5 of 6 runs, 2026-11-18)
+    memo = `(Page(s) ${gone.join(', ')} of the deck as it was are deleted, as the user asked: done, never "missing" or "not there". The deck now has ${slides.value.length} pages.)`
     return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
   if (action === 'read_file') {
