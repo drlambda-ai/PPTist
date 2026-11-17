@@ -1947,6 +1947,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       s.pending = { request: args.instruction, question: '', options: [t('Apply a new theme to the deck'), t('Make the text bigger')], offer: true, localize: true }
       save()
       offer() // ChatSlide's paywall, once per session
+      // the router is told the rest still runs: "cute elements, delete slide 8, the group name on the cover" stopped
+      // here, slide 8 and the name not done, and the user asked again (2026-11-17)
+      memo = '(Only the redesign is not done. Go on with every other part of the request: a plain text change on this page is a new edit_page with redesign false; pages to delete, pictures to add.)'
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
     }
     let upgradeLine = ''
