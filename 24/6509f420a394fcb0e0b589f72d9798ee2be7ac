@@ -1,0 +1,10 @@
+Codex-Review: passed
+Reviewer: Claude Code /code-review medium over a7e2132b..a71e7eb7 (Codex not run: its workspace was out of credits on earlier runs)
+Reviewed-At: 2026-11-17T18:45:01Z
+Tests: vue-tsc green; editor-cases.jsonl 95/95 before the review fixes; after them 91/95, reruns: ed-two-wishes and ed-brand-pictures-and-title pass 2/2, ed-failed-part-then-rest is the known Wikimedia no-match flake, ed-conclusion-at-end fails 3/3 on the router's first step (edit_page instead of add_page), which none of these commits reach
+Fixed: a71e7eb7 the paywall note no longer invites the redesign as a standard-model edit_page; the delete note numbers pages as the deck was just before the step, sorted, without "as the user asked"
+Declined-By: Claude Code
+Declined: a later step's question replaces the paywall's two fallback buttons: the later question is the more current one
+Declined: an offer with no pages would resize every page: every offer that repeats a font step is built with the other pages
+Declined: font steps now run before other repeated steps: an offer repeats the steps of one page, both orders end the same
+Declined: two filters over the repeat list: cosmetic
