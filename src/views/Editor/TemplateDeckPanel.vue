@@ -1801,11 +1801,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       save()
       return q
     }
-    const gone = del.map(id => pos(id) + 1)
+    const gone = del.map(id => pos(id) + 1).sort((x, y) => x - y)
     slidesStore.deleteSlide(del)
     // the router is told which pages went: after "slide 4 hapus" on 4 pages it saw 3 and added "there is no slide 4,
     // nothing deleted" to a reply that had just deleted it (5 of 6 runs, 2026-11-18)
-    memo = `(Page(s) ${gone.join(', ')} of the deck as it was are deleted, as the user asked: done, never "missing" or "not there". The deck now has ${slides.value.length} pages.)`
+    memo = `(Page(s) ${gone.join(', ')}, numbered as the deck was just before this step, are deleted: done, never "missing" or "not there". The deck now has ${slides.value.length} pages.)`
     return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
   if (action === 'read_file') {
@@ -1953,7 +1953,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       offer() // ChatSlide's paywall, once per session
       // the router is told the rest still runs: "cute elements, delete slide 8, the group name on the cover" stopped
       // here, slide 8 and the name not done, and the user asked again (2026-11-17)
-      memo = '(Only the redesign is not done. Go on with every other part of the request: a plain text change on this page is a new edit_page with redesign false; pages to delete, pictures to add.)'
+      memo = '(The redesign is not done and is never retried in another call. Go on only with the OTHER parts of the request, if any: a text to add, pages to delete, pictures.)'
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
     }
     let upgradeLine = ''
