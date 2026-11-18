@@ -40,6 +40,7 @@ Quanlai, 2026-11-18. Every unhappy turn gets exactly one cause, and the cause pi
 2. **No capability.** Our tools cannot do it. Fix: build the tool, or `say_unable` in one line.
 3. **Capability exists, the AI does not know it.** The router never picked the tool. Fix: the tool's description or the router prompt.
 4. **Capability exists, the AI picked it and did it wrong.** Fix: the tool's own code or its edit prompt.
+5. **The AI did not have what the user submitted.** An uploaded file, an attached image, an earlier message, the deck's current state or the selected page never reached the model. Fix: pass that context into the turn.
 
 Report the count per cause alongside the fixes.
 
