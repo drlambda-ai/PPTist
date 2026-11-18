@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high): place_texts/original-request commits NO ISSUES FOUND; finish wording reviewed with the grader change (one grader finding, fixed in app.chatslide.ai)
+Reviewed-At: 2026-11-18T18:07:49Z
+Declined-By: Claude Code
+Declined: none open
+Backtest: 297 real turns on users' own decks at send time, same payload per build (payload-only check: 294/294 identical): production 377, this build 378 (max 594; changed turns rerun, second sample 129 vs 130). Numbered pasted text on its own page: 7.0 -> 9.5 of 11.
