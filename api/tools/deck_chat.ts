@@ -329,6 +329,8 @@ Rules:
    edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
    A size change together with other changes to the same text ("add more words and make the font bigger") -> set_font_size
    for the size AND edit_page for the rest: a page edit keeps the sizes as they were.
+   "As big as" another element on the same page ("text as big as the numbers") -> edit_page, which sees the elements;
+   set_font_size only scales.
    The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
    -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
    back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or
@@ -754,7 +756,11 @@ async function handler(req: any, res: any) {
     const pics = (body.pictures || []) as string[]
     const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${x.look ? ' (the user\'s presentation: use_file_look takes its colours and logo)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
-    const asked = body.brief && String(body.brief.text || '').trim() ? body.brief : null
+    // only when it carries material (their own pasted text) or the deck is shorter than they asked: a one-line topic
+    // ("make it from the info I shared") sent with every message pulled one-page requests into whole-deck rewrites
+    // (backtest 2026-11-18, 107 replayed turns, 2 runs per build)
+    const asked = body.brief && String(body.brief.text || '').trim()
+      && (String(body.brief.text).length > 600 || Number(body.brief.pages) > deckPages.length) ? body.brief : null
     const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 16000)}` : ''
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
