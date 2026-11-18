@@ -110,6 +110,7 @@ interface Session {
   template: { name: string, templateUrl: string, analysis: any, profile: any, chrome: any[] } | null
   docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
   projectFiles?: boolean | 2 // the project's files were added once (a removed one stays removed); 2 = the originals
+  brief?: { text: string, pages?: number } // what the user asked for when the project was made (ChatSlide), read on each open
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
   // what each picture the chat added or replaced shows (element id -> its search words): "the police photo" names one.
   // Without it every picture read "large image" and the router changed the page on screen, not page 6 (2026-11-13)
@@ -2749,6 +2750,7 @@ const deckTurn = async (text: string) => {
         selected: selected || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
+        brief: s.brief || undefined,
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -3357,6 +3359,13 @@ onMounted(() => {
       // the 📎 from users whose file the project already had, 2026-11-10 to 13). Not awaited: the deck opens first.
       // 2: each original file by its own name; a deck opened before (true) held the outline answers under the joined
       // file names, replaced once (2026-11-15)
+      // what the user asked for when the project was made: "why only 10 slides?" (they asked for 20), "I sent much more
+      // text" (their slide-by-slide text was the topic) had no answer, the chat never saw it (2026-11-10..17)
+      chatslide!.brief?.().then((b) => {
+        if (!b?.text?.trim()) return
+        s.brief = { text: b.text.slice(0, 8000), pages: Number(b.pages) > 0 ? Number(b.pages) : undefined }
+        save()
+      }, () => undefined)
       if (chatslide!.files && s.projectFiles !== 2) {
         chatslide!.files().then(files => {
           if (s.projectFiles === true && files.length) s.docs = s.docs.filter(d => !d.project)

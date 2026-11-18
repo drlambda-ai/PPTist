@@ -32,6 +32,8 @@ export interface ChatSlideHost {
   extractImages?: (file: File) => Promise<{ images?: { url: string, page?: number, name?: string }[], error?: string }>
   // the files the user gave this project in ChatSlide (the text read from them), so the chat uses them without a re-attach
   files?: () => Promise<{ name: string, text: string }[]>
+  // what the user asked for when the project was made (their topic or pasted text, and the slide count they chose)
+  brief?: () => Promise<{ text: string, pages?: number } | null>
   // one of those files as the user uploaded it (its colours, logo and pictures are not in its text)
   file?: (name: string) => Promise<Blob | null>
   // a question answered from the project's files in full (a long file is more than one read holds)

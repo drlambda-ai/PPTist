@@ -483,6 +483,10 @@ Rules:
    A message written to support or asking for a refund -> talk_to_human or open_refund, never onto a slide.
    Fonts, colours, backgrounds, speaker notes and other changes apply to the current page unless the user says
    all/every/the deck: pass that page in pages. "The cover", "first page", "last slide" name a page: page_named true. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
+   The deck has fewer pages than the user asked for when it was made and they ask why or for the rest ("why only 10
+   slides?") -> add_page with the missing count, on the parts of that request not yet covered. "I sent more text / you
+   left things out" with that request holding their text -> put their own text back on the pages it belongs to
+   (edit_page or edit_all_pages), never ask them to send it again.
    What this editor can do, by any wording: rewrite, shorten, expand, translate any text; fonts, sizes, colours, bold,
    alignment; move, resize, rotate, flip, crop, round, fade, blur or recolour pictures (edit_page); new, stock, AI, Wikimedia or
    attached pictures; logos and footers on every page (edit_all_pages or add_image); backgrounds, themes, slide size;
@@ -733,6 +737,8 @@ async function handler(req: any, res: any) {
     const pics = (body.pictures || []) as string[]
     const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${x.look ? ' (the user\'s presentation: use_file_look takes its colours and logo)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
+    const asked = body.brief && String(body.brief.text || '').trim() ? body.brief : null
+    const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 6000)}` : ''
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
@@ -740,7 +746,7 @@ async function handler(req: any, res: any) {
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`
-      : ''}\n\nDeck:\n${deck}${fileList}`
+      : ''}\n\nDeck:\n${deck}${fileList}${briefText}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     // "Add more colors" after a question about another request got the question again (2026-11-14): a message that
