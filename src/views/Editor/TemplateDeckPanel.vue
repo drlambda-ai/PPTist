@@ -2160,7 +2160,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const worker = async () => {
       while (next < onPages.length) {
         const x = onPages[next++]
-        try { await editSlide(pos(ids0[x.page - 1]), `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Keep the layout, pictures and colours; split it over the page's text boxes as fits:\n${fence(x.text.slice(0, 6000))}`) }
+        try { await editSlide(pos(ids0[x.page - 1]), `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Keep the layout, pictures and colours; split it over the page's text boxes as fits:\n${fence(x.text)}`) }
         catch (e) {
           if (e instanceof NoChange) { same.push(x.page); why ||= e.message } // the page's own reason: "one flat picture" is not "already there"
           else if (e instanceof StepFailed) failed.push(x.page)
@@ -2176,7 +2176,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') })} ${why}`.trim())
     if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
     // the deck grows with each new page: its page numbers are read from it now
-    for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written:\n${x.text.slice(0, 6000)}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
+    for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written:\n${x.text}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
     await fitQueue
     return lines.join('\n')
   }
