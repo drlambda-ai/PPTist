@@ -752,7 +752,8 @@ let fitQueue: Promise<void> = Promise.resolve() // one page shown at a time, eve
 const numberedParts = async (src: string, request = ''): Promise<{ page: number, text: string }[]> => {
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
     `A user wrote this for a slide editor:\n<message>\n${fence(src.slice(0, 20000))}\n</message>\n`
-    + (request ? `Their latest message is: ${JSON.stringify(request.slice(0, 600))}. Only when that message asks to put this text of theirs on the slides (insert it, use it, "the text I wrote"), go on; otherwise return {"slides": []}. ` : '')
+    + (request === src ? 'Only when this message asks for its text to go on the slides, or is just the text for the slides with nothing else asked, go on; when it asks to review, check, explain or keep the slides as they are, return {"slides": []}. '
+      : request ? `Their latest message is: ${JSON.stringify(request.slice(0, 600))}. Only when that message asks to put this text of theirs on the slides (insert it, use it, "the text I wrote"), go on, and return only the slides it asks for (all of them unless it names some); otherwise return {"slides": []}. ` : '')
     + 'If it gives the text of several slides, each marked with its number ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), copy each slide\'s text exactly as written, every word, its title first. '
     + 'Return JSON {"slides": [{"number": <the number they wrote>, "text": "..."}]}, or {"slides": []} when it is not text for numbered slides.' }) }).catch(() => null)
   const got = r?.ok ? ((await r.json().catch(() => ({})))?.slides || []) : []
@@ -2176,11 +2177,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       .filter((x: { page: number, text: string }) => x.text && x.page >= 1)
     // the router copies the parts itself and left out the last slide in 1 run in 4 ("slide 11 is not in the deck"): the
     // user's own long text is read once more, and its full set is used when it has more parts
-    const source = [text, ...s.history.filter(h => h.role === 'user' && h.text.length > 600).slice(-3).map(h => h.text), s.brief?.text || '']
+    const source = [text, ...s.history.filter(h => h.role === 'user' && h.text.length > 600).slice(-3).reverse().map(h => h.text), s.brief?.text || '']
       .filter(x => x.length > 600 && items.some((it: { text: string }) => x.includes(it.text.slice(0, 40))))[0]
     if (source && source !== text) {
-      const full = await numberedParts(source)
-      if (full.length > items.length) items = full
+      // what this message asks for from that text: "only slide 2" stays slide 2; a full set is taken only when it holds
+      // every page the router chose (Codex review: a deliberate subset was widened)
+      const full = await numberedParts(source, text)
+      const chosen = new Set(items.map((it: { page: number }) => it.page))
+      if (full.length > items.length && [...chosen].every(n => full.some(f => f.page === n))) items = full
     }
     if (!items.length) fail(t('Which text goes on which page?'))
     const ids0 = slides.value.map(x => x.id)
@@ -2196,14 +2200,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           await editSlide(i, `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Every sentence of it goes on the page, none dropped or shortened, and none of the page's old text stays (the last page's "thank you" included). Keep the pictures and colours; split it over the page's text boxes, and add or resize text boxes when it does not fit. Never refuse for lack of room:\n${fence(x.text)}`)
           // their own lines, copied: a list layout dropped the opening sentence in 2 of 3 runs (2026-11-19). A line that
           // is not on the page verbatim gets one more pass naming it
-          const flat = (v: string) => v.replace(/\s+/g, ' ').trim().toLowerCase()
+          // decoded text ("&amp;" is "&"), and both ends of each line: a paragraph that kept its opening but lost its
+          // later sentences passed a start-only check (Codex review)
+          const flat = (v: string) => (new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()
+          const has = (page: string, l: string) => { const f = flat(l); return page.includes(f.slice(0, 60)) && page.includes(f.slice(-60)) }
           const onPage = flat(slides.value[i].elements.map(elText).join(' '))
-          const missing = String(x.text).split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 3 && !onPage.includes(flat(l).slice(0, 60)))
+          const missing = String(x.text).split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 3 && !has(onPage, l))
           if (missing.length) await editSlide(i, `These lines of the user's text are missing from this page. Add each one, word for word, where it belongs (add or resize text boxes when needed); change nothing else:\n${fence(missing.join('\n'))}`).catch(() => undefined)
           // still not there (a list layout keeps dropping an opening paragraph, 2026-11-19): their words go at the top
           // of the page's main text box, in its own style, and the box is fitted
           const now = flat(slides.value[i].elements.map(elText).join(' '))
-          const still = missing.filter((l: string) => !now.includes(flat(l).slice(0, 60)))
+          const still = missing.filter((l: string) => !has(now, l))
           const sl = slides.value[i]
           // a text box or a shape holding text (list layouts keep their body in shapes)
           const box = (sl.elements as any[]).filter(e => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e) && e.textType !== 'title' && e.text?.type !== 'title')
@@ -2838,13 +2845,15 @@ const deckTurn = async (text: string) => {
   // shifting the rest (replayed on users' decks, 2026-11-19). Anything else in the message the router does after
   const pre: any[] = []
   if (!repeating && !pendingAtStart && text.length > 600) {
-    const items = await numberedParts(text)
+    // "review these slides, change nothing" with numbered slides in it is not a request to place them (Codex review)
+    const items = await numberedParts(text, text)
     if (items.length >= 2) pre.push({ action: 'place_texts', args: { items } })
   }
   // "insert the text I wrote into slides 1 to 10" points back at that text: edited slide 1 only, then stopped (1 run in
   // 4, 2026-11-19). With a long text of theirs on hand, the same small model decides whether this message asks for it
   else if (!repeating && !pendingAtStart) {
-    const theirs = [...s.history.slice(0, -1).filter(h => h.role === 'user' && h.text.length > 600).map(h => h.text), s.brief?.text || ''].filter(x => x.length > 600)
+    // the newest long text of theirs; the original request only when there is none (Codex review)
+    const theirs = [s.brief?.text || '', ...s.history.slice(0, -1).filter(h => h.role === 'user' && h.text.length > 600).map(h => h.text)].filter(x => x.length > 600)
     const src = theirs[theirs.length - 1]
     if (src) {
       const items = await numberedParts(src, text)
