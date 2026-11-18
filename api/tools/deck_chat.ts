@@ -333,7 +333,8 @@ Rules:
    "As big as" another element on the same page ("text as big as the numbers") -> edit_page, which sees the elements;
    set_font_size only scales.
    The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
-   -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
+   -> ONE place_texts with EVERY numbered part, those past the deck's last page included (they become new pages in
+   order), never edit_page, edit_all_pages or a separate add_page for any of them. Also when the message only points
    back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or
    complains the slides do not carry it.
    Only how text LOOKS (its colour, bold, italic, underline: "chữ nên đậm", "текст чёрным", "font colour yellow",
