@@ -2082,7 +2082,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (color) { styled(root).forEach(x => x.style.removeProperty('color')); box.style.color = color }
       if (want.bold !== 'same') { unwrap(root, 'strong, b'); styled(root).forEach(x => x.style.removeProperty('font-weight')) }
       if (want.italic !== 'same') { unwrap(root, 'em, i'); styled(root).forEach(x => x.style.removeProperty('font-style')) }
-      if (want.underline !== 'same') styled(root).forEach(noUnderline)
+      if (want.underline !== 'same') { unwrap(root, 'u'); styled(root).forEach(noUnderline) }
       if (want.underline === 'on') box.style.textDecoration = 'underline'
       let inner = box.innerHTML
       if (want.bold === 'on') inner = `<strong>${inner}</strong>`
@@ -2102,7 +2102,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         return doc.body.innerHTML
       }
       // the named words, inside one run of text; split across two runs, or to be un-bolded inside a bold run, they go to the page edit below
-      const inside = (x: Element | null) => [want.bold === 'off' && 'strong, b', want.italic === 'off' && 'em, i', want.underline === 'off' && '[style*="underline"]']
+      const inside = (x: Element | null) => [want.bold === 'off' && 'strong, b, [style*="font-weight"]', want.italic === 'off' && 'em, i, [style*="font-style"]', want.underline === 'off' && 'u, [style*="underline"]']
         .some(sel => sel && x?.closest(sel))
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
