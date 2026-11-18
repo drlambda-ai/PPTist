@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: Codex (gpt-6 via codex-exec-once), 2026-11-19: no findings.
+Checks: vue-tsc green; editor-cases.jsonl 99/103 first pass, misses passed on rerun except one caused by another session's uncommitted hunk.
