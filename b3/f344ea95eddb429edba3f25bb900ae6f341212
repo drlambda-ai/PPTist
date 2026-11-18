@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high), one review and one verify pass over 1f3857e5..HEAD code; docs commits read by Claude Code
+Reviewed-At: 2026-11-18T10:26:53Z
+Fixed: removing a mark kept nothing of the element's own size/colour; underline change erased strikethrough; paragraph-level styles not cleared; a phrase split across runs reported missing; un-styling words inside a styled run reported success
+Declined-By: Claude Code
+Declined: a phrase that matches in one box but is split across runs in another box or page is skipped there — rare; the user asks again for that box
+Declined: bold/italic set on an enclosing list item (li style) is not cleared by a whole-box change — the editor writes marks as strong/em, not li styles; cost if wrong: one repeated request
+Declined: removing underline from a combined decoration (underline line-through wavy red) resets the strike's colour and line style — not a shape the editor produces
