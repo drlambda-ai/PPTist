@@ -2751,6 +2751,7 @@ const deckTurn = async (text: string) => {
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
   let failed = 0 // steps of this message that failed
+  let leftNudged = false // a not_done the router was sent back over, once per message
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -2864,6 +2865,28 @@ const deckTurn = async (text: string) => {
       continue
     }
     const left = calls.find((c: any) => c.action === 'finish')?.args?.not_done
+    // a tool the router itself says it skipped for an asked part goes back to it once: "make it nicer, and delete slide
+    // 4" ended with "slide 4 still needs to be deleted" (3 of 16 runs, 2026-11-19; the old build 0 of 16). Not after a
+    // failed step, a question or an offer; never for a not_done that is only a part that does not apply
+    // pages only (a deletion, a new page): a picture or text named as skipped sent the router back to undo the right one
+    let skipped = (calls.find((c: any) => c.action === 'finish')?.args?.skipped_tools || []).map(String).filter((x: string) => ['delete_pages', 'add_page'].includes(x))
+    // the router also finished with nothing listed while a part was never done ("... and delete slide 4": 2 of 16 runs,
+    // 2026-11-19): a separate small check reads the message and the steps once, before the message ends
+    if (!work.length && !skipped.length && !leftNudged && done.length && !failed && !askedThisTurn && (!s.pending || s.pending.offer)) {
+      const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+        `A user asked a slide editor: ${JSON.stringify(text.slice(0, 3000))}\nThe steps the editor ran: ${JSON.stringify(done.map((d: string) => d.slice(0, 300)))}\n`
+        + 'Only two kinds of part count: deleting a page the user named, or a new page they asked for (a conclusion, a sources page, "add a slide about X"). List each such part that no step did. Nothing else: pictures, texts and designs on existing pages are never listed. '
+        + 'JSON {"missing": [{"tool": "delete_pages" or "add_page", "part": "the part, in the user\'s words"}]}; [] when there is none.' }) }).catch(() => null)
+      // pages only: asked about every kind of part, it read "remove the barista photo, put a café photo" as two and the
+      // router undid the right picture (2 of 4 runs, 2026-11-19)
+      const missing = r?.ok ? ((await r.json().catch(() => ({})))?.missing || []).filter((m: any) => ['delete_pages', 'add_page'].includes(m?.tool) && m?.part) : []
+      skipped = missing.map((m: any) => `${m.tool} (${String(m.part).slice(0, 120)})`)
+    }
+    if (!work.length && skipped.length && !leftNudged && done.length && !failed && !askedThisTurn && (!s.pending || s.pending.offer)) {
+      leftNudged = true
+      done.push(`not finished: you said you have not yet called ${skipped.slice(0, 5).join(', ')} for a part the user asked for. Call it now for that part (call delete_pages itself, it shows its own confirmation; never ask_user about a deletion); never for anything they did not ask for.`)
+      continue
+    }
     if (!work.length && left && String(left).trim()) { // never pretend the rest is done
       free.push(String(left).trim())
       replies.push(String(left).trim())

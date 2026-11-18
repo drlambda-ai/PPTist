@@ -280,9 +280,10 @@ const TOOLS = [
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
   fn('redo', 'Redo the last undone change.', {}, []),
-  fn('finish', 'Stop: after at least one step was applied and every part of the request that a tool here can do has had its step (deleting pages included: delete_pages asks the user first). List in not_done only parts NOT done because no tool can do them or a step failed, in the user\'s language; empty when all is done.', {
+  fn('finish', 'Stop: after at least one step was applied and every part of the request that a tool here can do has had its step (deleting pages included: call delete_pages itself, it shows the user its own confirmation; never ask_user about a deletion). A part whose step failed is done: never try it again with another tool. List in not_done only parts NOT done because no tool can do them or a step failed, in the user\'s language; empty when all is done.', {
     not_done: { type: 'string', description: 'e.g. "I can\'t add the table from your PDF: the file isn\'t attached here." Empty if everything was done.' },
-  }, ['not_done']),
+    skipped_tools: { type: 'array', items: { type: 'string' }, description: 'Names of tools here for parts the user ASKED for that you have not called yet (["delete_pages"] when they asked to delete a slide and it has not run). [] when every asked part has had its step, or a part does not apply (a page with no picture to replace) or no tool can do it.' },
+  }, ['not_done', 'skipped_tools']),
   fn('answer_question', 'Answer a question about the deck or the editor without changing anything, or ask what the user means when the request is truly ambiguous.', {
     answer: { type: 'string', description: 'Only in the language and script of the user\'s message. A heading or line of a slide written in another language is given by its meaning in the user\'s language ("Project Overview"), without the original words: no "项目概览 (Project Overview)"' },
   }, ['answer']),
