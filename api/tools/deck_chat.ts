@@ -280,7 +280,7 @@ const TOOLS = [
     instead: { type: 'string', description: 'If the user also said what they wanted instead ("the image, not the background"), that request in full ("replace the content picture on page 6 with a map of the United States"); "" for a plain undo' },
   }, ['instead']),
   fn('redo', 'Redo the last undone change.', {}, []),
-  fn('finish', 'Stop: after at least one step was applied. List in not_done every part of the request that was NOT done (the editor cannot do it, or it was skipped), in the user\'s language; empty when all is done.', {
+  fn('finish', 'Stop: after at least one step was applied and every part of the request that a tool here can do has had its step (deleting pages included: delete_pages asks the user first). List in not_done only parts NOT done because no tool can do them or a step failed, in the user\'s language; empty when all is done.', {
     not_done: { type: 'string', description: 'e.g. "I can\'t add the table from your PDF: the file isn\'t attached here." Empty if everything was done.' },
   }, ['not_done']),
   fn('answer_question', 'Answer a question about the deck or the editor without changing anything, or ask what the user means when the request is truly ambiguous.', {
