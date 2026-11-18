@@ -1960,7 +1960,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       offer() // ChatSlide's paywall, once per session
       // the router is told the rest still runs: "cute elements, delete slide 8, the group name on the cover" stopped
       // here, slide 8 and the name not done, and the user asked again (2026-11-17)
-      memo = '(The redesign is not done and is never retried in another call. Go on only with the OTHER parts of the request, if any: a text to add, pages to delete, pictures.)'
+      // "write a conclusion, a better design and more text" got neither the conclusion nor the text (2026-11-18): the
+      // text the user asked for is its own edit_page, without the design part
+      memo = '(The redesign is not done and is never retried in another call. Go on only with the OTHER parts of the request, if any: text the user asked for on this page (a conclusion, more text) is a new edit_page with redesign false whose instruction asks for that text only, no layout or design words; pages to delete; pictures.)'
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
     }
     let upgradeLine = ''
