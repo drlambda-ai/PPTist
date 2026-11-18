@@ -1251,5 +1251,5 @@
   "Background of page(s) {p0} set to {p1}.": "第 {p0} 页的背景已设为{p1}。",
   "Which text goes on which page?": "哪段文字放在哪一页？",
   "Placed your text on {p0} page(s).": "已将你的文字放到 {p0} 页上。",
-  "Page(s) {p0} already had it.": "第 {p0} 页已经有了。"
+  "Page(s) {p0} were not changed.": "第 {p0} 页未更改。"
 }

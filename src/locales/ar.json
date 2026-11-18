@@ -1251,5 +1251,5 @@
   "Background of page(s) {p0} set to {p1}.": "تم تعيين خلفية الصفحة {p0} إلى {p1}.",
   "Which text goes on which page?": "أي نص يوضع في أي صفحة؟",
   "Placed your text on {p0} page(s).": "تم وضع نصك على {p0} صفحة.",
-  "Page(s) {p0} already had it.": "الصفحة {p0} كانت تحتويه بالفعل."
+  "Page(s) {p0} were not changed.": "لم تتغير الصفحة {p0}."
 }

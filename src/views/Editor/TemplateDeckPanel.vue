@@ -2156,13 +2156,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const onPages = items.filter((x: { page: number }) => x.page <= ids0.length)
     const past = items.filter((x: { page: number }) => x.page > ids0.length)
     const same: number[] = [], failed: number[] = []
-    let next = 0
+    let next = 0, why = ''
     const worker = async () => {
       while (next < onPages.length) {
         const x = onPages[next++]
         try { await editSlide(pos(ids0[x.page - 1]), `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Keep the layout, pictures and colours; split it over the page's text boxes as fits:\n${fence(x.text.slice(0, 6000))}`) }
         catch (e) {
-          if (e instanceof NoChange) same.push(x.page)
+          if (e instanceof NoChange) { same.push(x.page); why ||= e.message } // the page's own reason: "one flat picture" is not "already there"
           else if (e instanceof StepFailed) failed.push(x.page)
           else throw e
         }
@@ -2171,11 +2171,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const settled = await Promise.allSettled(Array.from({ length: Math.min(5, onPages.length) }, worker))
     const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
     if (err) throw err.reason
-    touched(onPages.map((x: { page: number }) => ids0[x.page - 1]))
+    touched(onPages.filter((x: { page: number }) => !same.includes(x.page) && !failed.includes(x.page)).map((x: { page: number }) => ids0[x.page - 1]))
     const lines = [t('Placed your text on {p0} page(s).', { p0: onPages.length - same.length - failed.length })]
-    if (same.length) lines.push(t('Page(s) {p0} already had it.', { p0: same.join(', ') }))
+    if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') })} ${why}`.trim())
     if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
-    for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written:\n${x.text.slice(0, 6000)}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, ids))
+    // the deck grows with each new page: its page numbers are read from it now
+    for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written:\n${x.text.slice(0, 6000)}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
     await fitQueue
     return lines.join('\n')
   }
@@ -3410,7 +3411,7 @@ onMounted(() => {
       // text" (their slide-by-slide text was the topic) had no answer, the chat never saw it (2026-11-10..17)
       chatslide!.brief?.().then((b) => {
         if (!b?.text?.trim()) return
-        s.brief = { text: b.text.slice(0, 8000), pages: Number(b.pages) > 0 ? Number(b.pages) : undefined }
+        s.brief = { text: b.text.slice(0, 16000), pages: Number(b.pages) > 0 ? Number(b.pages) : undefined }
         save()
       }, () => undefined)
       if (chatslide!.files && s.projectFiles !== 2) {

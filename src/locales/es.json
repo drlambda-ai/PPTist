@@ -1251,5 +1251,5 @@
   "Background of page(s) {p0} set to {p1}.": "Fondo de la página {p0} cambiado a {p1}.",
   "Which text goes on which page?": "¿Qué texto va en qué página?",
   "Placed your text on {p0} page(s).": "Coloqué tu texto en {p0} página(s).",
-  "Page(s) {p0} already had it.": "La(s) página(s) {p0} ya lo tenía(n)."
+  "Page(s) {p0} were not changed.": "La(s) página(s) {p0} no cambiaron."
 }

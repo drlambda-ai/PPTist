@@ -755,7 +755,7 @@ async function handler(req: any, res: any) {
     const fileList = (files.length ? `\n\nAttached files:\n${files.map(x => `- ${x.name}${x.pages ? ` (${x.pages} pages)` : ''}, ${x.chars || 0} characters${x.look ? ' (the user\'s presentation: use_file_look takes its colours and logo)' : ''}`).join('\n')}` : '\n\nNo files are attached.')
       + (pics.length ? `\nAttached pictures: ${pics.join(', ')}` : '')
     const asked = body.brief && String(body.brief.text || '').trim() ? body.brief : null
-    const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 6000)}` : ''
+    const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 16000)}` : ''
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''

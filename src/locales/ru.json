@@ -1251,5 +1251,5 @@
   "Background of page(s) {p0} set to {p1}.": "Фон страницы {p0} изменён на {p1}.",
   "Which text goes on which page?": "Какой текст на какую страницу?",
   "Placed your text on {p0} page(s).": "Ваш текст размещён на {p0} стр.",
-  "Page(s) {p0} already had it.": "На странице {p0} это уже было."
+  "Page(s) {p0} were not changed.": "Страница {p0} не изменена."
 }
