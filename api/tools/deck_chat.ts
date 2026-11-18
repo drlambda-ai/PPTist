@@ -86,6 +86,9 @@ const TOOLS = [
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language']),
+  fn('place_texts', 'Put the user\'s OWN text on several pages, each page its own part: a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote / numbered on the slides" when that text is in an earlier message or in what they asked for when the deck was made. Each part is copied exactly as they wrote it.', {
+    items: { type: 'array', description: 'One per page, in page order. Match their slide numbering to the deck\'s pages by content: a deck with a cover or contents page their text does not count shifts the numbers. A part for a page past the end makes a new page.', items: { type: 'object', properties: { page: page, text: { type: 'string', description: 'That page\'s part of their text, copied exactly (title first)' } }, required: ['page', 'text'], additionalProperties: false } },
+  }, ['items']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
@@ -117,7 +120,9 @@ const TOOLS = [
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
     cite_files: { type: 'boolean', description: 'true when the change cites the user\'s own attached files on the pages they informed ("add references of the articles to each slide so it matches where you got the info", "cite my papers on each slide"): each page is then given the files to match its content against; false otherwise' },
-  }, ['instruction', 'every_page', 'language', 'cite_files']),
+    pages: { ...pages, description: 'Only the pages the user names ("slides 1 to 10", "from the second to the ninth"); [] = every page' },
+    users_text: { type: 'boolean', description: 'true when the pages are to carry the user\'s OWN text: text they pasted for several slides ("Slide 1 ... Slide 2 ..."), or "put the text I wrote / sent on the slides" meaning text from an earlier message or from what they asked for when the deck was made; false otherwise' },
+  }, ['instruction', 'every_page', 'language', 'cite_files', 'pages', 'users_text']),
   fn('apply_theme', 'Give the whole deck, or only the pages the user limits it to, a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look", "a new theme only on the cover, leave the rest"). Done directly, keeps the wording.', {
     pages: { ...pages, description: 'Only when the user limits the new look to some pages ("only the first page", "just the cover, the rest as it was"): those pages; else [] = the whole deck' },
     background: { type: 'string', description: 'Slide background #RRGGBB' },
@@ -324,6 +329,10 @@ Rules:
    edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
    A size change together with other changes to the same text ("add more words and make the font bigger") -> set_font_size
    for the size AND edit_page for the rest: a page edit keeps the sizes as they were.
+   The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
+   -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
+   back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or
+   complains the slides do not carry it.
    Only how text LOOKS (its colour, bold, italic, underline: "chữ nên đậm", "текст чёрным", "font colour yellow",
    "underline 4.5 billion") -> set_text_style, never edit_page/edit_all_pages/set_background/set_font.
    "Make it white" / "whiter" right after a request about the text's colour is the text again: set_text_style.

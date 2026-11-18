@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "Saya tidak menemukan “{p0}” dalam teks di sana.",
   "There is no such text to style there.": "Tidak ada teks seperti itu untuk diberi gaya di sana.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Gaya teks diubah di {p0} kotak teks pada {p1} halaman.",
-  "Background of page(s) {p0} set to {p1}.": "Latar belakang halaman {p0} diatur ke {p1}."
+  "Background of page(s) {p0} set to {p1}.": "Latar belakang halaman {p0} diatur ke {p1}.",
+  "Which text goes on which page?": "Teks mana untuk halaman mana?",
+  "Placed your text on {p0} page(s).": "Teks Anda ditempatkan di {p0} halaman.",
+  "Page(s) {p0} already had it.": "Halaman {p0} sudah memilikinya."
 }

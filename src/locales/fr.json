@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "Je n’ai pas trouvé « {p0} » dans le texte à cet endroit.",
   "There is no such text to style there.": "Il n’y a pas de texte de ce type à mettre en forme à cet endroit.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Style du texte modifié dans {p0} zones de texte sur {p1} page(s).",
-  "Background of page(s) {p0} set to {p1}.": "Arrière-plan de la page {p0} défini sur {p1}."
+  "Background of page(s) {p0} set to {p1}.": "Arrière-plan de la page {p0} défini sur {p1}.",
+  "Which text goes on which page?": "Quel texte va sur quelle page ?",
+  "Placed your text on {p0} page(s).": "Votre texte a été placé sur {p0} page(s).",
+  "Page(s) {p0} already had it.": "La ou les page(s) {p0} l’avaient déjà."
 }

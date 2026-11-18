@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "«{p0}» را در متن آنجا پیدا نکردم.",
   "There is no such text to style there.": "چنین متنی برای قالب‌بندی در آنجا نیست.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "سبک متن در {p0} کادر متن در {p1} صفحه تغییر کرد.",
-  "Background of page(s) {p0} set to {p1}.": "پس‌زمینه صفحه {p0} روی {p1} تنظیم شد."
+  "Background of page(s) {p0} set to {p1}.": "پس‌زمینه صفحه {p0} روی {p1} تنظیم شد.",
+  "Which text goes on which page?": "کدام متن در کدام صفحه قرار بگیرد؟",
+  "Placed your text on {p0} page(s).": "متن شما روی {p0} صفحه قرار گرفت.",
+  "Page(s) {p0} already had it.": "صفحه {p0} از قبل آن را داشت."
 }

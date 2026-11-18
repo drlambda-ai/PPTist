@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "Tôi không tìm thấy “{p0}” trong văn bản ở đó.",
   "There is no such text to style there.": "Ở đó không có văn bản nào như vậy để định dạng.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Đã đổi kiểu chữ trong {p0} hộp văn bản trên {p1} trang.",
-  "Background of page(s) {p0} set to {p1}.": "Đã đặt nền trang {p0} thành {p1}."
+  "Background of page(s) {p0} set to {p1}.": "Đã đặt nền trang {p0} thành {p1}.",
+  "Which text goes on which page?": "Đoạn văn nào cho trang nào?",
+  "Placed your text on {p0} page(s).": "Đã đặt văn bản của bạn lên {p0} trang.",
+  "Page(s) {p0} already had it.": "Trang {p0} đã có sẵn."
 }

@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "在那裡的文字中找不到「{p0}」。",
   "There is no such text to style there.": "那裡沒有可設定樣式的文字。",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "已變更 {p1} 頁中 {p0} 個文字方塊的文字樣式。",
-  "Background of page(s) {p0} set to {p1}.": "第 {p0} 頁的背景已設為{p1}。"
+  "Background of page(s) {p0} set to {p1}.": "第 {p0} 頁的背景已設為{p1}。",
+  "Which text goes on which page?": "哪段文字放在哪一頁？",
+  "Placed your text on {p0} page(s).": "已將你的文字放到 {p0} 頁上。",
+  "Page(s) {p0} already had it.": "第 {p0} 頁已經有了。"
 }

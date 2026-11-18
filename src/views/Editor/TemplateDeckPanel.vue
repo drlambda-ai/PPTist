@@ -1959,6 +1959,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     let upgradeLine = ''
     const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced, !args.redesign).catch((e) => {
+      // the user pasted the page's text and the page model answered it was already there, untouched: wrong in 6 of 6
+      // replayed cases (slides 1, 8, 9 of three decks, 2026-11-11..16). One more pass, told it is not there
+      if (e instanceof NoChange && text.length > 300 && !editedThisTurn.has(slides.value[i].id)) {
+        return editSlide(i, `${args.instruction}\n\nThe user's message gives text for this page. It is NOT on the page yet: put it there now, in their words. Never answer that it is already there.`)
+      }
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
       if (lastEditAdvanced || !(e as any).tooHard) throw e // the advanced model already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)
@@ -2141,6 +2146,39 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched(targets)
     return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
+  // The user's own text, page by page: each page gets only its part. Given the whole text, each page picked a part
+  // itself and slide 3 took slide 2's (replayed 2026-11-18, 4 decks); one page edit at a time stopped after slide 1
+  if (action === 'place_texts') {
+    const items = (Array.isArray(args.items) ? args.items : []).map((x: any) => ({ page: Number(x?.page), text: String(x?.text || '').trim() }))
+      .filter((x: { page: number, text: string }) => x.text && x.page >= 1)
+    if (!items.length) fail(t('Which text goes on which page?'))
+    const ids0 = slides.value.map(x => x.id)
+    const onPages = items.filter((x: { page: number }) => x.page <= ids0.length)
+    const past = items.filter((x: { page: number }) => x.page > ids0.length)
+    const same: number[] = [], failed: number[] = []
+    let next = 0
+    const worker = async () => {
+      while (next < onPages.length) {
+        const x = onPages[next++]
+        try { await editSlide(pos(ids0[x.page - 1]), `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Keep the layout, pictures and colours; split it over the page's text boxes as fits:\n${fence(x.text.slice(0, 6000))}`) }
+        catch (e) {
+          if (e instanceof NoChange) same.push(x.page)
+          else if (e instanceof StepFailed) failed.push(x.page)
+          else throw e
+        }
+      }
+    }
+    const settled = await Promise.allSettled(Array.from({ length: Math.min(5, onPages.length) }, worker))
+    const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
+    if (err) throw err.reason
+    touched(onPages.map((x: { page: number }) => ids0[x.page - 1]))
+    const lines = [t('Placed your text on {p0} page(s).', { p0: onPages.length - same.length - failed.length })]
+    if (same.length) lines.push(t('Page(s) {p0} already had it.', { p0: same.join(', ') }))
+    if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
+    for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written:\n${x.text.slice(0, 6000)}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, ids))
+    await fitQueue
+    return lines.join('\n')
+  }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
     const todo: string[] = args.pages?.length ? nums(args.pages) : all // a whole-presentation page edit leaves out the cover and the closing page
@@ -2159,10 +2197,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${given(files)}` : args.instruction
     // a long message is material too (a pasted outline "fill in exactly these infos"): the router's instruction only
     // describes it, and the pages wrote their own version of it (replayed conversation, 2026-11-16)
-    const said = [s.pending?.request, text].filter((x, k, arr) => x && arr.indexOf(x) === k).join('\n')
+    // "insert the text I wrote on slides 1-10": that text was an earlier message or the request the deck was made from;
+    // given only the message, slide 1 was edited and called done (2026-11-11, replayed 2026-11-18)
+    const own = args.users_text ? [...s.history.filter(h => h.role === 'user' && h.text.length > 300).slice(-3).map(h => h.text), s.brief?.text || ''] : []
+    const said = [s.pending?.request, text, ...own].filter((x, k, arr) => x && arr.indexOf(x) === k).join('\n\n')
     const forPage = (id: string) => instruction
       + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
-      + (said.length > 600 && !files.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
+      + ((said.length > 600 || args.users_text) && !files.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
     const worker = async () => {
       while (next < todo.length && !stop) {
         const id = todo[next++]
@@ -2980,11 +3021,15 @@ const deckTurn = async (text: string) => {
         // once, the router gets it as that step's result, and it may go on with the OTHER parts of the request. Still
         // the end of the message: a question to the user ("Which font?"), a page that is already as asked, a repeat
         // over pages, or a second failure.
-        failed++
+        // pasted text for several pages: one page already holding its part is no reason to stop; the message ended
+        // there and the other pages never got theirs (replayed 2026-11-18, slides 1 and 8 of two decks)
+        const goOn = e instanceof NoChange && c.action === 'edit_page' && text.length > 300
+        if (!goOn) failed++
         // the step that ended the message is kept too: the turn record showed no step at all for "Page 6 was not
         // changed", so the cause could not be read from it (2026-11-14)
-        done.push(`${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
-        if (repeating || e instanceof NoChange || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
+        done.push(goOn ? `${c.action} ${JSON.stringify(c.args || {})} -> no change: ${e.message} (Go on with the other pages the user's text is for.)`
+          : `${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
+        if (repeating || (e instanceof NoChange && !goOn) || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
         continue
       }

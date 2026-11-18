@@ -1248,5 +1248,8 @@
   "I could not find “{p0}” in the text there.": "Я не нашёл «{p0}» в тексте там.",
   "There is no such text to style there.": "Там нет такого текста для оформления.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Оформление текста изменено в {p0} текстовых блоках на {p1} стр.",
-  "Background of page(s) {p0} set to {p1}.": "Фон страницы {p0} изменён на {p1}."
+  "Background of page(s) {p0} set to {p1}.": "Фон страницы {p0} изменён на {p1}.",
+  "Which text goes on which page?": "Какой текст на какую страницу?",
+  "Placed your text on {p0} page(s).": "Ваш текст размещён на {p0} стр.",
+  "Page(s) {p0} already had it.": "На странице {p0} это уже было."
 }
