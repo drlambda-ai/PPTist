@@ -1151,7 +1151,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     return pic.url
   }
   if (source === 'wikimedia') {
-    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest }) })).json()
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest, avoid }) })).json()
     if (!r.src && specific) fail(t('Wikimedia Commons has no free picture of {p0}, and a stock photo would show something else. Would you like to upload one? Attach it with the 📎 icon and I will put it on the slide.', { p0: query.slice(0, 60) }))
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
       const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))

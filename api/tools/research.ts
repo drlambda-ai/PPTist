@@ -51,7 +51,7 @@ const wikidataFiles = async (query: string) => {
     .map((c: any) => c.mainsnak?.datavalue?.value).filter((v: unknown) => typeof v === 'string').slice(0, 8) as string[]
 }
 
-const wikimedia = async (query: string, nearest = false) => {
+const wikimedia = async (query: string, nearest = false, avoid: string[] = []) => {
   const plain = (h = '') => String(h).replace(/<[^>]+>/g, '').trim()
   const files = await wikidataFiles(query).catch(() => [] as string[])
   const known = files.length ? await commons({ titles: files.map(f => `File:${f}`).join('|') }).catch(() => []) : []
@@ -63,10 +63,13 @@ const wikimedia = async (query: string, nearest = false) => {
   // close: the second round takes the nearest real image of the same subject (a plain barium swallow film for "barium
   // swallow in systemic sclerosis"), still better on a slide than a stock photo of a doctor
   const pick = async (pages: any[], close = false) => {
+    // never a picture already on the page: "small infant on oxygen", then "Indian infant on oxygen" both got the same
+    // 1940s oxygen-meter photo the user had just rejected (2026-11-17)
+    pages = pages.filter(p => !avoid.includes(p.imageinfo[0].thumburl))
     if (!pages.length) return null
     try {
       const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
-      const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\n${close ? 'Which file is the closest real picture of the same subject (same disease, organ, scan type or thing; -1 only if none is)?' : 'Which file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)?'} Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
+      const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\n${close ? 'Which file is the closest real picture of the same subject (same disease, organ, scan type or thing; current, never a historical/old photo: a 1940s oxygen meter came back for "infant on oxygen support", 2026-11-17; -1 if none is)?' : 'Which file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)?'} Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
       return out.pick === -1 ? null : pages[out.pick] || pages[0]
     }
     catch { return pages[0] } // the search's own first result
@@ -227,7 +230,7 @@ async function handler(req: any, res: any) {
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
     else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))
     else if (kind === 'url') res.status(200).json(await readUrl(String(query).trim().slice(0, 2000)))
-    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200), nearest === true))
+    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200), nearest === true, Array.isArray(avoid) ? avoid.map(String) : []))
     else res.status(400).json({ error: 'kind must be web, scholar, url or wikimedia' })
   }
   catch (e: any) {
