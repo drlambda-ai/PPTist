@@ -41,8 +41,14 @@ Quanlai, 2026-11-18. Every unhappy turn gets exactly one cause, and the cause pi
 3. **Capability exists, the AI does not know it.** The router never picked the tool. Fix: the tool's description or the router prompt.
 4. **Capability exists, the AI picked it and did it wrong.** Fix: the tool's own code or its edit prompt.
 5. **The AI did not have what the user submitted.** An uploaded file, an attached image, an earlier message, the deck's current state or the selected page never reached the model. Fix: pass that context into the turn.
+6. **The search could not get what was asked.** A picture of a named person or thing, a paper, a page, a figure in a file came back wrong or empty. Fix: the source or the query for that kind of thing.
+7. **Guessed where it should have asked, or asked where it should have acted.** Fix: the router rule for that request.
+8. **A step errored.** Fix: the code that threw.
+9. **Done, but the user did not see it.** Another page, too small a change, a reply that does not say where. Fix: show the changed page and say what changed.
 
-Report the count per cause alongside the fixes.
+`python3 ~/proj/app.chatslide.ai/scripts/deck-eval/sessions.py --hours 720` labels every unhappy turn with its cause
+(Codex, cached) and prints the count per cause, sorted by cause. Turns it marks `not_a_failure` (the next message was
+just the next request) are left out of the count. Report the count per cause alongside the fixes.
 
 ## How the chat turn works (keep it this way)
 
