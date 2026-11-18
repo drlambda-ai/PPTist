@@ -3101,6 +3101,16 @@ const deckTurn = async (text: string) => {
         c.args = { instruction: await forAnyPage(c.args.instruction), every_page: false, language: c.args.language,
           pages: n > 3 ? slides.value.map((_, k) => k + 1).slice(1, -1) : [] } // the cover and the closing page keep their few words
       }
+      // "replace the pictures on all slides": a page with none has nothing to replace. After replacing, the router added
+      // new pictures to those pages in 5 of 16 runs, old build too (2026-11-19)
+      if (c.action === 'add_image' && c.args?.every_page && everyPageAction === 'change_image' && picturedPages.size) {
+        const line = t('Page {p0} has no picture to replace.', { p0: Number(c.args.index) || 1 })
+        picturedPages.add(ids[Number(c.args.index) - 1])
+        done.push(`add_image ${JSON.stringify(c.args)} -> skipped: the user asked to replace pictures, and this page has none to replace`)
+        replies.push(line)
+        terse.push(line)
+        continue
+      }
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
       try {
