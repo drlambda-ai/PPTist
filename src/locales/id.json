@@ -1247,5 +1247,6 @@
   "Which colour or style?": "Warna atau gaya yang mana?",
   "I could not find “{p0}” in the text there.": "Saya tidak menemukan “{p0}” dalam teks di sana.",
   "There is no such text to style there.": "Tidak ada teks seperti itu untuk diberi gaya di sana.",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "Gaya teks diubah di {p0} kotak teks pada {p1} halaman."
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Gaya teks diubah di {p0} kotak teks pada {p1} halaman.",
+  "Background of page(s) {p0} set to {p1}.": "Latar belakang halaman {p0} diatur ke {p1}."
 }

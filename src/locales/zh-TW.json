@@ -1247,5 +1247,6 @@
   "Which colour or style?": "要哪種顏色或樣式？",
   "I could not find “{p0}” in the text there.": "在那裡的文字中找不到「{p0}」。",
   "There is no such text to style there.": "那裡沒有可設定樣式的文字。",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "已變更 {p1} 頁中 {p0} 個文字方塊的文字樣式。"
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "已變更 {p1} 頁中 {p0} 個文字方塊的文字樣式。",
+  "Background of page(s) {p0} set to {p1}.": "第 {p0} 頁的背景已設為{p1}。"
 }

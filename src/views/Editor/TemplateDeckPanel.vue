@@ -2356,7 +2356,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const bgHow = args.photo_query
       ? (pictureSource === 'ai' ? (t('an AI-generated picture for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })) : (t('a stock photo for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })))
       : (t('colour {p0}', { p0: args.color }))
-    return (t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })) + note + flatNote
+    // a count read as a page number: "Фон 1 слайдів" ("background of 1 slide(s)") was taken for page 1 (replay 2026-11-18)
+    const where = targets.length <= 3 ? t('Background of page(s) {p0} set to {p1}.', { p0: targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', '), p1: bgHow }) : t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })
+    return where + note + flatNote
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()

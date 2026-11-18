@@ -1247,5 +1247,6 @@
   "Which colour or style?": "要哪种颜色或样式？",
   "I could not find “{p0}” in the text there.": "在那里的文字中没有找到“{p0}”。",
   "There is no such text to style there.": "那里没有可设置样式的文字。",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "已更改 {p1} 页中 {p0} 个文本框的文字样式。"
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "已更改 {p1} 页中 {p0} 个文本框的文字样式。",
+  "Background of page(s) {p0} set to {p1}.": "第 {p0} 页的背景已设为{p1}。"
 }

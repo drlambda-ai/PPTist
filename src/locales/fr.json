@@ -1247,5 +1247,6 @@
   "Which colour or style?": "Quelle couleur ou quel style ?",
   "I could not find “{p0}” in the text there.": "Je n’ai pas trouvé « {p0} » dans le texte à cet endroit.",
   "There is no such text to style there.": "Il n’y a pas de texte de ce type à mettre en forme à cet endroit.",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "Style du texte modifié dans {p0} zones de texte sur {p1} page(s)."
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Style du texte modifié dans {p0} zones de texte sur {p1} page(s).",
+  "Background of page(s) {p0} set to {p1}.": "Arrière-plan de la page {p0} défini sur {p1}."
 }

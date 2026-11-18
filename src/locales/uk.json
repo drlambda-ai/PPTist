@@ -1247,5 +1247,6 @@
   "Which colour or style?": "Який колір або стиль?",
   "I could not find “{p0}” in the text there.": "Я не знайшов «{p0}» у тексті там.",
   "There is no such text to style there.": "Там немає такого тексту для оформлення.",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "Оформлення тексту змінено в {p0} текстових блоках на {p1} стор."
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Оформлення тексту змінено в {p0} текстових блоках на {p1} стор.",
+  "Background of page(s) {p0} set to {p1}.": "Фон сторінки {p0} змінено на {p1}."
 }

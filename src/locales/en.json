@@ -1247,5 +1247,6 @@
   "Which colour or style?": "Which colour or style?",
   "I could not find “{p0}” in the text there.": "I could not find “{p0}” in the text there.",
   "There is no such text to style there.": "There is no such text to style there.",
-  "Restyled the text in {p0} text boxes across {p1} page(s).": "Restyled the text in {p0} text boxes across {p1} page(s)."
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Restyled the text in {p0} text boxes across {p1} page(s).",
+  "Background of page(s) {p0} set to {p1}.": "Background of page(s) {p0} set to {p1}."
 }
