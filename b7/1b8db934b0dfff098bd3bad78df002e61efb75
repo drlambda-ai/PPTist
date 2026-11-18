@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high): one review and one verify pass over b3f344ea..HEAD code, one review of the gating commit; docs commits read by Claude Code
+Reviewed-At: 2026-11-18T15:27:32Z
+Fixed: place_texts reported a page it could not change as already having the text; a second new page failed on stale ids; the original request reached the router cut at 6,000 characters
+Declined-By: Claude Code
+Declined: each page's own text is cut at 6,000 characters — no slide holds that much text
+Declined: a short (under 600 characters) original request the user points back to is not sent once the deck has its page count — rare; detecting "points back" needs another model call; cost if wrong: the chat asks them to paste it again
+Backtest: 107 replayed turns on users' own decks at send time, 2 runs per build, same payload: production 122/130, this build 124/125 (max 214)
