@@ -1251,5 +1251,6 @@
   "Background of page(s) {p0} set to {p1}.": "Background of page(s) {p0} set to {p1}.",
   "Which text goes on which page?": "Which text goes on which page?",
   "Placed your text on {p0} page(s).": "Placed your text on {p0} page(s).",
-  "Page(s) {p0} were not changed.": "Page(s) {p0} were not changed."
+  "Page(s) {p0} were not changed.": "Page(s) {p0} were not changed.",
+  "your original request": "your original request"
 }

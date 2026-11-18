@@ -1810,6 +1810,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
   }
   if (action === 'read_file') {
+    // what the user asked for when the deck was made, read on request ("put back what I sent at the start"); a short one
+    // is not in the router's context with every message (it pulled one-page requests into whole-deck rewrites)
+    if (args.file === 'Original request' && s.brief?.text) {
+      memo = `<file-content name="Original request">\n${fence(s.brief.text)}\n</file-content>`
+      return t('Read {p0}{p1}.', { p0: t('your original request'), p1: '' })
+    }
     const named = (s.images || []).find(m => m.name === args.file)
     const doc = named ? undefined : s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
     // an attached picture: its text, read by the vision model ("write what's in my picture into the slides" was

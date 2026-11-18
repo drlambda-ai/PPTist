@@ -1251,5 +1251,6 @@
   "Background of page(s) {p0} set to {p1}.": "Latar belakang halaman {p0} diatur ke {p1}.",
   "Which text goes on which page?": "Teks mana untuk halaman mana?",
   "Placed your text on {p0} page(s).": "Teks Anda ditempatkan di {p0} halaman.",
-  "Page(s) {p0} were not changed.": "Halaman {p0} tidak diubah."
+  "Page(s) {p0} were not changed.": "Halaman {p0} tidak diubah.",
+  "your original request": "permintaan awal Anda"
 }

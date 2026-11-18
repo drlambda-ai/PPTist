@@ -761,6 +761,9 @@ async function handler(req: any, res: any) {
     // (backtest 2026-11-18, 107 replayed turns, 2 runs per build)
     const asked = body.brief && String(body.brief.text || '').trim()
       && (String(body.brief.text).length > 600 || Number(body.brief.pages) > deckPages.length) ? body.brief : null
+    // a short one stays readable on request, so "put back what I asked for at the start" still has it
+    const briefFile = body.brief && String(body.brief.text || '').trim() && !asked
+      ? `\nAlso readable: "Original request", what the user asked for when the deck was made (${String(body.brief.text).length} characters): read_file it when they refer to it` : ''
     const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 16000)}` : ''
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
@@ -769,7 +772,7 @@ async function handler(req: any, res: any) {
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`
-      : ''}\n\nDeck:\n${deck}${fileList}${briefText}`
+      : ''}\n\nDeck:\n${deck}${fileList}${briefFile}${briefText}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     // "Add more colors" after a question about another request got the question again (2026-11-14): a message that
