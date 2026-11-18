@@ -32,6 +32,17 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
 
 The daily job `pptist-editor-sessions` (cron-skills) runs this; `pptist-push` pushes reviewed commits.
 
+### Name the cause of each unhappy turn before fixing it
+
+Quanlai, 2026-11-18. Every unhappy turn gets exactly one cause, and the cause picks the fix:
+
+1. **No credits.** The user cannot pay for the step. Fix: the paywall opens, never an error or a silent no-op.
+2. **No capability.** Our tools cannot do it. Fix: build the tool, or `say_unable` in one line.
+3. **Capability exists, the AI does not know it.** The router never picked the tool. Fix: the tool's description or the router prompt.
+4. **Capability exists, the AI picked it and did it wrong.** Fix: the tool's own code or its edit prompt.
+
+Report the count per cause alongside the fixes.
+
 ## How the chat turn works (keep it this way)
 
 - The router (`api/tools/deck_chat.ts`) runs a real tool loop: the steps already run go back to the
