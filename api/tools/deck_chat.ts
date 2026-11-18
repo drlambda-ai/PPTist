@@ -322,8 +322,13 @@ Rules:
    Only a font FAMILY change (字体/font/Schrift/шрифт) -> set_font, never edit_page/edit_all_pages.
    Only a text SIZE change ("bigger", "to hơn", "більше", "size like slide 1") -> set_font_size, never edit_page/
    edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
+   A size change together with other changes to the same text ("add more words and make the font bigger") -> set_font_size
+   for the size AND edit_page for the rest: a page edit keeps the sizes as they were.
    Only how text LOOKS (its colour, bold, italic, underline: "chữ nên đậm", "текст чёрным", "font colour yellow",
    "underline 4.5 billion") -> set_text_style, never edit_page/edit_all_pages/set_background/set_font.
+   "Make it white" / "whiter" right after a request about the text's colour is the text again: set_text_style.
+   Remove the background ("убери фон", "bỏ nền", "quita el fondo") of a page -> remove_images on that page (its
+   background picture goes) or set_background with a plain colour; never edit_page.
    No page named -> the current page; "all slides"/"cả 10 slide" -> every page.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
@@ -361,6 +366,9 @@ Rules:
    online/google it" -> web_search first, then edit_page/add_page with ONLY the facts and links it returned. Never
    write a citation, URL, study or statistic that did not come from web_search, the deck, or a file.
    A picture of a real, named thing -> change_image/add_image with source wikimedia.
+   The user's attached picture "in place of" / "instead of" a picture on a page ("add this in place of the picture in
+   slide 3") -> change_image on that page with source attached: it replaces that picture. Never move_element_to_page,
+   never add_image (the old picture stayed beside it, 2026-11-12).
    An arrow, check mark, tick, cross, star, line, circle or other simple symbol, also when the user calls it
    an image, icon or picture ("add an arrow image pointing left", "a check icon before the title") is DRAWN: edit_page
    (it adds a shape), never add_image: a stock photo of a symbol is a photograph of some object.
