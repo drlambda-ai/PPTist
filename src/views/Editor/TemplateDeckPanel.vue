@@ -3071,7 +3071,7 @@ const recordTurn = (message: string, reply: string, steps: string[], ok: boolean
   if (!chatslide) return
   fetch('/api/record_turn', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30) }),
+    body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, start: slides.value.findIndex(x => x.id === currentAtSend) + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30) }),
   }).catch(() => undefined)
 }
 
