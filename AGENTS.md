@@ -25,7 +25,9 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
    in two days went out checked by hand only, and two of them broke earlier fixes (2026-11-12).
 4. A change to the router loop, its prompt or a model is measured on the 100 replayed real
    conversations (`--file data/luna100-cases.jsonl`, then `regrade.py`): pass rate, cases with a
-   repeated action, seconds. State the table in the commit.
+   repeated action, seconds. State the table in the commit. A batch of fixes is also backtested on
+   users' own decks as they were at send time: `make_backtest.py` in app.chatslide.ai `scripts/deck-eval`
+   (its docstring has the commands), the same file on the old and the new build, graded alike.
 5. New UI strings go into all 12 `src/locales/*.json` ("deck" is a presentation, never a deck of cards).
 6. `npx vue-tsc --noEmit -p tsconfig.app.json`, one commit per fix, a note on
    `refs/notes/review`, then push.
