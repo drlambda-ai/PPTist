@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "تعذّرت قراءة {p0} كملف PowerPoint.",
   "Applied the colours of {p0} to the whole deck.": "تم تطبيق ألوان {p0} على العرض التقديمي كله.",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "لم أجد شعارًا في {p0} (صورة صغيرة في إحدى الزوايا). أرفق الشعار باستخدام أيقونة 📎 وسأضيفه.",
-  "Put the logo from {p0} on {p1} page(s).": "تم وضع الشعار من {p0} على {p1} صفحة."
+  "Put the logo from {p0} on {p1} page(s).": "تم وضع الشعار من {p0} على {p1} صفحة.",
+  "Which colour or style?": "أي لون أو نمط؟",
+  "I could not find “{p0}” in the text there.": "لم أجد «{p0}» في النص هناك.",
+  "There is no such text to style there.": "لا يوجد نص كهذا لتنسيقه هناك.",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "تم تغيير نمط النص في {p0} مربعات نص عبر {p1} صفحة."
 }

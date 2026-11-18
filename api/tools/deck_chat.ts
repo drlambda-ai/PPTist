@@ -103,7 +103,16 @@ const TOOLS = [
     scale: { type: 'number', description: 'Factor: 1.3 = bigger / "more" / "a bit more" (never under 1.2: a smaller step is not seen), 1.6 = much bigger / "even bigger" / insisting ("to raaaa", "!!!", the same ask again) / "so it reads from the back", 0.8 = smaller' },
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
   }, ['pages', 'scope', 'scale', 'same_as_page']),
-  fn('edit_all_pages', 'Apply the same change to every page: more detail / more text, shorter, simpler, a tone, an audience or purpose ("for a scientific congress", "for kids"), translate, text colour... Each page keeps its own topic and content.', {
+  fn('set_text_style', 'Change how existing text LOOKS, on some or all pages (done directly, exact, keeps every word and layout): its colour ("text black", "make the title white", "font colour light yellow", "chữ màu vàng", "текст чёрным"), bold, italic or underline, for all text, the titles, the body, or the words the user names ("underline 4.5 billion", "put X in bold"). A colour for the text, letters or font is this, never set_background, set_font or apply_theme. Asked again or "more" ("whiter", "make it white I said") -> do it again, never answer that it already looks that way.', {
+    pages: { ...pages, description: 'Pages; empty = every page' },
+    scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
+    phrase: { type: 'string', description: 'The exact words on the slide to style when the user names words ("underline 4.5 billion" -> "4.5 billion"), copied as they are written on the slide; "" for all the text in scope' },
+    color: { type: 'string', description: 'The text colour #RRGGBB ("black" -> #000000, "whiter" -> #FFFFFF, "light yellow" -> #FFF2A8); "" keeps the colours' },
+    bold: { type: 'string', enum: ['on', 'off', 'same'] },
+    italic: { type: 'string', enum: ['on', 'off', 'same'] },
+    underline: { type: 'string', enum: ['on', 'off', 'same'] },
+  }, ['pages', 'scope', 'phrase', 'color', 'bold', 'italic', 'underline']),
+  fn('edit_all_pages', 'Apply the same change to every page: more detail / more text, shorter, simpler, a tone, an audience or purpose ("for a scientific congress", "for kids"), translate... Each page keeps its own topic and content.', {
     instruction: { type: 'string', description: 'The change for every page.' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
@@ -313,6 +322,8 @@ Rules:
    Only a font FAMILY change (字体/font/Schrift/шрифт) -> set_font, never edit_page/edit_all_pages.
    Only a text SIZE change ("bigger", "to hơn", "більше", "size like slide 1") -> set_font_size, never edit_page/
    edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
+   Only how text LOOKS (its colour, bold, italic, underline: "chữ nên đậm", "текст чёрным", "font colour yellow",
+   "underline 4.5 billion") -> set_text_style, never edit_page/edit_all_pages/set_background/set_font.
    No page named -> the current page; "all slides"/"cả 10 slide" -> every page.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.
@@ -350,7 +361,7 @@ Rules:
    online/google it" -> web_search first, then edit_page/add_page with ONLY the facts and links it returned. Never
    write a citation, URL, study or statistic that did not come from web_search, the deck, or a file.
    A picture of a real, named thing -> change_image/add_image with source wikimedia.
-   An arrow, check mark, tick, cross, star, line, underline, circle or other simple symbol, also when the user calls it
+   An arrow, check mark, tick, cross, star, line, circle or other simple symbol, also when the user calls it
    an image, icon or picture ("add an arrow image pointing left", "a check icon before the title") is DRAWN: edit_page
    (it adds a shape), never add_image: a stock photo of a symbol is a photograph of some object.
    Text AND pictures in one message ("write X on slide 5 and insert example pictures") -> the edit_page for the text,

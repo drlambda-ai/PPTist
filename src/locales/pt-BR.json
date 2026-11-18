@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "Não consegui ler {p0} como arquivo de PowerPoint.",
   "Applied the colours of {p0} to the whole deck.": "Cores de {p0} aplicadas a toda a apresentação.",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "Não encontrei um logotipo em {p0} (uma imagem pequena em um canto). Anexe o logotipo com o ícone 📎 e eu o adiciono.",
-  "Put the logo from {p0} on {p1} page(s).": "Logotipo de {p0} colocado em {p1} página(s)."
+  "Put the logo from {p0} on {p1} page(s).": "Logotipo de {p0} colocado em {p1} página(s).",
+  "Which colour or style?": "Qual cor ou estilo?",
+  "I could not find “{p0}” in the text there.": "Não encontrei “{p0}” no texto ali.",
+  "There is no such text to style there.": "Não há texto desse tipo para formatar ali.",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Estilo do texto alterado em {p0} caixas de texto em {p1} página(s)."
 }

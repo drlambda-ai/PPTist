@@ -2055,6 +2055,72 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched(targets)
     return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
+  if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
+    const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    const marked = (e: any) => e.textType === 'title' || e.text?.type === 'title'
+    const isTitle = (sl: any, e: any) => marked(e) || (!sl.elements.some(marked) && e === readingOrder(sl).find((x: any) => elText(x)))
+    const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
+      && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
+    const color = /^#[0-9a-f]{6}$/i.test(String(args.color || '')) ? String(args.color) : ''
+    const phrase = String(args.phrase || '').trim()
+    const want = { bold: args.bold, italic: args.italic, underline: args.underline }
+    if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
+    const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach(x => x.replaceWith(...Array.from(x.childNodes)))
+    const style = (root: HTMLElement, box: HTMLElement) => { // root: where the old marks are cleared; box: the span that carries the new ones
+      if (color) { root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('color')); box.style.color = color }
+      if (want.bold !== 'same') { unwrap(root, 'strong, b'); root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('font-weight')) }
+      if (want.italic !== 'same') { unwrap(root, 'em, i'); root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('font-style')) }
+      if (want.underline !== 'same') root.querySelectorAll<HTMLElement>('[style]').forEach(x => { x.style.removeProperty('text-decoration'); x.style.removeProperty('text-decoration-line') })
+      if (want.underline === 'on') box.style.textDecoration = 'underline'
+      let inner = box.innerHTML
+      if (want.bold === 'on') inner = `<strong>${inner}</strong>`
+      if (want.italic === 'on') inner = `<em>${inner}</em>`
+      box.innerHTML = inner
+    }
+    const restyle = (h: string) => {
+      const doc = new DOMParser().parseFromString(h, 'text/html')
+      if (!phrase) {
+        const blocks = doc.body.querySelectorAll<HTMLElement>('p, li')
+        ;(blocks.length ? Array.from(blocks).filter(b => !b.querySelector('p, li')) : [doc.body]).forEach(b => {
+          const box = doc.createElement('span')
+          box.append(...Array.from(b.childNodes))
+          b.append(box)
+          style(b, box)
+        })
+        return doc.body.innerHTML
+      }
+      // the named words, inside one run of text. ponytail: a phrase split across two differently styled runs is not found; then the page edit does it
+      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+        const at = node.data.toLowerCase().indexOf(phrase.toLowerCase())
+        if (at < 0) continue
+        const hit = node.splitText(at)
+        hit.splitText(phrase.length)
+        const box = doc.createElement('span')
+        hit.replaceWith(box)
+        box.append(hit)
+        style(box, box)
+        return doc.body.innerHTML
+      }
+      return h
+    }
+    let n = 0
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      for (const e of sl.elements as any[]) {
+        if (!inScope(sl, e)) continue
+        const was = String(e.type === 'text' ? e.content : e.text.content), now = restyle(was)
+        if (now === was) continue
+        const whole = color && !phrase ? { defaultColor: color } : {}
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
+        n++
+      }
+    }
+    if (!n) fail(phrase ? t('I could not find “{p0}” in the text there.', { p0: phrase.slice(0, 60) }) : t('There is no such text to style there.'))
+    touched(targets)
+    return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
+  }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
     const all = slides.value.map(x => x.id)
     const todo: string[] = args.pages?.length ? nums(args.pages) : all // a whole-presentation page edit leaves out the cover and the closing page
@@ -2634,7 +2700,7 @@ const deckTurn = async (text: string) => {
   // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
   // a font change takes every page in one step: page by page, identical lines merged and the reply listed 4 changes
   // for 9 pages, and the user asked again (2026-11-17)
-  const allAtOnce = ['set_font_size', 'set_font']
+  const allAtOnce = ['set_font_size', 'set_font', 'set_text_style']
   const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
     ? [...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action)).map(c => ({ action: c.action,
         args: { ...c.args, pages: pendingAtStart.pages || [], page_named: true, whole_deck_option: '' } })),
@@ -2940,7 +3006,7 @@ const deckTurn = async (text: string) => {
   // "we can change and ask a follow-up question"). "Add historical images" / "too much text" changed one page silently.
   // edit_page has its own offer (whole_deck_option, set by the router when the request could mean the deck): adding facts
   // to one slide got a pointless 'the same on the other pages?' (2026-11-11). set_background: one pass per message
-  const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'remove_images']
+  const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'set_text_style', 'remove_images']
   let followUp = ''
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
   if ((unfinished || round === rounds) && !askedThisTurn) {
@@ -2950,7 +3016,7 @@ const deckTurn = async (text: string) => {
     save()
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
-    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1))) { // a picture set may add pages: not repeated
+    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1) && !c.args?.phrase)) { // a picture set may add pages: not repeated; named words are on one page
     followUp = t('Done on this page. Want the same on the other pages?')
     const here = slides.value.findIndex(x => x.id === startPageId) + 1
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)

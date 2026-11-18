@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "無法將 {p0} 作為 PowerPoint 檔案讀取。",
   "Applied the colours of {p0} to the whole deck.": "已將 {p0} 的配色套用到整份簡報。",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "在 {p0} 中沒有找到標誌（角落裡的小圖片）。請用 📎 圖示附上標誌，我來加入。",
-  "Put the logo from {p0} on {p1} page(s).": "已將 {p0} 的標誌放到 {p1} 頁。"
+  "Put the logo from {p0} on {p1} page(s).": "已將 {p0} 的標誌放到 {p1} 頁。",
+  "Which colour or style?": "要哪種顏色或樣式？",
+  "I could not find “{p0}” in the text there.": "在那裡的文字中找不到「{p0}」。",
+  "There is no such text to style there.": "那裡沒有可設定樣式的文字。",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "已變更 {p1} 頁中 {p0} 個文字方塊的文字樣式。"
 }

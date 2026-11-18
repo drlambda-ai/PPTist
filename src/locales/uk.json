@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "Не вдалося прочитати {p0} як файл PowerPoint.",
   "Applied the colours of {p0} to the whole deck.": "Кольори з {p0} застосовано до всієї презентації.",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "У {p0} не знайшлося логотипа (невеликого зображення в кутку). Прикріпіть логотип значком 📎, і я додам його.",
-  "Put the logo from {p0} on {p1} page(s).": "Логотип із {p0} розміщено на {p1} стор."
+  "Put the logo from {p0} on {p1} page(s).": "Логотип із {p0} розміщено на {p1} стор.",
+  "Which colour or style?": "Який колір або стиль?",
+  "I could not find “{p0}” in the text there.": "Я не знайшов «{p0}» у тексті там.",
+  "There is no such text to style there.": "Там немає такого тексту для оформлення.",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Оформлення тексту змінено в {p0} текстових блоках на {p1} стор."
 }

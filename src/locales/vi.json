@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "Tôi không đọc được {p0} dưới dạng tệp PowerPoint.",
   "Applied the colours of {p0} to the whole deck.": "Đã áp dụng màu của {p0} cho toàn bộ bài thuyết trình.",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "Tôi không tìm thấy logo trong {p0} (một hình nhỏ ở góc). Hãy đính kèm logo bằng biểu tượng 📎 và tôi sẽ thêm vào.",
-  "Put the logo from {p0} on {p1} page(s).": "Đã đặt logo từ {p0} lên {p1} trang."
+  "Put the logo from {p0} on {p1} page(s).": "Đã đặt logo từ {p0} lên {p1} trang.",
+  "Which colour or style?": "Màu hay kiểu chữ nào?",
+  "I could not find “{p0}” in the text there.": "Tôi không tìm thấy “{p0}” trong văn bản ở đó.",
+  "There is no such text to style there.": "Ở đó không có văn bản nào như vậy để định dạng.",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "Đã đổi kiểu chữ trong {p0} hộp văn bản trên {p1} trang."
 }

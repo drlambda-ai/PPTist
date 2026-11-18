@@ -1243,5 +1243,9 @@
   "I could not read {p0} as a PowerPoint file.": "نتوانستم {p0} را به‌عنوان فایل پاورپوینت بخوانم.",
   "Applied the colours of {p0} to the whole deck.": "رنگ‌های {p0} روی کل ارائه اعمال شد.",
   "{p0} has no logo I can find (a small picture in a corner). Attach the logo with the 📎 icon and I will add it.": "لوگویی در {p0} پیدا نکردم (تصویری کوچک در یک گوشه). لوگو را با نماد 📎 پیوست کنید تا اضافه‌اش کنم.",
-  "Put the logo from {p0} on {p1} page(s).": "لوگوی {p0} روی {p1} صفحه قرار گرفت."
+  "Put the logo from {p0} on {p1} page(s).": "لوگوی {p0} روی {p1} صفحه قرار گرفت.",
+  "Which colour or style?": "کدام رنگ یا سبک؟",
+  "I could not find “{p0}” in the text there.": "«{p0}» را در متن آنجا پیدا نکردم.",
+  "There is no such text to style there.": "چنین متنی برای قالب‌بندی در آنجا نیست.",
+  "Restyled the text in {p0} text boxes across {p1} page(s).": "سبک متن در {p0} کادر متن در {p1} صفحه تغییر کرد."
 }
