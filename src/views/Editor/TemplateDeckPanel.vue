@@ -2065,12 +2065,24 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
-    const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach(x => x.replaceWith(...Array.from(x.childNodes)))
+    // a mark's element goes, its own size or colour stays (on a span)
+    const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach((x) => {
+      const keep = x.getAttribute('style') ? Object.assign(root.ownerDocument.createElement('span'), { style: x.getAttribute('style') }) : null
+      if (keep) { keep.append(...Array.from(x.childNodes)); x.replaceWith(keep) }
+      else x.replaceWith(...Array.from(x.childNodes))
+    })
+    const styled = (root: HTMLElement) => [root, ...Array.from(root.querySelectorAll<HTMLElement>('[style]'))]
+    const noUnderline = (x: HTMLElement) => ['text-decoration', 'text-decoration-line'].forEach((k) => { // a strikethrough stays
+      const v = x.style.getPropertyValue(k)
+      if (!v.includes('underline')) return
+      if (v.includes('line-through')) x.style.setProperty(k, 'line-through')
+      else x.style.removeProperty(k)
+    })
     const style = (root: HTMLElement, box: HTMLElement) => { // root: where the old marks are cleared; box: the span that carries the new ones
-      if (color) { root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('color')); box.style.color = color }
-      if (want.bold !== 'same') { unwrap(root, 'strong, b'); root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('font-weight')) }
-      if (want.italic !== 'same') { unwrap(root, 'em, i'); root.querySelectorAll<HTMLElement>('[style]').forEach(x => x.style.removeProperty('font-style')) }
-      if (want.underline !== 'same') root.querySelectorAll<HTMLElement>('[style]').forEach(x => { x.style.removeProperty('text-decoration'); x.style.removeProperty('text-decoration-line') })
+      if (color) { styled(root).forEach(x => x.style.removeProperty('color')); box.style.color = color }
+      if (want.bold !== 'same') { unwrap(root, 'strong, b'); styled(root).forEach(x => x.style.removeProperty('font-weight')) }
+      if (want.italic !== 'same') { unwrap(root, 'em, i'); styled(root).forEach(x => x.style.removeProperty('font-style')) }
+      if (want.underline !== 'same') styled(root).forEach(noUnderline)
       if (want.underline === 'on') box.style.textDecoration = 'underline'
       let inner = box.innerHTML
       if (want.bold === 'on') inner = `<strong>${inner}</strong>`
@@ -2089,11 +2101,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         })
         return doc.body.innerHTML
       }
-      // the named words, inside one run of text. ponytail: a phrase split across two differently styled runs is not found; then the page edit does it
+      // the named words, inside one run of text; split across two runs, or to be un-bolded inside a bold run, they go to the page edit below
+      const inside = (x: Element | null) => [want.bold === 'off' && 'strong, b', want.italic === 'off' && 'em, i', want.underline === 'off' && '[style*="underline"]']
+        .some(sel => sel && x?.closest(sel))
       const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
         const at = node.data.toLowerCase().indexOf(phrase.toLowerCase())
         if (at < 0) continue
+        if (inside(node.parentElement)) return h
         const hit = node.splitText(at)
         hit.splitText(phrase.length)
         const box = doc.createElement('span')
@@ -2116,6 +2131,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
         n++
       }
+    }
+    if (!n && phrase && targets.length === 1) { // not one plain run of text: the page edit restyles those words
+      const how = [color && `colour ${color}`, ...Object.entries(want).filter(([, v]) => v !== 'same').map(([k, v]) => (v === 'on' ? k : `not ${k}`))].filter(Boolean).join(', ')
+      return runCall(text, 'edit_page', { index: pos(targets[0]) + 1, instruction: `Restyle only the words "${phrase}": ${how}. Change nothing else on the page.`, page_named: true, translate_to: '', hard: false, redesign: false, new_content: false, whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: '' }, ids)
     }
     if (!n) fail(phrase ? t('I could not find “{p0}” in the text there.', { p0: phrase.slice(0, 60) }) : t('There is no such text to style there.'))
     touched(targets)
@@ -2943,6 +2962,7 @@ const deckTurn = async (text: string) => {
       busy.value = t('Working (step {p0})…', { p0: done.length + 1 })
       let reply = ''
       try {
+        lastEditTerse = '' // set only by a page edit that ran: a paywalled redesign of slide 5 was reported as the earlier "Slide 8 updated." (2026-11-17)
         reply = await runCall(text, c.action, c.args || {}, ids)
       }
       catch (e) {
@@ -2975,7 +2995,7 @@ const deckTurn = async (text: string) => {
       turnCalls.push(stepKey(c.action, c.args))
       turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
       for (const x of slides.value) if (!idsAtStart.has(x.id)) createdThisMessage.add(x.id)
-      terse.push(c.action === 'edit_page' ? lastEditTerse : reply)
+      terse.push(c.action === 'edit_page' && lastEditTerse ? lastEditTerse : reply)
       // the whole-deck offer is a button, not the end of the message: "make the title red and add a picture" stopped
       // after the title (2026-11-12). The router is told, so it neither applies it itself nor stops there.
       const offered = c.action === 'edit_page' && s.pending?.offer && s.pending.options?.[0] === String(c.args?.whole_deck_option || '').trim()
