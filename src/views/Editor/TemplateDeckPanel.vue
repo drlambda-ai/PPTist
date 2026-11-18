@@ -752,7 +752,7 @@ let fitQueue: Promise<void> = Promise.resolve() // one page shown at a time, eve
 const numberedParts = async (src: string, request = ''): Promise<{ page: number, text: string }[]> => {
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
     `A user wrote this for a slide editor:\n<message>\n${fence(src.slice(0, 20000))}\n</message>\n`
-    + (request === src ? 'Only when this message asks for its text to go on the slides, or is just the text for the slides with nothing else asked, go on; when it asks to review, check, explain or keep the slides as they are, return {"slides": []}. '
+    + (request === src ? 'Only when this message asks for its text to go on the slides, or is just the text for the slides with nothing else asked, go on, and return only the slides it asks to place (all of them unless it names some); when it asks to review, check, explain or keep the slides as they are, return {"slides": []}. '
       : request ? `Their latest message is: ${JSON.stringify(request.slice(0, 600))}. Only when that message asks to put this text of theirs on the slides (insert it, use it, "the text I wrote"), go on, and return only the slides it asks for (all of them unless it names some); otherwise return {"slides": []}. ` : '')
     + 'If it gives the text of several slides, each marked with its number ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), copy each slide\'s text exactly as written, every word, its title first. '
     + 'Return JSON {"slides": [{"number": <the number they wrote>, "text": "..."}]}, or {"slides": []} when it is not text for numbered slides.' }) }).catch(() => null)
@@ -2202,8 +2202,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           // is not on the page verbatim gets one more pass naming it
           // decoded text ("&amp;" is "&"), and both ends of each line: a paragraph that kept its opening but lost its
           // later sentences passed a start-only check (Codex review)
-          const flat = (v: string) => (new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()
-          const has = (page: string, l: string) => { const f = flat(l); return page.includes(f.slice(0, 60)) && page.includes(f.slice(-60)) }
+          // compared without any spaces (inline tags add some), sentence by sentence (a middle sentence was lost while
+          // both ends of its line stayed; Codex verify)
+          const flat = (v: string) => (new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '').replace(/\s+/g, '').toLowerCase()
+          const has = (page: string, l: string) => l.split(/(?<=[.!?…。！？])\s+/).filter(x => x.trim().length >= 12).every(x => page.includes(flat(x)))
           const onPage = flat(slides.value[i].elements.map(elText).join(' '))
           const missing = String(x.text).split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 3 && !has(onPage, l))
           if (missing.length) await editSlide(i, `These lines of the user's text are missing from this page. Add each one, word for word, where it belongs (add or resize text boxes when needed); change nothing else:\n${fence(missing.join('\n'))}`).catch(() => undefined)
