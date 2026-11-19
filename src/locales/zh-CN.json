@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "尚未完成：{p0}。",
   "Continue": "继续",
   "There is no such text to resize there.": "那里没有可调整大小的文本。",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "{p1} 张幻灯片上的 {p0} 个文本框中的文字已恢复到我调整前的大小。",
+  "I have not resized any text here, so there is no earlier size to go back to.": "我没有在这里调整过任何文字的大小，因此没有之前的大小可供恢复。",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "重新设计此页面需要高级模型，且仅限付费方案。没有它，我可以应用新主题或把文字放大。",
   "Apply a new theme to the deck": "为幻灯片应用新主题",
   "Make the text bigger": "把文字放大",

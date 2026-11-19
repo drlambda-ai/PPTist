@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "Ще не завершено: {p0}.",
   "Continue": "Продовжити",
   "There is no such text to resize there.": "Там немає тексту, розмір якого можна змінити.",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "Текст у {p0} текстових блоках на {p1} слайдах знову має розмір, який був до моєї зміни.",
+  "I have not resized any text here, so there is no earlier size to go back to.": "Я не змінював розмір тексту тут, тож відновлювати попередній розмір немає звідки.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Для редизайну цієї сторінки потрібна просунута модель на платних тарифах. Без неї я можу застосувати нову тему або збільшити текст.",
   "Apply a new theme to the deck": "Застосувати нову тему до презентації",
   "Make the text bigger": "Збільшити текст",

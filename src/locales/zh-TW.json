@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "尚未完成：{p0}。",
   "Continue": "繼續",
   "There is no such text to resize there.": "那裡沒有可調整大小的文字。",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "{p1} 張投影片上的 {p0} 個文字方塊中的文字已恢復為我調整前的大小。",
+  "I have not resized any text here, so there is no earlier size to go back to.": "我沒有在這裡調整過任何文字的大小，因此沒有先前的大小可供還原。",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "重新設計此頁面需要進階模型，而且僅限付費方案。沒有它，我可以套用新主題或把文字放大。",
   "Apply a new theme to the deck": "為簡報套用新主題",
   "Make the text bigger": "把文字放大",

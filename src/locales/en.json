@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "Not done yet: {p0}.",
   "Continue": "Continue",
   "There is no such text to resize there.": "There is no such text to resize there.",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.",
+  "I have not resized any text here, so there is no earlier size to go back to.": "I have not resized any text here, so there is no earlier size to go back to.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.",
   "Apply a new theme to the deck": "Apply a new theme to the deck",
   "Make the text bigger": "Make the text bigger",

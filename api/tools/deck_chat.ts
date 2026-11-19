@@ -106,7 +106,8 @@ const TOOLS = [
     scale: { type: 'number', description: 'Factor: 1.3 = bigger / "more" / "a bit more" (never under 1.2: a smaller step is not seen), 1.6 = much bigger / "even bigger" / insisting ("to raaaa", "!!!", the same ask again) / "so it reads from the back", 0.8 = smaller' },
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
     points: { type: 'number', description: 'An exact size the user names ("28pt", "size 24", "字号 20"): that number, else 0' },
-  }, ['pages', 'scope', 'scale', 'same_as_page', 'points']),
+    back: { type: 'boolean', description: 'true ONLY when the user wants the text size back to what it was before this chat resized it ("make the text smaller again, as it was", "назад, як було", "return the old font size", "undo the bigger text"): the editor puts back each box\'s exact earlier size, on every page it resized (pages [], scale ignored). Never a scale of 0.8 for this, and never undo (it reverts one message only). false for plain "smaller"' },
+  }, ['pages', 'scope', 'scale', 'same_as_page', 'points', 'back']),
   fn('set_text_style', 'Change how existing text LOOKS, on some or all pages (done directly, exact, keeps every word and layout): its colour ("text black", "make the title white", "font colour light yellow", "chữ màu vàng", "текст чёрным"), bold, italic or underline, for all text, the titles, the body, or the words the user names ("underline 4.5 billion", "put X in bold"). A colour for the text, letters or font is this, never set_background, set_font or apply_theme. Asked again or "more" ("whiter", "make it white I said") -> do it again, never answer that it already looks that way.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },

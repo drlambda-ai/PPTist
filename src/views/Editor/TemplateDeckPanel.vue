@@ -120,6 +120,9 @@ interface Session {
   // "earlier pictures here": a user asked six times for "the first nurse image", got an Undo or a new stock photo each
   // time, and uploaded it again herself (2026-11-16)
   was?: Record<string, { src: string, clip: any, shows: string }[]>
+  // the letter sizes a text box had before the chat first resized it (element id -> px, in order): "back as it was"
+  // puts them back exactly. Asked after two "bigger" messages, a 0.8 scale left other sizes, on the wrong pages (2026-11-19)
+  sizes?: Record<string, number[]>
   // turn: the chat message this reply answers (its x-turn-id); rating 1 up, 0 down; comment: sent with a thumbs-down
   history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
@@ -2125,7 +2128,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       to = Math.max(0, ...(sl?.elements || []).filter((e: any) => inScope(sl, e)).flatMap((e: any) => sizes(html(e)).length ? sizes(html(e)) : [16]))
       if (!to) fail(t('That page has no text to match.'))
     }
-    const k = Math.min(3, Math.max(0.3, Number(args.scale) || 1.25))
+    // back with no sizes kept (resized before 2026-11-20, or by hand): one "bigger" step down, on every page
+    const k = args.back === true ? 0.77 : Math.min(3, Math.max(0.3, Number(args.scale) || 1.25))
     const resize = (h: string) => {
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' }) // PPTist's default
@@ -2134,19 +2138,39 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const step = (n: number) => to || (k > 1 ? Math.max(n * k, n + 4) : k < 1 ? Math.min(n * k, n - 2) : n)
       return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${Math.max(8, Math.round(step(+n)))}px`)
     }
+    // "back as it was": each box's sizes from before the chat resized it, wherever the chat did (the pages the router
+    // lists are the last message's, not every page that was resized)
+    const back = (h: string, was: number[]) => {
+      let i = 0
+      const doc = new DOMParser().parseFromString(h, 'text/html')
+      if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' })
+      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, () => `font-size: ${was[Math.min(i++, was.length - 1)] ?? 16}px`)
+    }
+    const restore = args.back === true && Object.keys(s.sizes || {}).length > 0
+    const pagesDone = new Set<string>()
     let n = 0
-    for (const id of targets) {
+    // ponytail: every resized box goes back, never only the pages named; a per-page restore when someone asks for one
+    for (const id of args.back === true ? slides.value.map(x => x.id) : targets) {
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
-        if (!inScope(sl, e)) continue
-        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: resize(e.content) }, slideId: id })
-        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content: resize(e.text.content) } }, slideId: id })
+        if (restore ? !s.sizes?.[e.id] || !html(e) : !inScope(sl, e)) continue
+        const next = restore ? back(html(e), s.sizes![e.id]) : resize(html(e))
+        if (restore) s.sizes = Object.fromEntries(Object.entries(s.sizes!).filter(([k]) => k !== e.id))
+        else if (args.back !== true && !s.sizes?.[e.id]) s.sizes = { ...s.sizes, [e.id]: sizes(html(e)) }
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: next }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content: next } }, slideId: id })
+        pagesDone.add(id)
         n++
       }
     }
+    if (restore) {
+      if (!n) fail(t('I have not resized any text here, so there is no earlier size to go back to.'))
+      touched([...pagesDone])
+      return t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size })
+    }
     if (!n) fail(t('There is no such text to resize there.'))
-    touched(targets)
-    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
+    touched([...pagesDone])
+    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: pagesDone.size })
   }
   if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)

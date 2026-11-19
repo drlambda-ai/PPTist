@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "لم يكتمل بعد: {p0}.",
   "Continue": "متابعة",
   "There is no such text to resize there.": "لا يوجد نص هناك لتغيير حجمه.",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "عاد النص في {p0} من مربعات النص عبر {p1} شريحة إلى حجمه قبل أن أغيّره.",
+  "I have not resized any text here, so there is no earlier size to go back to.": "لم أغيّر حجم أي نص هنا، لذا لا يوجد حجم سابق للعودة إليه.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "إعادة تصميم هذه الصفحة تتطلب النموذج المتقدم في الخطط المدفوعة. بدونه يمكنني تطبيق سمة جديدة أو تكبير النص.",
   "Apply a new theme to the deck": "تطبيق سمة جديدة على العرض",
   "Make the text bigger": "تكبير النص",

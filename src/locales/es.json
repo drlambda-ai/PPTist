@@ -1187,6 +1187,8 @@
   "Not done yet: {p0}.": "Aún no está listo: {p0}.",
   "Continue": "Continuar",
   "There is no such text to resize there.": "No hay texto allí cuyo tamaño cambiar.",
+  "The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.": "El texto de {p0} cuadros de texto en {p1} diapositivas volvió al tamaño que tenía antes de que lo cambiara.",
+  "I have not resized any text here, so there is no earlier size to go back to.": "No he cambiado el tamaño de ningún texto aquí, así que no hay un tamaño anterior al que volver.",
   "A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.": "Un rediseño de esta página necesita el modelo avanzado, en planes de pago. Sin él, puedo aplicar un nuevo tema o hacer el texto más grande.",
   "Apply a new theme to the deck": "Aplicar un nuevo tema a la presentación",
   "Make the text bigger": "Hacer el texto más grande",
