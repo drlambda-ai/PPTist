@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra (high)
+Findings: none
+Not checked: router implementation, billing handlers, runtime
