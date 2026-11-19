@@ -278,11 +278,13 @@ const say = (role: 'user' | 'assistant', text: string) => {
   })
 }
 const { applyPresetTheme } = useSlideTheme()
-// a new background colour shows through the page's full-slide picture; the picture stays, faded, and undo brings it back
+// a new background colour replaces the page's full-slide picture: hidden, kept for undo. Faded to 12% its painted
+// patches still showed ("there are still orange patches, remove them", "still not a uniform white", "dark grey on all"
+// with the capsules left: 6 turns of 3 users, 2026-11-17..18)
 const fadeBackdrop = (id: string) => {
   const sl = slides.value.find(x => x.id === id)
   for (const e of (sl?.elements || []) as any[]) {
-    if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity: '12%' } }, slideId: id })
+    if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity: '0%' } }, slideId: id })
   }
 }
 const hostSteps = () => chatslide || (window as any).__evalHost as typeof chatslide // the eval stands in for ChatSlide's own steps
@@ -2474,7 +2476,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       for (let i = 0; i < covered.length; i += 3) {
         await Promise.all(covered.slice(i, i + 3).map(id => editSlide(pos(id), `Change the page's BACKGROUND to ${args.color}: recolour only the large decorative background shapes (full-width bands, full-page panels) to ${args.color} or a lighter/darker tint of it; keep cards, text boxes, pictures and their colours unchanged and keep text readable.`)
           .catch(() => {
-            missed.push(pos(id) + 1)
+            // the page model gave up: the bands are recoloured directly, the user asked for this colour everywhere ("still
+            // not a uniform white", three messages in a row, 2026-11-18)
+            const sl = slides.value[pos(id)]
+            const bands = sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25)
+            for (const e of bands) slidesStore.updateElement({ id: e.id, props: { fill: args.color, gradient: undefined, pattern: undefined } as any, slideId: id })
+            if (!bands.length) missed.push(pos(id) + 1)
           })))
       }
     }
