@@ -524,7 +524,8 @@ const pictures = (sl: Slide) => {
 // is bold, and its alignment when every paragraph has the same one. It is what "the same on the other pages" carries
 // from a page the user shaped over several messages (match_look); text under 9px (a watermark) is no part of it
 const lookHtml = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
-const lookSize = (e: any) => Math.max(0, ...[...lookHtml(e).matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1]))
+// text with no size of its own is drawn at the editor's default, 16px
+const lookSize = (e: any) => Math.max(...(lookHtml(e).includes('font-size') ? [...lookHtml(e).matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1]) : [16]), 0)
 const lookTexts = (sl: Slide, title: boolean) => {
   const marked = (e: any) => e.textType === 'title' || e.text?.type === 'title'
   const first = sl.elements.some(marked) ? null : readingOrder(sl).find((e: any) => elText(e))
@@ -2372,6 +2373,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const f = !lookTexts(sl, false).length ? 1 : k > 1 ? Math.min(k, ...els.map(e => Math.max(1, fits(e) / lookSize(e)))) : k
         for (const e of els) {
           const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html')
+          if (!lookHtml(e).includes('font-size')) doc.querySelectorAll('p').forEach((p) => { (p as HTMLElement).style.fontSize = '16px' }) // as set_font_size does
           if (look.align) doc.body.querySelectorAll<HTMLElement>('p, li').forEach((p) => { p.style.textAlign = look.align })
           const content = doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, v) => `font-size: ${Math.max(9, Math.round(+v * f))}px`)
           if (content === lookHtml(e)) continue
@@ -2384,6 +2386,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const [r, scope] of ['titles', 'body'].entries()) {
       if (want[r]?.bold) await runCall(text, 'set_text_style', { pages: targets.map((id: string) => pos(id) + 1), scope, phrase: '', color: '', bold: 'on', italic: 'same', underline: 'same' }, ids).then(() => n++).catch(() => undefined)
     }
+    // the other pages already look like it: the steps queued after this one (a font, a colour) still run
+    if (!n && args.more) return ''
     if (!n) fail(t('There is no such text to style there.'))
     await fitOverflow().catch(() => undefined) // a box whose text still runs over grows into the free space or shrinks
     touched(targets)
@@ -3135,7 +3139,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   const allAtOnce = ['set_font_size', 'set_font', 'set_text_style']
   const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
     // from a page shaped over earlier messages (like): its look as it is now, in place of the last size step again
-    ? [...(pendingAtStart.like ? [{ action: 'match_look', args: { from: pendingAtStart.like, pages: pendingAtStart.pages || [] } }] : []),
+    ? [...(pendingAtStart.like ? [{ action: 'match_look', args: { from: pendingAtStart.like, pages: pendingAtStart.pages || [], more: pendingAtStart.repeat.some(c => c.action !== 'set_font_size') } }] : []),
       ...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action) && !(pendingAtStart.like && c.action === 'set_font_size')).map(c => ({ action: c.action,
         args: { ...c.args, pages: pendingAtStart.pages || [], page_named: true, whole_deck_option: '' } })),
       ...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.filter(c => !allAtOnce.includes(c.action)).map(c => ({ action: c.action,
