@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra (high)
+Findings: 4 on the restore commits fixed in 450bfef1 (re-review passed); 1 on the picture commit fixed in 93930a77 (fix read and confirmed by the session, not re-reviewed)
+Not checked: browser execution
