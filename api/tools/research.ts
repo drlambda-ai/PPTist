@@ -78,10 +78,14 @@ const wikimedia = async (query: string, nearest = false, avoid: string[] = [], w
       // crew came back for "Indian infant on oxygen support" (replay 2026-11-19)
       const small = close ? await commons({ titles: pages.map(p => p.title).join('|'), iiurlwidth: '330' }).catch(() => [] as any[]) : []
       const viewable = (u: string) => /\.(jpe?g|png|webp)$/i.test(u.split('?')[0]) // an animated GIF cannot be looked at, and failed the whole look
-      const seen = pages.flatMap((p, k) => small.filter(x => x.title === p.title && viewable(x.imageinfo[0].thumburl)).slice(0, 1).flatMap(x => [{ type: 'text', text: `${k}:` }, { type: 'image_url', image_url: { url: x.imageinfo[0].thumburl, detail: 'low' } }]))
+      const shown = pages.map((p, k) => ({ k, x: small.find(x => x.title === p.title && viewable(x.imageinfo[0].thumburl)) })).filter(c => c.x)
+      // a nearest picture nobody could look at is never placed: no thumbnails came, or only unviewable files
+      if (close && !shown.length) return null
+      const seen = shown.flatMap(c => [{ type: 'text', text: `${c.k}:` }, { type: 'image_url', image_url: { url: c.x.imageinfo[0].thumburl, detail: 'low' } }])
       const out = JSON.parse(seen.length
         ? await chat([{ role: 'user', content: [{ type: 'text', text: `${ask}\nWhat the user wrote (any language; the latest message is last and wins):\n${want}\nThe files' pictures follow, numbered alike. Look at each: pick one only when its picture is shown and itself shows what the user asked for.` }, ...seen] }], { model: LOOK_MODEL, jsonMode: true, maxTokens: 4000 })
         : await chat([{ role: 'user', content: ask }], { model: 'gpt-6-luna', jsonMode: true }))
+      if (close) return shown.some(c => c.k === out.pick) ? pages[out.pick] : null // only one of the pictures it was shown
       return out.pick === -1 ? null : pages[out.pick] || pages[0]
     }
     catch { return close ? null : pages[0] } // the search's own first result; never an unseen "nearest" one (a retinopathy animation for an infant on oxygen)
