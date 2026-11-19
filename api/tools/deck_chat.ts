@@ -85,7 +85,8 @@ const TOOLS = [
     user_said_whole_deck: { type: 'boolean', description: 'true when the user\'s words make the whole presentation the target ("the presentation", "this presentation", "презентацію", "la presentación", "bài thuyết trình", "bu sunum", "all slides", "every page"), in this message or the request it answers, also a complaint about the presentation ("this presentation came out as a summary, I wanted more detail"), and an audience for "it" with no page named ("make it simple for students", "make it for kids": an audience is for the whole talk): the editor then does it on every page ("make the presentation more detailed" -> true, and whole_deck_option ""). false when they name a page, say "this slide", or say nothing about where' },
     source_pages: { ...pages, description: 'Other pages whose text this edit uses ("replace slide 7\'s text with points 1-3 of slide 10" -> [10]); [] otherwise' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
-  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language']),
+    overlap: { type: 'boolean', description: 'true when the user says text on this page overlaps, collides, sits on top of or covers other text ("the heading is overlapping the body text", "текст налазит на текст", "chữ đè lên nhau"): the editor then measures the page and separates the colliding text itself. false otherwise' },
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language', 'overlap']),
   fn('place_texts', 'Put the user\'s OWN text on several pages, each page its own part: a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote / numbered on the slides" when that text is in an earlier message or in what they asked for when the deck was made. Each part is copied exactly as they wrote it.', {
     items: { type: 'array', description: 'One per page, in page order. Their slide numbers ARE the page numbers (\"Slide 3\" -> page 3): the page there now is replaced by their slide, a contents page included, whatever it held. Only when they number from a different start (\"Slide 0\", \"after the cover: 1 ...\") shift by that. A part for a page past the end makes a new page.', items: { type: 'object', properties: { page: page, text: { type: 'string', description: 'That page\'s part of their text, copied exactly (title first)' } }, required: ['page', 'text'], additionalProperties: false } },
   }, ['items']),
@@ -398,7 +399,7 @@ Rules:
    "Translate this slide" means the visible slide text (edit_page / edit_all_pages); "script/notes/讲稿/备注" means write_notes.
    A complaint that the deck is (still) in English / in the wrong language ("continuam em inglês", "all in English")
    -> edit_all_pages translating into the language the user wrote in.
-   Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps").
+   Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps"), overlap true when text is on other text.
    "Limit to N / at most N / 不超过N页" when the deck already has N or fewer pages -> answer_question saying it already
    has that many; NEVER duplicate or add pages to reach a limit.
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain

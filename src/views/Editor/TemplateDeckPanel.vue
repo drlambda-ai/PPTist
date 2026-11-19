@@ -606,19 +606,58 @@ const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Objec
   .filter(([k]) => !['answer', 'source'].includes(k)).sort()))}` // what to change stays in: "no, red instead" is a new step
 // text boxes that run into a picture or into another plain text box (a paid redesign left a heading on top of the
 // card text, 2026-11-11), as "a|b" keys. Text on a card shape is a design, not a collision.
+// A shape with words and no fill of its own is a plain text box too: every text box of an imported ChatSlide or
+// PowerPoint deck is one, so a heading the paid redesign added on top of the body text went unseen, and "the heading
+// overlaps the body text" was answered "Updated page 26" with the page looking the same (2026-11-18)
+const bareText = (e: any) => !!elText(e) && (e.type === 'text' || (e.type === 'shape' && !e.gradient && !e.pattern && (!e.fill || e.fill === 'transparent' || /^#[0-9a-f]{6}00$/i.test(e.fill))))
+const textOnText = (els: any[]) => {
+  const texts = els.filter(bareText)
+  // the letters, not the box: a text box keeps 10px of padding above and below its lines (a one-line heading right
+  // above its text touches it by that padding and collides with nothing)
+  const pad = (e: any) => (e.type === 'text' ? 10 : 4)
+  return new Set<string>(texts.flatMap((a: any, i: number) => texts.slice(i + 1).filter((b: any) => {
+    const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+    const h = Math.min(a.top + a.height - pad(a), b.top + b.height - pad(b)) - Math.max(a.top + pad(a), b.top + pad(b))
+    return w > 0 && h > 0 && w * h > 0.15 * Math.min(a.width * a.height, b.width * b.height)
+  }).map((b: any) => [a.id, b.id].sort().join('|'))))
+}
 const textOnPictures = (els: any[]) => {
   const pics = els.filter((e: any) => (e.type === 'image' && !isBackdrop(e)))
-  const texts = els.filter((e: any) => e.type === 'text' && elText(e))
-  const tt = texts.flatMap((a: any, i: number) => texts.slice(i + 1).filter((b: any) => {
-    const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
-    const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
-    return w > 0 && h > 0 && w * h > 0.15 * Math.min(a.width * a.height, b.width * b.height)
-  }).map((b: any) => [a.id, b.id].sort().join('|')))
-  return new Set([...tt, ...els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
+  return new Set([...textOnText(els), ...els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
     const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
     const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
     return w > 0 && h > 0 && w * h > 0.05 * Math.min(a.width * a.height, b.width * b.height)
   }).map((b: any) => `${a.id}|${b.id}`))])
+}
+// Text whose lines run into the text under it (a heading that wraps onto the body): its letters go 2px smaller, up
+// to three times, until the page as shown has no such collision. Only real text boxes, whose height is their lines'.
+// Put back when that is not enough: the page model then moves things. True when it fixed the page
+const shrinkOntoText = async (id: string) => {
+  const at = () => slides.value.findIndex(x => x.id === id)
+  const show = async () => {
+    slidesStore.updateSlideIndex(at())
+    await nextTick()
+    await new Promise(r => setTimeout(r, 350)) // the editor measures and stores the new heights
+    return slides.value[at()].elements as any[]
+  }
+  const uppers = (els: any[]) => [...textOnText(els)].map(k => k.split('|').map(x => els.find(e => e.id === x)).sort((a, b) => a.top - b.top)[0]).filter(e => e.type === 'text')
+  let els = await show()
+  if (!uppers(els).length) return false
+  const start = JSON.stringify(els)
+  for (let step = 0; step < 3; step++) {
+    let any = false
+    for (const e of uppers(els)) {
+      const content = String(e.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(10, Math.round(+v) - 2)}px`)
+      if (content === e.content) continue
+      slidesStore.updateElement({ id: e.id, props: { content }, slideId: id })
+      any = true
+    }
+    if (!any) break
+    els = await show()
+    if (!uppers(els).length) return true
+  }
+  slidesStore.updateSlide({ elements: JSON.parse(start) }, id)
+  return false
 }
 // what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
 const overlapNote = (sl: Slide) => {
@@ -707,6 +746,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
         const t = { ...e.text, ...(text || {}), ...(content !== undefined ? { content } : {}), ...(defaultColor ? { defaultColor } : {}), ...(defaultFontName ? { defaultFontName } : {}) }
         return { ...e, ...shape, text: t, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
       }
+      // a text box is as tall as its lines, measured when shown: a height from the model stays in the deck only while
+      // the lines do not change, and then says a wrapped heading no longer reaches the text under it
+      if (e.type === 'text' && !e.fixedHeight && !e.vertical) delete rest.height
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
     // an added element without a real position and size is dropped rather than drawn at 0,0
@@ -2046,7 +2088,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return t('A redesign of this page needs the advanced model, on paid plans. Without it I can apply a new theme or make the text bigger.')
     }
     let upgradeLine = ''
-    const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced, !args.redesign).catch((e) => {
+    const pageId = slides.value[i].id
+    const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced, !args.redesign).catch(async (e) => {
+      // "the heading overlaps the body text" and the page model changed nothing (a paid user, twice, 2026-11-18): the
+      // collision is measured and fixed here
+      if (e instanceof NoChange && args.overlap === true && await shrinkOntoText(pageId)) return (lastEditTerse = t('Updated page {p0}.', { p0: i + 1 }))
       // the user pasted the page's text and the page model answered it was already there, untouched: wrong in 6 of 6
       // replayed cases (slides 1, 8, 9 of three decks, 2026-11-11..16). One more pass, told it is not there
       if (e instanceof NoChange && text.length > 300 && !editedThisTurn.has(slides.value[i].id)) {
@@ -2075,7 +2121,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     await nextTick(); await new Promise(r => setTimeout(r, 300))
     const hadBefore = textOnPictures(was)
     const paidLayout = lastEditAdvanced // the cheaper model must not rework a layout the user paid for
-    if ([...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))) {
+    // text on text that the edit made, or that the user said overlaps and the edit left: the wrapping box's letters go
+    // smaller first (exact, measured); the page model only for what is still there
+    const fresh = () => [...textOnPictures(slides.value[i].elements)].some(k => !hadBefore.has(k))
+    if (args.overlap === true || fresh()) await shrinkOntoText(slides.value[i].id)
+    if (fresh() || (args.overlap === true && textOnText(slides.value[i].elements).size)) {
       await editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', paidLayout).catch(() => undefined)
     }
     if (upgradeLine) lastEditTerse = `${lastEditTerse} ${upgradeLine}`
