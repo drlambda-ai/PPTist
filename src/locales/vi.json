@@ -1258,5 +1258,14 @@
   "your original request": "yêu cầu ban đầu của bạn",
   "Upgrade to the advanced model": "Nâng cấp lên mô hình nâng cao",
   "Put the earlier picture back on page {p0}.": "Đã đưa ảnh trước đó trở lại trang chiếu {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Tôi không còn giữ ảnh trước đó của trang chiếu {p0}. Hãy đính kèm ảnh đó để tôi đặt lại, hoặc cho tôi biết ảnh thể hiện gì để tôi tìm ảnh tương tự."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Tôi không còn giữ ảnh trước đó của trang chiếu {p0}. Hãy đính kèm ảnh đó để tôi đặt lại, hoặc cho tôi biết ảnh thể hiện gì để tôi tìm ảnh tương tự.",
+  "That template is not one of ChatSlide's: {p0}.": "Mẫu đó không phải của ChatSlide: {p0}.",
+  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Mẫu của ChatSlide dùng trang chiếu tỷ lệ 16:9, còn bộ trình chiếu này có tỷ lệ khác nên không thể dựng lại các trang chiếu bằng mẫu đó.",
+  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "Trang chiếu {p0} được giữ nguyên: trang chỉ có một hình ảnh, không có văn bản riêng để đưa vào mẫu.",
+  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "Trang chiếu {p0} được giữ nguyên: trang có biểu đồ, bảng hoặc sơ đồ mà mẫu không có chỗ để chứa.",
+  "Page {p0} was left as it is: its design is its own full-page photo.": "Trang chiếu {p0} được giữ nguyên: thiết kế của trang là một ảnh toàn trang riêng.",
+  "Rebuilding page {p0} with the template…": "Đang dựng lại trang chiếu {p0} bằng mẫu…",
+  "Page {p0} was left as it is: not all of its text could be carried into that template.": "Trang chiếu {p0} được giữ nguyên: không thể đưa toàn bộ văn bản vào mẫu đó.",
+  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Đã dựng lại mọi trang chiếu bằng mẫu \"{p0}\", giữ nguyên văn bản và hình ảnh trong thiết kế và bố cục của mẫu.",
+  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "Đã dựng lại trang chiếu {p0} bằng mẫu \"{p1}\", giữ nguyên văn bản và hình ảnh trong thiết kế và bố cục của mẫu."
 }

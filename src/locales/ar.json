@@ -1258,5 +1258,14 @@
   "your original request": "طلبك الأصلي",
   "Upgrade to the advanced model": "الترقية إلى النموذج المتقدم",
   "Put the earlier picture back on page {p0}.": "أُعيدت الصورة السابقة إلى الصفحة {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "لم تعد الصورة السابقة للصفحة {p0} متوفرة لديّ. أرفقها وسأعيدها، أو أخبرني بما تُظهره وسأجد صورة مشابهة."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "لم تعد الصورة السابقة للصفحة {p0} متوفرة لديّ. أرفقها وسأعيدها، أو أخبرني بما تُظهره وسأجد صورة مشابهة.",
+  "That template is not one of ChatSlide's: {p0}.": "هذا القالب ليس من قوالب ChatSlide: {p0}.",
+  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "قوالب ChatSlide صفحات بنسبة 16:9، وهذا العرض يستخدم شكلاً آخر للشرائح، لذا لا يمكن إعادة بناء صفحاته بقالب واحد.",
+  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "أُبقيت الصفحة {p0} كما هي: فهي صورة واحدة بلا نص خاص بها لإضافته إلى قالب.",
+  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "أُبقيت الصفحة {p0} كما هي: فهي تحتوي على مخطط أو جدول أو رسم بياني، ولا يتسع قالب الصفحة لأي منها.",
+  "Page {p0} was left as it is: its design is its own full-page photo.": "أُبقيت الصفحة {p0} كما هي: تصميمها صورة تملأ الصفحة بأكملها.",
+  "Rebuilding page {p0} with the template…": "جارٍ إعادة بناء الصفحة {p0} باستخدام القالب…",
+  "Page {p0} was left as it is: not all of its text could be carried into that template.": "أُبقيت الصفحة {p0} كما هي: تعذّر نقل كل نصوصها إلى ذلك القالب.",
+  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "أُعيد بناء كل الصفحات باستخدام قالب \"{p0}\": النصوص والصور نفسها ضمن تصميمه وتخطيطاته.",
+  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "أُعيد بناء الصفحة {p0} باستخدام قالب \"{p1}\": النصوص والصور نفسها ضمن تصميمه وتخطيطه."
 }

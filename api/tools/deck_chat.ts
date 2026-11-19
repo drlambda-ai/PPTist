@@ -131,6 +131,14 @@ const TOOLS = [
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['pages', 'background', 'font_color', 'colors', 'font']),
+  fn('restyle_page', 'Rebuild pages with one of ChatSlide\'s designed templates (ONLY when "Page templates" are listed below the deck): each page keeps its own words and pictures and gets that template\'s artwork, fonts and a layout that fits them. For a wish about how pages LOOK as a whole, with no concrete change named: "make it more creative / more atmospheric / more attractive / more professional", "I don\'t like the design", "improve the design", "redesign slide 8 so it is as full as the others", "change the layout", "another design", "make all slides one style". Never for a colour, font, size, background, picture or wording the user names (those have their own tools), and never when the user asks for a theme or colours (apply_theme).', {
+    pages: { ...pages, description: 'The pages to rebuild: the ones the user names, else the page they are looking at; [] with whole_deck true' },
+    whole_deck: { type: 'boolean', description: 'true when the wish is about the presentation or all slides ("make the presentation more atmospheric", "all slides one style"); false for "this slide" or named pages' },
+    template: { type: 'string', description: 'A template name exactly as listed under "Page templates": the one whose look fits the wish and the deck\'s topic (one marked "art" for creative, atmospheric, fun or attractive). To match the rest of the deck ("like the other slides") the one marked as this deck\'s own, when one is. Asked again ("another one", "I don\'t like it") -> a different template than the one the last reply names' },
+    palette: { type: 'string', description: 'One of that template\'s palettes as listed, or "" for its usual one' },
+    layout: { type: 'string', description: 'A layout name as listed, ONLY when the user asks for another layout or arrangement; else "" (the editor picks the one that fits the page\'s text and pictures)' },
+    instruction: { type: 'string', description: 'The user\'s wish for the look, in English' },
+  }, ['pages', 'whole_deck', 'template', 'palette', 'layout', 'instruction']),
   fn('use_file_look', 'Give the deck the colours and/or the logo OF the user\'s own presentation file (a .pptx listed under "Attached files"): "use the colour and logo of my previous presentation", "make it look like my original slides", "keep my corporate design", "take the logo from my file". Done directly, keeps the wording. Never ask the user to attach a file that is listed.', {
     file: { type: 'string', description: 'The .pptx file name exactly as listed' },
     colors: { type: 'boolean', description: 'true when they want its colours, design or look (also when they just say "like my presentation")' },
@@ -476,6 +484,10 @@ Rules:
    whole_deck_option set: the edit is done at once and one click extends it. Ask first only when a wrong guess is
    expensive or destroys something (deleting pages, which picture to replace, a chart with no subject, the N-slides case).
    A theme, style or look for the deck, or for a topic -> apply_theme. open_design only when the user wants to pick one.
+   With "Page templates" listed below the deck, a wish for a better, different, more creative, more atmospheric or more
+   professional DESIGN, or another layout, with no colour or theme named -> restyle_page (never edit_page with redesign,
+   never apply_theme for it, never ask_user); a theme or colours by name stay apply_theme. No "Page templates" listed
+   -> never restyle_page.
    "Add a chart" with no data or topic -> ask_user what it should show, with 2-3 options from the deck. A chart's numbers
    come only from the user, the deck or a file: never invented, never from the web unless the user asks to look them up.
    A new theme, look or colours for only some pages ("change only the first page, leave the rest") -> apply_theme with
@@ -780,11 +792,15 @@ async function handler(req: any, res: any) {
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
+    // ChatSlide's own templates (the host lists them, for a user who may use them): restyle_page rebuilds pages with one
+    const look = body.restyle && Array.isArray(body.restyle.templates) && body.restyle.templates.length ? body.restyle : null
+    const templates = look ? `\n\nPage templates (for restyle_page): ${look.templates.slice(0, 40).map((x: any) => `${String(x.name).slice(0, 40)} ("${String(x.label).slice(0, 40)}"${x.art ? ', art' : ''}${x.own ? `, this deck's own, palette ${String(x.own).slice(0, 30)}` : ''}; palettes: ${(x.palettes || []).slice(0, 8).map((q: any) => String(q).slice(0, 30)).join(', ')})`).join('; ')}`
+        + `\nLayouts: ${(look.layouts || []).slice(0, 20).map((x: any) => `${String(x.name).slice(0, 40)} (${String(x.fits).slice(0, 80)})`).join('; ')}` : ''
     const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now.${grown} The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`
-      : ''}\n\nDeck:\n${deck}${fileList}${briefFile}${briefText}`
+      : ''}\n\nDeck:\n${deck}${fileList}${briefFile}${briefText}${templates}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     // "Add more colors" after a question about another request got the question again (2026-11-14): a message that

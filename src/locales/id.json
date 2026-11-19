@@ -1258,5 +1258,14 @@
   "your original request": "permintaan awal Anda",
   "Upgrade to the advanced model": "Upgrade ke model lanjutan",
   "Put the earlier picture back on page {p0}.": "Gambar sebelumnya dikembalikan ke slide {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Saya tidak lagi memiliki gambar sebelumnya untuk slide {p0}. Lampirkan gambarnya dan saya akan mengembalikannya, atau beri tahu apa yang ditampilkannya dan saya akan mencari yang serupa."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Saya tidak lagi memiliki gambar sebelumnya untuk slide {p0}. Lampirkan gambarnya dan saya akan mengembalikannya, atau beri tahu apa yang ditampilkannya dan saya akan mencari yang serupa.",
+  "That template is not one of ChatSlide's: {p0}.": "Template itu bukan salah satu template milik ChatSlide: {p0}.",
+  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Template ChatSlide menggunakan slide berformat 16:9, sedangkan deck ini memiliki format slide lain, jadi slidenya tidak dapat dibuat ulang dengan template tersebut.",
+  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "Slide {p0} dibiarkan seperti semula: slide ini hanya berisi satu gambar tanpa teks sendiri untuk dimasukkan ke template.",
+  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "Slide {p0} dibiarkan seperti semula: slide ini berisi bagan, tabel, atau diagram yang tidak dapat ditampung oleh slide template.",
+  "Page {p0} was left as it is: its design is its own full-page photo.": "Slide {p0} dibiarkan seperti semula: desainnya berupa foto yang memenuhi seluruh slide.",
+  "Rebuilding page {p0} with the template…": "Membuat ulang slide {p0} dengan template…",
+  "Page {p0} was left as it is: not all of its text could be carried into that template.": "Slide {p0} dibiarkan seperti semula: tidak semua teksnya dapat dimasukkan ke template tersebut.",
+  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Semua slide dibuat ulang dengan template \"{p0}\": teks dan gambar yang sama dalam desain dan tata letaknya.",
+  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "Slide {p0} dibuat ulang dengan template \"{p1}\": teks dan gambar yang sama dalam desain dan tata letaknya."
 }

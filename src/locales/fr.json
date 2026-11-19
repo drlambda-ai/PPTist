@@ -1258,5 +1258,14 @@
   "your original request": "votre demande initiale",
   "Upgrade to the advanced model": "Passer au modèle avancé",
   "Put the earlier picture back on page {p0}.": "L’image précédente a été remise sur la diapositive {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Je n’ai plus l’image précédente de la diapositive {p0}. Joignez-la et je la remettrai, ou dites-moi ce qu’elle montre et j’en trouverai une semblable."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Je n’ai plus l’image précédente de la diapositive {p0}. Joignez-la et je la remettrai, ou dites-moi ce qu’elle montre et j’en trouverai une semblable.",
+  "That template is not one of ChatSlide's: {p0}.": "Ce modèle ne fait pas partie de ceux de ChatSlide : {p0}.",
+  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Les modèles de ChatSlide sont au format 16:9, mais cette présentation utilise un autre format de diapositive. Ses pages ne peuvent donc pas être recréées avec un modèle.",
+  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "La diapositive {p0} n’a pas été modifiée : elle ne contient qu’une image, sans texte à intégrer dans un modèle.",
+  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "La diapositive {p0} n’a pas été modifiée : elle contient un graphique, un tableau ou un schéma, que les modèles ne peuvent pas accueillir.",
+  "Page {p0} was left as it is: its design is its own full-page photo.": "La diapositive {p0} n’a pas été modifiée : son design est une photo qui occupe toute la page.",
+  "Rebuilding page {p0} with the template…": "Recréation de la diapositive {p0} avec le modèle…",
+  "Page {p0} was left as it is: not all of its text could be carried into that template.": "La diapositive {p0} n’a pas été modifiée : une partie de son texte n’a pas pu être intégrée à ce modèle.",
+  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Toutes les diapositives ont été recréées avec le modèle \"{p0}\" : mêmes textes et images, avec son design et ses mises en page.",
+  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "La diapositive {p0} a été recréée avec le modèle \"{p1}\" : mêmes textes et images, avec son design et sa mise en page."
 }
