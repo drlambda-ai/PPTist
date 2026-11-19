@@ -281,11 +281,12 @@ const { applyPresetTheme } = useSlideTheme()
 // a new background colour replaces the page's full-slide picture: hidden, kept for undo. Faded to 12% its painted
 // patches still showed ("there are still orange patches, remove them", "still not a uniform white", "dark grey on all"
 // with the capsules left: 6 turns of 3 users, 2026-11-17..18)
-// A page that is only that picture (a pasted screenshot: its text is inside it) keeps it faded, never blank
+// A page that is only that picture (a pasted screenshot: its text is inside it) keeps it as it is
 const fadeBackdrop = (id: string) => {
   const sl = slides.value.find(x => x.id === id)
-  const opacity = sl && onlyFullPicture(sl) ? '12%' : '0%'
-  for (const e of (sl?.elements || []) as any[]) {
+  if (!sl || onlyFullPicture(sl)) return
+  const opacity = '0%'
+  for (const e of sl.elements as any[]) {
     if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity } }, slideId: id })
   }
 }
@@ -2483,8 +2484,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             // colour (white text on a now-white band), and so does every band when the model found nothing to change
             const sl = slides.value[pos(id)]
             const over = (a: any, b: any) => a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + (b.height || 0) && b.top < a.top + (a.height || 0)
-            const texts = sl.elements.filter((e: any) => elText(e))
-            const bands = err instanceof NoChange ? [] : sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25
+            // charts, tables and formulas carry text too; a rotated box can reach a band its rectangle does not touch
+            const texts = sl.elements.filter((e: any) => elText(e) || ['chart', 'table', 'latex'].includes(e.type))
+            const bands = err instanceof NoChange || texts.some((x: any) => x.rotate) ? [] : sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25
               && !texts.some((x: any) => over(x, e)))
             for (const e of bands) slidesStore.updateElement({ id: e.id, props: { fill: args.color, gradient: undefined, pattern: undefined } as any, slideId: id })
             if (!bands.length) missed.push(pos(id) + 1)
