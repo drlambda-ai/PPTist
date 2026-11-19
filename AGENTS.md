@@ -23,11 +23,15 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
    `PPTIST_EVAL_URL='http://[::1]:3001/' python3 scripts/deck-eval/run.py --file editor-cases.jsonl --no-grade -j 4`
    (22 cases, about 3 minutes, cents). A fix that fails another case is not done. Fifty patches
    in two days went out checked by hand only, and two of them broke earlier fixes (2026-11-12).
-4. A change to the router loop, its prompt or a model is measured on the 100 replayed real
-   conversations (`--file data/luna100-cases.jsonl`, then `regrade.py`): pass rate, cases with a
-   repeated action, seconds. State the table in the commit. A batch of fixes is also backtested on
-   users' own decks as they were at send time: `make_backtest.py` in app.chatslide.ai `scripts/deck-eval`
-   (its docstring has the commands), the same file on the old and the new build, graded alike.
+4. Success is what real users do, on their real decks (Quanlai, 2026-11-19: "Why don't you just
+   use whatever the user actually uses?", then "focus on all of the new prompts recently, real
+   prompts. Don't use fabricated content"). Only recent real prompts on the user's saved deck: no
+   generated decks, invented messages or synthetic cases in any measurement. The success rate is the share of production turns the
+   user accepted, judged from their next message in the same deck (`accept.py` in app.chatslide.ai
+   `scripts/deck-eval`). A change to the router loop, its prompt or a model is backtested on
+   users' own decks as they were at send time: `make_backtest.py` (its docstring has the
+   commands), the same file on the old and the new build, graded alike, at least 3 runs each
+   (one run swings about 10 points). State the table in the commit.
 5. New UI strings go into all 12 `src/locales/*.json` ("deck" is a presentation, never a deck of cards).
 6. `npx vue-tsc --noEmit -p tsconfig.app.json`, one commit per fix, a note on
    `refs/notes/review`, then push.
