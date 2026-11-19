@@ -7,6 +7,19 @@ const DIST = process.env.E2E_DIST || '/tmp/pptist-e2e/dist'
 const LOG = process.env.E2E_LOG || '/tmp/pptist-e2e/calls.log'
 const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' }
 const handlers: Record<string, any> = {}
+// a connection to the AI vendor that never opened is tried again: on a flaky local line 7 of 20 requests timed out on
+// connect and a quarter of a 100-conversation replay ended in "fetch failed" (2026-11-19). Only errors before any
+// response; production has its own network (0 such failures in 1,027 turns)
+const vendorFetch = globalThis.fetch
+globalThis.fetch = (async (u: any, init?: any) => {
+  for (let k = 0; ; k++) {
+    try { return await vendorFetch(u, init) }
+    catch (e: any) {
+      if (k >= 4 || !['UND_ERR_CONNECT_TIMEOUT', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'UND_ERR_SOCKET', 'ENOTFOUND', 'EAI_AGAIN'].includes(e?.cause?.code)) throw e
+      await new Promise(r => setTimeout(r, 1000 * (k + 1)))
+    }
+  }
+}) as typeof fetch
 http.createServer(async (req, res0) => {
   const url = new URL(req.url || '/', 'http://x')
   const path = url.pathname.replace(/^\/api\/pptist/, '')
