@@ -542,15 +542,16 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       // numbered as change_image "earlier" takes them; the picture it shows now is not one to put back
       const earlier = (s.was?.[e.id] || []).map((p, k) => (p.src === e.src ? '' : `${k + 1}${k ? '' : ' (the first)'}${p.shows ? ` "${p.shows.replace(/["\]]/g, '').slice(0, 40)}"` : ''}`)).filter(Boolean)
       const had = earlier.length ? `, earlier pictures here (change_image "earlier" puts one back): ${earlier.join('; ')}` : ''
-      if (!n) return e === backdrop ? `[image 0: background picture covering the whole slide${had}]` : '[a see-through design layer covering the whole slide, not a picture]'
+      const attached = (s.images || []).find(m => m.url && m.url === e.src)
+      const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].replace(/["\]]/g, '').slice(0, 60)}"` : ''
+      // the background picture says what it shows too: "keep the nurse, change the other image" names it by elimination
+      if (!n) return e === backdrop ? `[image 0: background picture covering the whole slide${shows}${had}]` : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       // a logo, or the user's own attached picture, keeps its size and place so "move my logo top-right, smaller" can act
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo, ${Math.round(area * 100)}% of slide, ${where}]`
-      const attached = (s.images || []).find(m => m.url && m.url === e.src)
       const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
-      const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].replace(/["\]]/g, '').slice(0, 60)}"` : ''
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}${had}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
@@ -591,9 +592,9 @@ const saidBackground = (text: string, words: unknown) => {
   if (!w) return false
   const users = s.history.filter(h => h.role === 'user').map(h => String(h.text || ''))
   const prev = users[users.length - 1] === text ? users[users.length - 2] : users[users.length - 1]
-  const prevChangedBackground = lastTurnCalls.some(k => k.startsWith('set_background ') || (k.startsWith('change_image ') && /"image":0[,}]/.test(k)))
-  return [text, ...(prevChangedBackground && prev ? [prev] : [])].some(x => norm(x).includes(w))
+  return [text, ...(lastChangedBackground() && prev ? [prev] : [])].some(x => norm(x).includes(w))
 }
+const lastChangedBackground = () => lastTurnCalls.some(k => k.startsWith('set_background ') || (k.startsWith('change_image ') && /"image":0[,}]/.test(k)))
 let currentAtSend = '' // id of the page the user was on when they sent the message
 const createdThisMessage = new Set<string>() // pages added since the message was sent
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
@@ -2400,10 +2401,36 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const content = pictures(sl).filter(e => !isBackdrop(e))
     const said = saidBackground(text, args.said_background)
     let image = pictureNo(sl, args.image)
+    // pictures the user said to keep are never the one replaced: "keep the nurse picture, change the other image" replaced
+    // the nurse, three messages in a row (2026-11-16). The other one is the next picture they did not keep, else the
+    // background picture
+    const kept = new Set((Array.isArray(args.keep_pictures) ? args.keep_pictures : []).map(Number))
+    const free = (k: number) => !kept.has(k) && !replacedThisTurn.has(`${id}:${k}`)
+    const other = () => content.findIndex((_, k) => free(k + 1)) + 1 || (firstBackdrop(sl) && content.length && free(0) ? 0 : -1)
+    const askWhich = (background: boolean) => {
+      const { width: W, height: H } = slideSize()
+      const where = (e: any) => [e.top + e.height / 2 < H / 3 ? t('top') : e.top + e.height / 2 > (2 * H) / 3 ? t('bottom') : t('middle'),
+        e.left + e.width / 2 < W / 3 ? t('left') : e.left + e.width / 2 > (2 * W) / 3 ? t('right') : t('center')].join(', ')
+      return runCall(text, 'ask_user', {
+        question: t('Which picture on page {p0} should I change?', { p0: pos(id) + 1 }),
+        options: [...(background ? [t('The background picture')] : []), ...content.slice(0, 3).map((e, k) => `${t('Picture {p0}', { p0: k + 1 })} (${where(e)})`), ...(background ? [] : [t('All of them')])],
+      }, ids)
+    }
+    // the router named the background picture but the user's words do not: asked, never moved onto a picture the router
+    // did not name ("find a picture of homeless people" and "another one, like a city slum", after background changes,
+    // each replaced the nurse picture the user kept asking for, 2026-11-16). Right after a background change it stands
+    const unsure0 = image === 0 && !said && !lastChangedBackground() && content.length > 0
+    if (unsure0 && !args.all_pictures && !(args.earlier > 0) && firstBackdrop(sl) && content.some((_, k) => !kept.has(k + 1))) {
+      return askedThisTurn ? '' : askWhich(true)
+    }
     // "change the picture(s)" means the pictures on the page, not the background, unless the user said background
     // (a user asked for slide 5's pictures and got its background replaced, 2026-11-10)
-    if (image === 0 && !said && content.length) {
-      image = content.findIndex((_, k) => !replacedThisTurn.has(`${id}:${k + 1}`)) + 1 || 1
+    if (unsure0) {
+      image = content.findIndex((_, k) => free(k + 1)) + 1 || (content.every((_, k) => kept.has(k + 1)) ? 0 : 1)
+    }
+    if (kept.has(image)) {
+      image = other()
+      if (image < 0) return t('You asked to keep every picture on page {p0}, so none was replaced.', { p0: pos(id) + 1 })
     }
     // a page with only a background picture: "change the image / the cover photo" means that picture (the eval's
     // "Change the image on the slide" got a small extra picture, 2026-11-12); only a request to ADD one keeps it
@@ -2443,7 +2470,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const logos = logoSpots(), { width: SW, height: SH } = slideSize()
     const photos = content.map((e, k) => ({ e, k: k + 1 })).filter(({ e }) => !logos.has(imgSpot(e)) && e.width * e.height >= 0.005 * SW * SH)
     if (args.all_pictures && photos.length > 1) {
-      const left = photos.map(({ k }) => k).filter(k => !replacedThisTurn.has(`${id}:${k}`))
+      const left = photos.map(({ k }) => k).filter(free)
       if (!left.length) return ''
       busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
       slidesStore.updateSlideIndex(pos(id))
@@ -2457,15 +2484,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     // several pictures and nothing in the message picks one: ask (Quanlai: "if there are multiple choices you should at least ask")
     if (askedThisTurn) return '' // already asking which picture this message
-    if (image !== 0 && content.length > 1 && !args.picture_named) {
-      const { width: W, height: H } = slideSize()
-      const where = (e: any) => [e.top + e.height / 2 < H / 3 ? t('top') : e.top + e.height / 2 > (2 * H) / 3 ? t('bottom') : t('middle'),
-        e.left + e.width / 2 < W / 3 ? t('left') : e.left + e.width / 2 > (2 * W) / 3 ? t('right') : t('center')].join(', ')
-      return runCall(text, 'ask_user', {
-        question: t('Which picture on page {p0} should I change?', { p0: pos(id) + 1 }),
-        options: [...content.slice(0, 3).map((e, k) => `${t('Picture {p0}', { p0: k + 1 })} (${where(e)})`), t('All of them')],
-      }, ids)
-    }
+    if (image !== 0 && content.filter((_, k) => !kept.has(k + 1)).length > 1 && !args.picture_named) return askWhich(false)
     busy.value = args.source === 'ai' ? t('Drawing the picture…') : t('Finding a picture…')
     slidesStore.updateSlideIndex(pos(id))
     const { note, backdrop } = await changeImage(text, id, image, args.query, args.source)
@@ -2521,9 +2540,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.photo_query) {
       for (const id of targets) {
         for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) {
+          keepPic(e)
           slidesStore.updateElement({ id: e.id, props: { src: background.image.src } as any, slideId: id })
+          s.pics = { ...s.pics, [e.id]: String(args.photo_query) }
           showBackdrop(id, e.id)
         }
+        // the background picture is replaced: a change_image on image 0 after it in this message is that same picture,
+        // never moved onto a content picture ("find a picture of homeless people" then replaced the nurse, 2026-11-16)
+        replacedThisTurn.add(`${id}:${pictureNo(slides.value[pos(id)], 0)}`)
       }
     }
     // same for a colour: the picture has to go, or "make it royal blue" changes nothing anyone can see
@@ -3124,7 +3148,10 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       || work.find(stockForBrand)
       // a request about pictures is never a background change: "replace the photos ... the last one" swapped page 10's
       // background (2026-11-10, replayed 2026-11-13)
-      || work.find((c: any) => c.action === 'set_background' && c.args?.photo_query && !saidBackground(text, c.args?.said_background))
+      // right after the previous message changed the background, a new background photo is the router's call: "do you
+      // have another one, like a city slum" after two background photos was refused and the nurse picture replaced
+      // instead (2026-11-16)
+      || work.find((c: any) => c.action === 'set_background' && c.args?.photo_query && !saidBackground(text, c.args?.said_background) && !lastChangedBackground())
       // the same picture replaced again in one message (a re-plan picked a "better" one, three times)
       || work.find((c: any) => {
         const id = ids[Number(c.args?.index) - 1], sl = slides.value.find(x => x.id === id)
