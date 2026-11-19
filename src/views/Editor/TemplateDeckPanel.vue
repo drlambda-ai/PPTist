@@ -3115,7 +3115,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       // (30 -> 32 for "a page"). The first page-adding step declares the total; steps beyond it are skipped.
       || work.find((c: any) => adds(c) && pagesWanted >= 0 && created() >= pagesWanted)
       // the very same step again (same action, same arguments): "add a page about TikTok" ran three times (30 -> 33)
-      || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user', 'go_to_page'].includes(c.action)
+      || work.find((c: any) => !['undo', 'redo', 'answer_question', 'ask_user'].includes(c.action)
         && turnExact.includes(`${c.action} ${JSON.stringify(c.args || {})}`))
       // a second deck-wide edit is the router re-planning the first ("dark blue, bigger headers" ran twice and ended
       // in "Not done yet … tap Continue", 2026-11-11); what is really left it names in finish
@@ -3301,7 +3301,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
-    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'go_to_page', 'open_design'].includes(c.action))) break // a question is asked/answered once; showing a page ends the turn
+    // showing a page goes on with the rest of the message: "show the picture on page 4 and enlarge the text in the whole
+    // presentation" showed page 4 and stopped (2026-11-15); the router finishes when nothing is left
+    if (askedThisTurn || work.every((c: any) => ['answer_question', 'ask_user', 'say_unable', 'open_design'].includes(c.action))) break // a question is asked/answered once
   }
   if (pendingAtStart && s.pending === pendingAtStart) { // answered; but never wipe a NEW question asked this turn
     s.pending = null
