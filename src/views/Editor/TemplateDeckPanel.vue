@@ -2072,7 +2072,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
     const html = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
     const sizes = (h: string) => [...h.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
-    let to = 0 // "same size as page N": that page's largest size in the same scope
+    // "titles 28pt": the size PowerPoint shows after download (the export's own px-to-pt ratio); the scale factor gave 27px
+    let to = Number(args.points) > 0 ? Math.round(Math.min(200, Number(args.points)) * 96 / 72 * slidesStore.viewportSize / 960) : 0
+    // "same size as page N": that page's largest size in the same scope
     if (args.same_as_page > 0) {
       const sl = slides.value[args.same_as_page - 1]
       to = Math.max(0, ...(sl?.elements || []).filter((e: any) => inScope(sl, e)).flatMap((e: any) => sizes(html(e)).length ? sizes(html(e)) : [16]))
