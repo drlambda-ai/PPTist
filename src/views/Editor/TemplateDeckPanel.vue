@@ -187,7 +187,10 @@ const save = () => {
         await externalizeImages().catch(() => undefined) // pictures saved as files: the deck file stays small and loads fast
         await chatslide!.save({ session: JSON.parse(JSON.stringify(s)), slides: slides.value, theme: theme.value, viewportRatio: viewportRatio.value })
       })().then(() => { saveFailed = false }, () => { // said once (saying saves again): the next edit retries
-        if (!saveFailed) say('assistant', t('Saving failed; your last edits may not be kept. Check your connection.'))
+        // and never under itself: on a line that drops and comes back every save after a good one said it again, 22
+        // times in a row in one user's chat (2026-11-18)
+        const line = t('Saving failed; your last edits may not be kept. Check your connection.')
+        if (!saveFailed && s.history[s.history.length - 1]?.text !== line) say('assistant', line)
         saveFailed = true
       })
     }, 2000)
