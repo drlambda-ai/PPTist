@@ -2758,9 +2758,10 @@ const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && 
 // the deck after the last step that finished: a crash in a later step keeps the finished steps (a user lost a whole
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
-const deckTurn = async (text: string) => {
+const deckTurn = async (text: string, again = ''): Promise<void> => {
+  const startSlides = JSON.parse(JSON.stringify(slides.value)), startS = JSON.parse(JSON.stringify(s)) // for a second attempt
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
-  newTurn() // a new message: charged on its own
+  if (!again) newTurn() // a new message: charged on its own (a second attempt stays the same message)
   replyTurn = currentTurn()
   const versionUrl = s.savedVersions?.[text.trim()]
   s.savedVersions = undefined
@@ -2803,7 +2804,7 @@ const deckTurn = async (text: string) => {
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
-  const done: string[] = []
+  const done: string[] = again ? [`note: a first attempt at this message was undone because: ${again} Do the message right this time.`] : []
   const replies: string[] = []
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   const free: string[] = [] // lines the router wrote itself (any language): the reply step puts them in the user's
@@ -3235,22 +3236,62 @@ const deckTurn = async (text: string) => {
       repeat: ran.map(c => ({ action: c.action, args: c.args })), pages: others }
     save()
   }
+  const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
+  // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
+  if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
+  if (followUp) lines.push(followUp)
+  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
+  // a check of the result, once: the same build passed a replayed message in one run and missed it in the next (60-72
+  // of 100 real conversations, 2026-11-19). A miss is undone and the message runs again, told what was wrong. Not after
+  // a question, a step ChatSlide opened or confirms, or a new deck
+  const own = ['talk_to_human', 'download_deck', 'share_deck', 'open_refund', 'open_step', 'open_design', 'version_history', 'undo', 'redo', 'restore_original', 'delete_pages', 'create_deck']
+  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action))) {
+    const problem = await checkTurn(text, startSlides, reply)
+    if (problem) {
+      slidesStore.setSlides(startSlides)
+      for (const k of Object.keys(s)) if (!(k in startS)) delete (s as any)[k]
+      Object.assign(s, startS)
+      slidesStore.updateSlideIndex(Math.max(0, startSlides.findIndex((x: Slide) => x.id === startPageId)))
+      return deckTurn(text, problem)
+    }
+  }
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
     renumber()
     addHistorySnapshot()
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
   }
-  const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
-  // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
-  if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
-  if (followUp) lines.push(followUp)
-  const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
   const said = await finalize(text, reply, free, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null)
   say('assistant', said + fee)
   recordTurn(text, said, done, true)
+}
+
+// What a turn did, read by a small model against the message: '' when it did what was asked (or the check could not
+// run), else what was wrong, in one sentence for the second attempt
+const checkTurn = async (text: string, was: Slide[], reply: string) => {
+  const texts = (sl: Slide) => sl.elements.map(elText).filter(Boolean).join(' | ').slice(0, 700)
+  const shown = (sl: Slide) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
+  const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
+  const now = new Set(slides.value.map(x => x.id))
+  const lines: string[] = []
+  slides.value.forEach((x, k) => {
+    const o = old.get(x.id)
+    if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
+    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
+  })
+  was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
+  const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, 300)}`).join('\n')
+  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+    `You check an AI slide editor's work on one chat message.\nEarlier conversation:\n${earlier || '(none)'}\n`
+    + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
+    + `What changed in the deck:\n${lines.join('\n').slice(0, 7000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
+    + 'Did it do what the message asks: the right pages, every part asked, nothing the user did not ask for, and does the reply say truthfully what was done? '
+    + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change. '
+    + 'Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \"\" when ok>"}.' }) }).catch(() => null)
+  const v = r?.ok ? await r.json().catch(() => null) : null
+  return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
 
 // ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
