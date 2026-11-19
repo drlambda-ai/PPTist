@@ -8,3 +8,5 @@ Backtest: 297 real turns on users' own decks at send time, identical case file f
 Codex-Review: passed
 Reviewer: OpenAI Codex CLI (gpt-6-astra, high), range ac9d24f7..3c0597dd: NO ISSUES FOUND
 Reviewed-At: 2026-11-19T03:20:27Z
+
+Eval (luna100, 100 replayed conversations, same grader, one run each, 2026-11-19): b3f344ea pass 65, pass+partial 84, fail 16, repeated-action cases 1, median 11 s; 3c0597dd pass 59, pass+partial 83, fail 16, repeated-action cases 1, median 11 s. 12 of the 17 cases graded lower took the same steps on both builds; none of the 5 that differ touch the changes since b3f344ea.
