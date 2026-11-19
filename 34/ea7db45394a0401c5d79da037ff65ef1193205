@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra (high)
+Findings: 3 P2 on 34ea7db4, fixed in the follow-up commit; re-review closed 2 of 3
+Declined: all_pictures replacing the picture on a page whose ONLY picture is the background (TemplateDeckPanel.vue ~2436). On such a page pictureNo() already treats that picture as picture 1 by design, so 'change all the pictures' changing it is the intended result; cost of being wrong: a design background replaced on a background-only page, undoable.
+Declined-By: Claude (session), 2026-11-20
+Not checked: browser execution
