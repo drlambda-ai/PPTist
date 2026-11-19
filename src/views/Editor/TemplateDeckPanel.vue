@@ -2254,6 +2254,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size })
     }
     if (!n) fail(t('There is no such text to resize there.'))
+    // bigger text takes only the room its box has: x2.5 ran over the next text and off every slide, and the user then
+    // asked twice to make it smaller (prod 2026-11-12, 112b)
+    await fitOverflow([...pagesDone])
     touched([...pagesDone])
     return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: pagesDone.size })
   }
@@ -3721,12 +3724,12 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 }
 // On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
-// the next element; when that is not room enough its type shrinks (never under 60%).
-const fitOverflow = () => withRenderer(async () => {
+// the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages.
+const fitOverflow = (ids?: string[]) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
-    let again = new Set(slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
+    let again = new Set(ids || slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
     for (let round = 0; round < 3 && again.size; round++) {
       const pages = slides.value.filter(x => again.has(x.id))
       toRender.value = JSON.parse(JSON.stringify(pages))
@@ -3735,7 +3738,8 @@ const fitOverflow = () => withRenderer(async () => {
       again = new Set()
       for (const sl of pages) {
         for (const e of sl.elements as any[]) {
-          if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
+          const html = e.type === 'text' ? e.content : e.text?.content
+          if ((e.type !== 'shape' && e.type !== 'text') || !plain(html) || e.rotate) continue
           const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
           const box = node?.parentElement
           if (!node || !box) continue
@@ -3751,7 +3755,9 @@ const fitOverflow = () => withRenderer(async () => {
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
+            const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`)
+            if (e.type === 'text') props.content = content
+            else props.text = { ...e.text, content }
           }
           slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
           again.add(sl.id)
