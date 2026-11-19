@@ -1243,7 +1243,8 @@ const imageRatio = (src: string) => new Promise<number>((ok) => {
 // the picture an image holds goes on its list before the chat replaces it
 const keepPic = (el: any) => {
   const list = [...(s.was?.[el.id] || [])]
-  if (list.some(p => p.src === el.src)) return
+  // links only: an embedded picture (a data: URL) kept here could push the saved session past the storage limit
+  if (el.src.startsWith('data:') || list.some(p => p.src === el.src)) return
   list.push({ src: el.src, clip: el.clip, shows: s.pics?.[el.id] || '' })
   if (list.length > 5) list.splice(1, 1) // the first one stays: it is the one users ask for
   s.was = { ...s.was, [el.id]: list }
@@ -1603,7 +1604,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // a picture of one brand's own things asked for as an ordinary picture: it comes from that brand's website (the router
   // split "more photos of the brand's products" into generic stock searches when the message had a second wish)
-  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'specific' && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai) {
+  if ((action === 'add_image' || action === 'change_image') && String(args.own_brand || '').trim() && args.source !== 'specific' && args.source !== 'direct' && args.source !== 'attached' && !args.asked_for_ai && !(args.earlier > 0)) {
     const items = (args.items || []).filter(Boolean)
     return runCall(text, 'add_site_pictures', { index: args.index, page_named: args.page_named, site: '', brand: args.own_brand, what: [args.query, ...items].filter(Boolean).join('; '), count: items.length || 1 }, ids)
   }
@@ -2741,6 +2742,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           break
         }
         beforeLastChange = ''
+        // the steps in between are the user's own edits by hand: the deck with them is saved first, so it stays in
+        // the version history (the next change drops them from Redo); when it cannot be saved, one step as before
+        if (undoSteps > 1) await saveNow().catch(() => { undoSteps = 1 })
         for (let n = undoSteps; n > 0; n--) await snapshotStore.unDo()
       }
       else return t('There is nothing to undo yet.')
@@ -3314,8 +3318,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // of 100 real conversations, 2026-11-19). A miss is undone and the message runs again, told what was wrong. Not after
   // a question, a step ChatSlide opened or confirms, or a new deck
   const own = ['talk_to_human', 'download_deck', 'share_deck', 'open_refund', 'open_step', 'open_design', 'version_history', 'undo', 'redo', 'restore_original', 'delete_pages', 'create_deck']
-  // nor after an earlier picture was put back: the check sees a page's texts and picture count, so "no change"
-  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action) || c.args?.earlier > 0)) {
+  // nor when putting an earlier picture back was all the message did: the check sees a page's texts and picture
+  // count, so "no change"
+  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0))) {
     const problem = await checkTurn(text, startSlides, reply)
     if (problem) {
       slidesStore.setSlides(startSlides)

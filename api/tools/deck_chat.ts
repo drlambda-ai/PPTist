@@ -532,9 +532,9 @@ Rules:
    "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
    Bring back / include / restore a picture that was there before ("the first picture", "the nurse picture that you
    had", "the original image", "верни ту картинку") -> change_image with "earlier" on the image that lists "earlier
-   pictures here" (the first one when the words do not say which): that is the only step, never add_image, never a
-   new search, never undo. The picture they want back is not on the page now, so it is a listed earlier one: never
-   ask which. The editor says so itself when it no longer has the picture.
+   pictures here" (the first one when the words do not say which): for that picture never add_image, never a new
+   search, never undo; other parts of the message get their own steps. The picture they want back is not on the page
+   now, so it is a listed earlier one: never ask which. The editor says so itself when it no longer has the picture.
    "Keep / leave / don't touch slide N" ("оставь первый слайд", "giữ nguyên trang 1") -> that page gets no step at all in
    this message: no edit, no restyle, no added subtitle, however much the rest of the deck is redone.
    "The previous version / go back / как было / предыдущий вариант / revert" -> undo, never restore_original.
