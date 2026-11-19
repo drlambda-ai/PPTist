@@ -1,8 +1,10 @@
 import { addCost, addUsage, chat, getKey, metered, readBody } from '../_llm.js'
+import { stockSearch } from './img_search.js'
 
 // Real lookups for the chat agent, so nothing it calls a source or a photo of a real thing is made up.
 //   {kind: "web", query}        -> {answer, sources: [{title, url}]}  (OpenAI web search; sources are the pages it read)
 //   {kind: "wikimedia", query}  -> {src, title, credit, license, page} (Wikimedia Commons, freely licensed files)
+//   {kind: "stock", query, want} -> {data: [{src}], fits} (stock photos a model has looked at; the first `fits` match)
 
 const web = async (query: string) => {
   const r = await fetch('https://api.openai.com/v1/responses', {
@@ -27,6 +29,8 @@ const web = async (query: string) => {
   return { answer, sources }
 }
 
+// the model that LOOKS at candidate pictures (stock photos, the nearest Wikimedia picture): see `stock` below
+const LOOK_MODEL = process.env.LOOK_MODEL || 'gpt-6.1-terra'
 const UA = { 'User-Agent': 'ChatSlide/1.0 (contact@chatslide.ai)' }
 const commons = async (params: Record<string, string>) => {
   const r = await fetch(`https://commons.wikimedia.org/w/api.php?${new URLSearchParams({
@@ -51,7 +55,7 @@ const wikidataFiles = async (query: string) => {
     .map((c: any) => c.mainsnak?.datavalue?.value).filter((v: unknown) => typeof v === 'string').slice(0, 8) as string[]
 }
 
-const wikimedia = async (query: string, nearest = false, avoid: string[] = []) => {
+const wikimedia = async (query: string, nearest = false, avoid: string[] = [], want = '') => {
   const plain = (h = '') => String(h).replace(/<[^>]+>/g, '').trim()
   const files = await wikidataFiles(query).catch(() => [] as string[])
   const known = files.length ? await commons({ titles: files.map(f => `File:${f}`).join('|') }).catch(() => []) : []
@@ -69,10 +73,18 @@ const wikimedia = async (query: string, nearest = false, avoid: string[] = []) =
     if (!pages.length) return null
     try {
       const list = pages.map((p, k) => `${k}: ${String(p.title).replace(/^File:/, '')} | ${plain(p.imageinfo[0].extmetadata?.ImageDescription?.value).slice(0, 160)}`).join('\n')
-      const out = JSON.parse(await chat([{ role: 'user', content: `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\n${close ? 'Which file is the closest real picture of the same subject (same disease, organ, scan type or thing; current, never a historical/old photo: a 1940s oxygen meter came back for "infant on oxygen support", 2026-11-17; -1 if none is)?' : 'Which file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)?'} Return JSON {"pick": <number or -1 if none fits>}.` }], { model: 'gpt-6-luna', jsonMode: true }))
+      const ask = `A slide needs a picture of: ${query}\nWikimedia Commons files:\n${list}\n${close ? 'Which file is the closest real picture of the same subject (same disease, organ, scan type or thing; current, never a historical/old photo: a 1940s oxygen meter came back for "infant on oxygen support", 2026-11-17; -1 if none is)?' : 'Which file shows exactly that (current and clear; not a historical/old version, a detail, or something only related)?'} Return JSON {"pick": <number or -1 if none fits>}.`
+      // the nearest one is LOOKED at beside the user's words: by title alone a doctor's portrait and an air force
+      // crew came back for "Indian infant on oxygen support" (replay 2026-11-19)
+      const small = close ? await commons({ titles: pages.map(p => p.title).join('|'), iiurlwidth: '330' }).catch(() => [] as any[]) : []
+      const viewable = (u: string) => /\.(jpe?g|png|webp)$/i.test(u.split('?')[0]) // an animated GIF cannot be looked at, and failed the whole look
+      const seen = pages.flatMap((p, k) => small.filter(x => x.title === p.title && viewable(x.imageinfo[0].thumburl)).slice(0, 1).flatMap(x => [{ type: 'text', text: `${k}:` }, { type: 'image_url', image_url: { url: x.imageinfo[0].thumburl, detail: 'low' } }]))
+      const out = JSON.parse(seen.length
+        ? await chat([{ role: 'user', content: [{ type: 'text', text: `${ask}\nWhat the user wrote (any language; the latest message is last and wins):\n${want}\nThe files' pictures follow, numbered alike. Look at each: pick one only when its picture is shown and itself shows what the user asked for.` }, ...seen] }], { model: LOOK_MODEL, jsonMode: true, maxTokens: 4000 })
+        : await chat([{ role: 'user', content: ask }], { model: 'gpt-6-luna', jsonMode: true }))
       return out.pick === -1 ? null : pages[out.pick] || pages[0]
     }
-    catch { return pages[0] } // the search's own first result
+    catch { return close ? null : pages[0] } // the search's own first result; never an unseen "nearest" one (a retinopathy animation for an infant on oxygen)
   }
   const searched = await search(query).catch(() => [] as any[])
   let best = await pick([...known, ...searched.filter(p => !known.some(k => k.title === p.title))])
@@ -92,6 +104,42 @@ const wikimedia = async (query: string, nearest = false, avoid: string[] = []) =
   return {
     src: i.thumburl, title: String(best.title).replace(/^File:/, ''), page: i.descriptionurl,
     credit: plain(m.Artist?.value) || 'Wikimedia Commons', license: plain(m.LicenseShortName?.value), close,
+  }
+}
+
+// Stock photos, looked at before one goes on a slide. The first search result went on unseen: seven backgrounds in a
+// row for "a poverty-stricken area in a US city" were suburbs and Asian slums, "not a person" got people, "full of
+// pedestrians" got two (2026-11-11..17). A vision model sees 15 candidates beside the user's own words and orders the
+// ones that show it; none does -> one more search in a stock library's words, then the nearest, said as such.
+// Model (2026-11-19, 5 real requests, 15 photos each, ~1,300 tokens in): gpt-6.1-terra picked the Los Angeles
+// sidewalk tents for US city poverty and the crowded crossings for "full of pedestrians" (about $0.002 a look);
+// gpt-6-luna ($0.0003) picked Ohio suburbs and two silhouettes; gpt-5.4-mini ($0.002) an Istanbul street.
+const stock = async (query: string, want: string, orientation: string, avoid: string[]) => {
+  const found = async (q: string) => ((await stockSearch({ query: q, per_page: 15, orientation })).data as any[]).filter(p => p.src)
+  const fresh = (list: any[]) => list.filter(p => !avoid.includes(p.src)) // never a picture already on the page
+  const look = async (list: any[]) => {
+    const content = [{ type: 'text', text: `A presentation slide needs a picture.\nWhat the user wrote (any language; the latest message is last and wins):\n${want}\nThe editor's search words for this picture (they only say which picture of the message this is; the user's words decide what it must show): ${query}\n\nBelow are ${list.length} stock photos, numbered from 0, each with its caption. Look at each photo.\n"fits": the photos that show what the user asked for, with everything their words require (the subject, the place or country, how many people, what must NOT be in it), best first; [] when none really shows it.\n"nearest": the one closest photo when fits is [].\n"search": when fits is [], 2 to 4 other English words a stock photo library would file such a photo under; else "".\nReturn JSON {"fits": [numbers], "nearest": number, "search": "..."}` },
+      ...list.flatMap((p, k) => [{ type: 'text', text: `${k}: ${String(p.alt || '').slice(0, 160)}` }, { type: 'image_url', image_url: { url: p.thumb || p.src, detail: 'low' } }])]
+    const out = JSON.parse(await chat([{ role: 'user', content }], { model: LOOK_MODEL, jsonMode: true, maxTokens: 4000 }))
+    const at = (xs: unknown) => [...new Set((Array.isArray(xs) ? xs : [xs]).map(Number))].filter(k => Number.isInteger(k) && !!list[k])
+    return { fits: at(out.fits), nearest: at(out.nearest), search: String(out.search || '').trim() }
+  }
+  const first = await found(query)
+  const ordered = (list: any[], lead: number[]) => [...lead.map(k => list[k]), ...list.filter((_, k) => !lead.includes(k)), ...first.filter(p => avoid.includes(p.src))]
+  let list = fresh(first)
+  if (!list.length) return { data: first } // nothing new to look at: the search's own order
+  try {
+    let seen = await look(list)
+    if (!seen.fits.length && seen.search) {
+      const more = fresh(await found(seen.search).catch(() => [] as any[])).filter(p => !list.some(x => x.src === p.src))
+      const again = more.length ? await look(more) : seen
+      if (again.fits.length) { list = more; seen = again }
+    }
+    return { data: ordered(list, seen.fits.length ? seen.fits : seen.nearest), fits: seen.fits.length }
+  }
+  catch (e) { // the look failed: the search's own order, as before, and no claim that anything was seen
+    console.error('[research] picture look failed:', String((e as Error)?.message || e).slice(0, 160))
+    return { data: ordered(list, []) }
   }
 }
 
@@ -224,14 +272,15 @@ const siteImages = async (what: string, url: string, brand: string, count: numbe
 async function handler(req: any, res: any) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return }
   try {
-    const { kind = '', query = '', nearest = false, url = '', brand = '', count = 3, avoid = [] } = await readBody(req)
+    const { kind = '', query = '', nearest = false, url = '', brand = '', count = 3, avoid = [], want = '', orientation = 'landscape' } = await readBody(req)
     if (kind === 'site_images') { res.status(200).json(await siteImages(String(query).slice(0, 300), String(url).trim().slice(0, 2000), String(brand).slice(0, 120), Math.min(Math.max(Number(count) || 3, 1), 4), (Array.isArray(avoid) ? avoid : []).slice(0, 200).map(String))); return }
     if (!String(query).trim()) { res.status(400).json({ error: 'query required' }); return }
     if (kind === 'web') res.status(200).json(await web(String(query).slice(0, 500)))
     else if (kind === 'scholar') res.status(200).json(await scholar(String(query).slice(0, 300)))
     else if (kind === 'url') res.status(200).json(await readUrl(String(query).trim().slice(0, 2000)))
-    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200), nearest === true, Array.isArray(avoid) ? avoid.map(String) : []))
-    else res.status(400).json({ error: 'kind must be web, scholar, url or wikimedia' })
+    else if (kind === 'wikimedia') res.status(200).json(await wikimedia(String(query).slice(0, 200), nearest === true, Array.isArray(avoid) ? avoid.map(String) : [], String(want).slice(-1500)))
+    else if (kind === 'stock') res.status(200).json(await stock(String(query).slice(0, 300), String(want).slice(-1500), orientation === 'portrait' ? 'portrait' : 'landscape', (Array.isArray(avoid) ? avoid : []).slice(0, 200).map(String)))
+    else res.status(400).json({ error: 'kind must be web, scholar, url, wikimedia or stock' })
   }
   catch (e: any) {
     res.status(500).json({ error: String(e?.message || e) })

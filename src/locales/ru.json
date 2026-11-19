@@ -993,6 +993,7 @@
   ", {p0}": ", {p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "Изображение из Wikimedia Commons: {p0} ({p1}{p2}) {p3}",
   "No stock photo matched, so I generated one with AI.": "Подходящего стокового фото не нашлось, поэтому я создал изображение с помощью ИИ.",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "Ни одно стоковое фото не показывает именно это, поэтому это самое близкое. Могу нарисовать изображение с помощью ИИ (10 кредитов): просто скажите.",
   "The picture could not be generated ({p0}).": "Не удалось создать изображение ({p0}).",
   "That page has no picture.": "На этом слайде нет изображения.",
   "Could not get a picture.": "Не удалось получить изображение.",

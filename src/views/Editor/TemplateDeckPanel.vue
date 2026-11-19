@@ -1168,6 +1168,26 @@ const roomFor = async (id: string, wanted: { left: number, top: number, width: n
 // Fetch a picture from the source asked for; never quietly another kind. `credit` is said in the reply.
 let pictureNote = ''
 let pictureSource: 'photo' | 'wikimedia' | 'ai' | 'attached' = 'photo' // what the last picture really came from (a stock search can fall back to AI)
+// The user's own words for the picture service, which looks at its candidates beside them: their last three messages
+// ("try a different one" says nothing alone)
+const saidLately = () => {
+  const said = s.history.filter(m => m.role === 'user').map(m => m.text)
+  if (said[said.length - 1] !== userText) said.push(userText)
+  return said.slice(-3).join('\n')
+}
+// Stock photos the picture service has looked at: the first `fits` of them show what was asked. The service failing:
+// the plain search in its own order, as before.
+const stockPhotos = async (query: string, landscape: boolean, avoid: string[]): Promise<{ data?: { src: string }[], fits?: number }> => {
+  const orientation = landscape ? 'landscape' : 'portrait'
+  try {
+    const r = await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'stock', query, want: saidLately(), orientation, avoid: avoid.filter(u => u.startsWith('http')) }) })
+    if (r.ok) return await r.json()
+  }
+  catch { /* the plain search below */ }
+  return api.searchImage({ query, per_page: 5, orientation } as any)
+}
+// none of the photos looked at shows what was asked: the nearest one goes on the slide, said as such, with the AI picture on offer
+const nearestNote = () => t('No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.')
 const findPicture = async (query: string, source: string, landscape: boolean, avoid: string[] = [], reuse = false) => {
   pictureNote = ''
   if (source === 'direct') { // a picture file already chosen from a website: only the paid add_site_pictures step may place one
@@ -1190,14 +1210,15 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     return pic.url
   }
   if (source === 'wikimedia') {
-    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest, avoid }) })).json()
+    const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'wikimedia', query, nearest, avoid, want: saidLately() }) })).json()
     if (!r.src && specific) fail(t('Wikimedia Commons has no free picture of {p0}, and a stock photo would show something else. Would you like to upload one? Attach it with the 📎 icon and I will put it on the slide.', { p0: query.slice(0, 60) }))
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
-      const sp = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any).catch(() => ({ data: [] }))
-      const alt = (sp.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u))
+      const sp = await stockPhotos(query, landscape, avoid).catch(() => ({ data: [] } as Awaited<ReturnType<typeof stockPhotos>>))
+      const found = (sp.data || []).map((x: any) => x.src), alt = found.find((u: string) => u && !avoid.includes(u))
       if (!alt) fail(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
       pictureSource = 'photo'
       pictureNote = t('Wikimedia Commons had no picture of "{p0}", so this is a stock photo.', { p0: query.slice(0, 60) })
+        + (sp.fits !== undefined && found.indexOf(alt) >= sp.fits ? ` ${nearestNote()}` : '')
       return alt as string
     }
     pictureNote = t('Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}', { p0: r.title, p1: r.credit, p2: r.license ? t(', {p0}', { p0: r.license }) : '', p3: r.page })
@@ -1206,8 +1227,9 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
   }
   if (source === 'photo') {
     // a few results, so "all the pictures" with similar searches do not get the same photo twice
-    const r = await api.searchImage({ query, per_page: 5, orientation: landscape ? 'landscape' : 'portrait' } as any)
-    const src = (r.data || []).map((x: any) => x.src).find((u: string) => u && !avoid.includes(u)) // the services axios instance already unwraps response.data
+    const r = await stockPhotos(query, landscape, avoid)
+    const found = (r.data || []).map((x: any) => x.src), src = found.find((u: string) => u && !avoid.includes(u))
+    if (src && r.fits !== undefined && found.indexOf(src) >= r.fits) pictureNote = nearestNote()
     if (src) return src as string
     // every result already used: the first again, rather than an AI picture nobody asked for (10 credits)
     if (reuse && r.data?.[0]?.src) return r.data[0].src as string
@@ -2537,7 +2559,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       : (t('colour {p0}', { p0: args.color }))
     // a count read as a page number: "Фон 1 слайдів" ("background of 1 slide(s)") was taken for page 1 (replay 2026-11-18)
     const where = targets.length <= 3 ? t('Background of page(s) {p0} set to {p1}.', { p0: targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', '), p1: bgHow }) : t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })
-    return where + note + flatNote
+    return where + note + flatNote + (args.photo_query && pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()

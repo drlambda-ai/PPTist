@@ -993,6 +993,7 @@
   ", {p0}": ", {p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "تصویر از Wikimedia Commons: {p0} ({p1}{p2}) {p3}",
   "No stock photo matched, so I generated one with AI.": "عکس آماده مناسبی پیدا نشد، بنابراین با هوش مصنوعی تصویری ساختم.",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "هیچ عکس آماده‌ای دقیقاً این را نشان نمی‌دهد، پس این نزدیک‌ترین عکس است. می‌توانم به‌جای آن با هوش مصنوعی تصویری بکشم (۱۰ اعتبار): فقط بگویید.",
   "The picture could not be generated ({p0}).": "ساخت تصویر ممکن نشد ({p0}).",
   "That page has no picture.": "این اسلاید تصویری ندارد.",
   "Could not get a picture.": "دریافت تصویر ممکن نشد.",

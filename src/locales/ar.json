@@ -993,6 +993,7 @@
   ", {p0}": "، {p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "صورة من ويكيميديا كومنز: {p0} ({p1}{p2}) {p3}",
   "No stock photo matched, so I generated one with AI.": "لم نجد صورة جاهزة مطابقة، لذا أنشأت صورة بالذكاء الاصطناعي.",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "لا توجد صورة جاهزة تُظهر ذلك تمامًا، لذا هذه أقرب صورة. يمكنني رسمها بالذكاء الاصطناعي بدلًا من ذلك (10 أرصدة): فقط اطلب ذلك.",
   "The picture could not be generated ({p0}).": "تعذّر إنشاء الصورة ({p0}).",
   "That page has no picture.": "لا تحتوي تلك الصفحة على صورة.",
   "Could not get a picture.": "تعذّر الحصول على صورة.",

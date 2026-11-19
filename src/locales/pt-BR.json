@@ -993,6 +993,7 @@
   ", {p0}": ", {p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "Imagem do Wikimedia Commons: {p0} ({p1}{p2}) {p3}",
   "No stock photo matched, so I generated one with AI.": "Não encontrei uma foto de banco de imagens adequada, então gerei uma com IA.",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "Nenhuma foto de banco de imagens mostra exatamente isso, então esta é a mais próxima. Posso desenhá-la com IA no lugar (10 créditos): é só pedir.",
   "The picture could not be generated ({p0}).": "Não foi possível gerar a imagem ({p0}).",
   "That page has no picture.": "Essa página não tem imagem.",
   "Could not get a picture.": "Não foi possível obter uma imagem.",

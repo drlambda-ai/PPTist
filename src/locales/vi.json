@@ -993,6 +993,7 @@
   ", {p0}": ", {p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "Ảnh từ Wikimedia Commons: {p0} ({p1}{p2}) {p3}",
   "No stock photo matched, so I generated one with AI.": "Không tìm thấy ảnh có sẵn phù hợp, nên tôi đã tạo một ảnh bằng AI.",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "Không có ảnh có sẵn nào thể hiện đúng nội dung đó, nên đây là ảnh gần nhất. Tôi có thể vẽ bằng AI thay thế (10 tín dụng): bạn chỉ cần nói.",
   "The picture could not be generated ({p0}).": "Không thể tạo ảnh ({p0}).",
   "That page has no picture.": "Trang chiếu đó không có ảnh.",
   "Could not get a picture.": "Không thể lấy ảnh.",

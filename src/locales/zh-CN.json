@@ -993,6 +993,7 @@
   ", {p0}": "，{p0}",
   "Picture from Wikimedia Commons: {p0} ({p1}{p2}) {p3}": "图片来自 Wikimedia Commons：{p0}（{p1}{p2}）{p3}",
   "No stock photo matched, so I generated one with AI.": "没有找到匹配的图库照片，因此我用 AI 生成了一张。",
+  "No stock photo shows exactly that, so this is the nearest one. I can draw it with AI instead (10 credits): just say so.": "没有图库照片能准确呈现这个内容，所以这是最接近的一张。我也可以改用 AI 绘制（10 积分）：告诉我即可。",
   "The picture could not be generated ({p0}).": "无法生成图片（{p0}）。",
   "That page has no picture.": "该页面没有图片。",
   "Could not get a picture.": "无法获取图片。",
