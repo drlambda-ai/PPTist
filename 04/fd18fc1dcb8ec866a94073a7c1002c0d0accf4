@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: Codex gpt-6-astra high on 704cf146..2070f8ca (2 findings, fixed in f184bb8a), re-review of f184bb8a (3 MEDIUM, fixed in 0895e264)
+Eval: 41 real rejected turns on users' own decks, 3 runs each, graded alike: shipped 19.0, with these 20.3 / 19.7 (within noise)
+Reviewed-At: 2026-11-19T11:46:45Z
