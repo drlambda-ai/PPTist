@@ -2096,6 +2096,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // "the heading overlaps the body text" and the page model changed nothing (a paid user, twice, 2026-11-18): the
       // collision is measured and fixed here
       if (e instanceof NoChange && args.overlap === true && await shrinkOntoText(pageId)) return (lastEditTerse = t('Updated page {p0}.', { p0: i + 1 }))
+      // not fixed by smaller letters (text in shapes, a long collision): the page model, told only to separate them
+      if (e instanceof NoChange && args.overlap === true && textOnText(slides.value[i].elements).size) {
+        return editSlide(i, 'Fix the layout only: no text may overlap other text or sit behind a picture. Make the text boxes fit (smaller font or narrower) or shrink/move the pictures. Keep every word.', canAdvanced)
+      }
       // the user pasted the page's text and the page model answered it was already there, untouched: wrong in 6 of 6
       // replayed cases (slides 1, 8, 9 of three decks, 2026-11-11..16). One more pass, told it is not there
       if (e instanceof NoChange && text.length > 300 && !editedThisTurn.has(slides.value[i].id)) {
@@ -2199,7 +2203,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' })
       return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, () => `font-size: ${was[Math.min(i++, was.length - 1)] ?? 16}px`)
     }
-    const restore = args.back === true && Object.keys(s.sizes || {}).length > 0
+    // sizes kept and all put back already: asked again, nothing is left to restore (never one more step down)
+    if (args.back === true && s.sizes && !Object.keys(s.sizes).length) fail(t('I have not resized any text here, so there is no earlier size to go back to.'))
+    const restore = args.back === true && !!s.sizes
     const pagesDone = new Set<string>()
     let n = 0
     // ponytail: every resized box goes back, never only the pages named; a per-page restore when someone asks for one
