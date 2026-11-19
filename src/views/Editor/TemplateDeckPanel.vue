@@ -281,10 +281,12 @@ const { applyPresetTheme } = useSlideTheme()
 // a new background colour replaces the page's full-slide picture: hidden, kept for undo. Faded to 12% its painted
 // patches still showed ("there are still orange patches, remove them", "still not a uniform white", "dark grey on all"
 // with the capsules left: 6 turns of 3 users, 2026-11-17..18)
+// A page that is only that picture (a pasted screenshot: its text is inside it) keeps it faded, never blank
 const fadeBackdrop = (id: string) => {
   const sl = slides.value.find(x => x.id === id)
+  const opacity = sl && onlyFullPicture(sl) ? '12%' : '0%'
   for (const e of (sl?.elements || []) as any[]) {
-    if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity: '0%' } }, slideId: id })
+    if (e.type === 'image' && isBackdrop(e)) slidesStore.updateElement({ id: e.id, props: { filters: { ...e.filters, opacity } }, slideId: id })
   }
 }
 const hostSteps = () => chatslide || (window as any).__evalHost as typeof chatslide // the eval stands in for ChatSlide's own steps
@@ -2475,11 +2477,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         .reduce((a: number, e: any) => a + Math.min(e.width, W) * Math.min(e.height, H), 0) >= W * H * 0.45)
       for (let i = 0; i < covered.length; i += 3) {
         await Promise.all(covered.slice(i, i + 3).map(id => editSlide(pos(id), `Change the page's BACKGROUND to ${args.color}: recolour only the large decorative background shapes (full-width bands, full-page panels) to ${args.color} or a lighter/darker tint of it; keep cards, text boxes, pictures and their colours unchanged and keep text readable.`)
-          .catch(() => {
-            // the page model gave up: the bands are recoloured directly, the user asked for this colour everywhere ("still
-            // not a uniform white", three messages in a row, 2026-11-18)
+          .catch((err) => {
+            // the page model failed: bands with no text over them are recoloured directly, the user asked for this colour
+            // everywhere ("still not a uniform white", three messages in a row, 2026-11-18). A band under text keeps its
+            // colour (white text on a now-white band), and so does every band when the model found nothing to change
             const sl = slides.value[pos(id)]
-            const bands = sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25)
+            const over = (a: any, b: any) => a.left < b.left + b.width && b.left < a.left + a.width && a.top < b.top + (b.height || 0) && b.top < a.top + (a.height || 0)
+            const texts = sl.elements.filter((e: any) => elText(e))
+            const bands = err instanceof NoChange ? [] : sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25
+              && !texts.some((x: any) => over(x, e)))
             for (const e of bands) slidesStore.updateElement({ id: e.id, props: { fill: args.color, gradient: undefined, pattern: undefined } as any, slideId: id })
             if (!bands.length) missed.push(pos(id) + 1)
           })))
