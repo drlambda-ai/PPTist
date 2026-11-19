@@ -2735,8 +2735,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too
     if (!args.photo_query) {
       const { width: W, height: H } = slideSize()
+      // a band already that colour has nothing to recolour: a full-slide white shape under "uniform white" came back as
+      // "the large shapes on page 1 could not be recoloured and may still cover it", and the turn was run again (2026-11-18, replayed 2026-11-20)
+      const already = (e: any) => !e.gradient && !e.pattern && String(e.fill || '').toLowerCase() === String(args.color).toLowerCase()
       const covered = targets.filter(id => slides.value[pos(id)].elements
-        .filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25) // full-width bands only, never cards or diagrams
+        .filter((e: any) => e.type === 'shape' && !elText(e) && !already(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25) // full-width bands only, never cards or diagrams
         .reduce((a: number, e: any) => a + Math.min(e.width, W) * Math.min(e.height, H), 0) >= W * H * 0.45)
       for (let i = 0; i < covered.length; i += 3) {
         await Promise.all(covered.slice(i, i + 3).map(id => editSlide(pos(id), `Change the page's BACKGROUND to ${args.color}: recolour only the large decorative background shapes (full-width bands, full-page panels) to ${args.color} or a lighter/darker tint of it; keep cards, text boxes, pictures and their colours unchanged and keep text readable.`)
