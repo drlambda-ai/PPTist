@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high): review of the three feature commits (5 findings, all fixed), two verify passes (6 more findings, all fixed); the last two commits (rule wording revert, point-back narrowing) read by Claude Code with replays
+Reviewed-At: 2026-11-19T02:50:50Z
+Declined-By: Claude Code
+Declined: none open
+Backtest: 297 real turns on users' own decks at send time, identical case file for both builds (first router payload reproduced 294/294 old, 286/288 new; the 2 differ only by the new build's own extraction step). Changed turns rerun 3 times: old 123/142/120, new 121/121/125 (max 222). Delete case 16/16, every-page pictures 16/16, pasted numbered text 11/11 on two users' decks every run and the 10 slides asked on the third; editor-cases 104-106/106 with misses matching master on rerun.
