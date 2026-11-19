@@ -1176,6 +1176,7 @@
   "No, keep them": "Ні, залишити",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Змінено розмір тексту в {p0} текстових полях на {p1} слайдах.",
   "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "Тексту на {p1} слайдах надано вигляд тексту слайда {p0}: його розміри, наскільки текст уміщується, напівжирне накреслення та вирівнювання.",
+  "{p0} text box(es) had no room to grow and kept their size.": "{p0} текстових полів не мали місця, щоб збільшитися, і зберегли свій розмір.",
   "That page has no text to match.": "На цій сторінці немає тексту для зіставлення.",
   "Which picture on page {p0} should I change?": "Яке зображення на сторінці {p0} потрібно змінити?",
   "Picture {p0}": "Зображення {p0}",

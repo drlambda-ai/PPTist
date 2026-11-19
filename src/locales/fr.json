@@ -1176,6 +1176,7 @@
   "No, keep them": "Non, les conserver",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Taille du texte modifiée dans {p0} zones de texte sur {p1} page(s).",
   "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "{p1} page(s) ont reçu l'aspect du texte de la page {p0} : ses tailles tant que le texte tient, son gras et son alignement.",
+  "{p0} text box(es) had no room to grow and kept their size.": "{p0} zone(s) de texte n'avai(en)t pas la place de grandir et garde(nt) leur taille.",
   "That page has no text to match.": "Cette page ne contient aucun texte à faire correspondre.",
   "Which picture on page {p0} should I change?": "Quelle image de la page {p0} dois-je modifier ?",
   "Picture {p0}": "Image {p0}",

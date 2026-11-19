@@ -1176,6 +1176,7 @@
   "No, keep them": "لا، احتفظ بها",
   "Resized the text in {p0} text boxes across {p1} page(s).": "تم تغيير حجم النص في {p0} من مربعات النص عبر {p1} من الصفحات.",
   "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "تم إعطاء {p1} من الصفحات مظهر نص الصفحة {p0}: أحجامه بقدر ما يتسع النص، وخطه العريض ومحاذاته.",
+  "{p0} text box(es) had no room to grow and kept their size.": "لم يكن هناك مكان لتكبير {p0} من مربعات النص، فبقي حجمها كما هو.",
   "That page has no text to match.": "لا يوجد نص للمطابقة في هذه الصفحة.",
   "Which picture on page {p0} should I change?": "ما الصورة التي تريد تغييرها في الصفحة {p0}؟",
   "Picture {p0}": "الصورة {p0}",

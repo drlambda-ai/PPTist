@@ -2234,11 +2234,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const restore = args.back === true && !!s.sizes
     const pagesDone = new Set<string>()
     let n = 0
+    const up = !to && k > 1 // a restore returns above: the floor never touches "back as it was"
+    const was: Record<string, number[]> = {} // sizes before this step: bigger text never ends up smaller than it was
     // ponytail: every resized box goes back, never only the pages named; a per-page restore when someone asks for one
     for (const id of args.back === true ? slides.value.map(x => x.id) : targets) {
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
         if (restore ? !s.sizes?.[e.id] || !html(e) : !inScope(sl, e)) continue
+        if (!restore) was[e.id] = sizes(html(e)).length ? sizes(html(e)) : [...html(e).matchAll(/<p[\s>]/g)].map(() => 16)
         const next = restore ? back(html(e), s.sizes![e.id]) : resize(html(e))
         if (restore) s.sizes = Object.fromEntries(Object.entries(s.sizes!).filter(([k]) => k !== e.id))
         else if (args.back !== true && !s.sizes?.[e.id]) s.sizes = { ...s.sizes, [e.id]: sizes(html(e)) }
@@ -2256,9 +2259,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!n) fail(t('There is no such text to resize there.'))
     // bigger text takes only the room its box has: x2.5 ran over the next text and off every slide, and the user then
     // asked twice to make it smaller (prod 2026-11-12, 112b)
-    await fitOverflow([...pagesDone])
+    await fitOverflow([...pagesDone], up ? was : {})
     touched([...pagesDone])
-    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: pagesDone.size })
+    // a box with no room to grow kept its size: said, never counted as resized
+    const stuck = up ? [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
+      .filter(e => was[e.id] && !sizes(html(e)).some((v, i) => v >= (was[e.id][i] || 16) + 1)).length : 0 // under 1px is not a change anyone sees
+    if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }))
+    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size })
+      + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck })}` : '')
   }
   if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -3724,8 +3732,9 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 }
 // On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
-// the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages.
-const fitOverflow = (ids?: string[]) => withRenderer(async () => {
+// the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages; floor: per
+// box, sizes its type never shrinks under (in order of the box's sizes)
+const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
@@ -3745,17 +3754,20 @@ const fitOverflow = (ids?: string[]) => withRenderer(async () => {
           if (!node || !box) continue
           const pad = parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
           const need = node.offsetHeight + pad
-          if (need <= e.height + 2) continue
           // what it would run into: anything under it in its columns, except a band that sits behind other elements
           // (one that starts below this box's top: a picture already under its lower edge counts)
           const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top > e.top + 4 && o.left < e.left + e.width && o.left + o.width > e.left
             && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
           const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
+          // a text box on the page shown has already grown to its text (the editor stores it): checked against the room
+          if (need <= e.height + 2 && (e.type !== 'text' || need <= room + 2)) continue
           if (room <= 8 || (room <= e.height + 2 && round)) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`)
+            let i = 0
+            const min = floor[e.id] || []
+            const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, min[i++] || 0, Math.round(Number(v) * k * 10) / 10)}px`)
             if (e.type === 'text') props.content = content
             else props.text = { ...e.text, content }
           }

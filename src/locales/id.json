@@ -1176,6 +1176,7 @@
   "No, keep them": "Tidak, pertahankan",
   "Resized the text in {p0} text boxes across {p1} page(s).": "Mengubah ukuran teks di {p0} kotak teks pada {p1} halaman.",
   "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "{p1} halaman diberi tampilan teks halaman {p0}: ukurannya sejauh teks muat, huruf tebalnya, dan perataannya.",
+  "{p0} text box(es) had no room to grow and kept their size.": "{p0} kotak teks tidak punya ruang untuk membesar dan tetap pada ukurannya.",
   "That page has no text to match.": "Halaman tersebut tidak memiliki teks untuk dicocokkan.",
   "Which picture on page {p0} should I change?": "Gambar mana di halaman {p0} yang harus saya ubah?",
   "Picture {p0}": "Gambar {p0}",
