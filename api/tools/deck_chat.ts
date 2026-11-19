@@ -63,7 +63,7 @@ const TOOLS = [
   fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', {
     pages, copies: { type: 'integer', description: 'How many copies of each page, usually 1' },
   }, ['pages', 'copies']),
-  fn('move_pages', 'Move one or more pages (kept in their order) so the first of them becomes page `to`. Use it for "move forward/back", "put X at the end/front" (a swap is swap_pages).', {
+  fn('move_pages', 'Move one or more pages (kept in their order) so the first of them becomes page `to`. Use it for "move forward/back", "put X at the end/front" (a swap is swap_pages). Only whole pages: a text, name or picture ON a page that goes to another page ("take the group name off slide 8 and put it under the first slide") is move_element_to_page.', {
     pages, to: { type: 'integer', description: 'The page number the (first) moved page has AFTER the move: 1 = front, the deck length = end. "Move page 5 forward one" -> to 4; "move the last page to page 2" -> to 2.' },
   }, ['pages', 'to']),
   fn('reorder_pages', 'Put the whole deck in a new order (when the user describes the full order or a sort).', {
