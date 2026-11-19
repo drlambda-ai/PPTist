@@ -2692,7 +2692,20 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         save()
         await showPptx(s.versions[s.versions.length - 1].deckUrl)
       }
-      else if (snapshotStore.canUndo) await snapshotStore.unDo()
+      else if (snapshotStore.canUndo) {
+        // a correction goes back to before the previous message's change, not one editor step: a title dragged after
+        // that change took the Undo, so the replaced picture stayed ("Keep the image of the nurse" lost the nurse,
+        // 2026-11-16). A bare "undo" stays one step, like the toolbar's
+        const snaps = await db.snapshots.orderBy('id').toArray()
+        undoSteps = 1
+        for (let k = snapshotStore.snapshotCursor - 1; k >= 0 && beforeLastChange && args.instead; k--) {
+          if (JSON.stringify(snaps[k].slides) !== beforeLastChange) continue
+          undoSteps = snapshotStore.snapshotCursor - k
+          break
+        }
+        beforeLastChange = ''
+        for (let n = undoSteps; n > 0; n--) await snapshotStore.unDo()
+      }
       else return t('There is nothing to undo yet.')
     }
     else await snapshotStore.reDo()
@@ -2757,6 +2770,8 @@ let directAllowed = false // true only while add_site_pictures places the pictur
 const usedBackgrounds = new Set<string>() // background photos already tried in this session: "again" never brings one back
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
+let beforeLastChange = '' // the deck before the last message that changed it (JSON): where a chat Undo goes back to
+let undoSteps = 1 // editor steps that Undo took, for putting the change back
 let advancedOffered = false // the paid-model offer, shown once per session
 // the upgrade button: after every turn the advanced model would have done better, not only the one the paywall opened on
 const upgradeHint = ref(false)
@@ -3061,7 +3076,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
-      await snapshotStore.reDo()
+      for (let n = undoSteps; n > 0; n--) await snapshotStore.reDo()
       pendingInstead = ''
       // the "Undone." line no longer describes the deck: the change is back
       const at = done.findIndex(d => d.startsWith('undo '))
@@ -3315,6 +3330,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string) => {
   return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
 
+    beforeLastChange = JSON.stringify(startSlides)
 // ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
 // arguments, result), so a complaint like "I don't see a change" can be traced to the edit before it. Never charged.
 const recordTurn = (message: string, reply: string, steps: string[], ok: boolean) => {
