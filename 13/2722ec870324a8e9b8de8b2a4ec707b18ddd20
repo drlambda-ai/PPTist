@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high), range 1625e777..18829bb6; fixes in 3856db5e not re-run (mechanical, replayed in the editor)
+Reviewed-At: 2026-11-19T19:26:24Z
+Fixed: back:true after the sizes were restored shrank every page one more step; now says nothing is left to restore (3856db5e)
+Fixed: overlap with NoChange and a failed letter shrink skipped the layout pass; the page model is asked once more (3856db5e)
+Declined-By: Claude Code
+Declined: a restore ignores pages and scope — deliberate (the router's page list was the bug); a user who wants one page back gets all back, visible and undoable
+Declined: saved sizes map by position, so text whose runs were split later gets the nearest saved size — a few px off on an edited box, visible
