@@ -2855,9 +2855,10 @@ const deckTurn = async (text: string) => {
   }
   // "insert the text I wrote into slides 1 to 10" points back at that text: edited slide 1 only, then stopped (1 run in
   // 4, 2026-11-19). With a long text of theirs on hand, the same small model decides whether this message asks for it
-  else if (!repeating && !pendingAtStart) {
-    // the newest long text of theirs; the original request only when there is none (Codex review)
-    const theirs = [s.brief?.text || '', ...s.history.slice(0, -1).filter(h => h.role === 'user' && h.text.length > 600).map(h => h.text)].filter(x => x.length > 600)
+  // only their own long message in this chat, and never with a file attached: "only text" answered a question about the
+  // file they sent, and their original request was placed instead (backtest 2026-11-19)
+  else if (!repeating && !pendingAtStart && !s.docs.length) {
+    const theirs = s.history.slice(0, -1).filter(h => h.role === 'user' && h.text.length > 600).map(h => h.text)
     const src = theirs[theirs.length - 1]
     if (src) {
       const items = await numberedParts(src, text)
