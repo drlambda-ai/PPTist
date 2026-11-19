@@ -2234,8 +2234,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const restore = args.back === true && !!s.sizes
     const pagesDone = new Set<string>()
     let n = 0
-    const up = !to && k > 1 // a restore returns above: the floor never touches "back as it was"
-    const was: Record<string, number[]> = {} // sizes before this step: bigger text never ends up smaller than it was
+    const was: Record<string, number[]> = {} // sizes before this step, of each box it changed
+    const grew: Record<string, number[]> = {} // the boxes this step made bigger (scale, points or another page's size): never smaller than they were
     // ponytail: every resized box goes back, never only the pages named; a per-page restore when someone asks for one
     for (const id of args.back === true ? slides.value.map(x => x.id) : targets) {
       const sl = slides.value[pos(id)]
@@ -2243,6 +2243,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         if (restore ? !s.sizes?.[e.id] || !html(e) : !inScope(sl, e)) continue
         if (!restore) was[e.id] = sizes(html(e)).length ? sizes(html(e)) : [...html(e).matchAll(/<p[\s>]/g)].map(() => 16)
         const next = restore ? back(html(e), s.sizes![e.id]) : resize(html(e))
+        if (!restore && sizes(next).some((v, i) => v > (was[e.id][i] || 16))) grew[e.id] = was[e.id]
         if (restore) s.sizes = Object.fromEntries(Object.entries(s.sizes!).filter(([k]) => k !== e.id))
         else if (args.back !== true && !s.sizes?.[e.id]) s.sizes = { ...s.sizes, [e.id]: sizes(html(e)) }
         if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: next }, slideId: id })
@@ -2259,11 +2260,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!n) fail(t('There is no such text to resize there.'))
     // bigger text takes only the room its box has: x2.5 ran over the next text and off every slide, and the user then
     // asked twice to make it smaller (prod 2026-11-12, 112b)
-    await fitOverflow([...pagesDone], up ? was : {})
+    // only the boxes this step changed: a "titles bigger" left the body text as it was, byte for byte
+    await fitOverflow([...pagesDone], grew, new Set(Object.keys(was)))
     touched([...pagesDone])
     // a box with no room to grow kept its size: said, never counted as resized
-    const stuck = up ? [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
-      .filter(e => was[e.id] && !sizes(html(e)).some((v, i) => v >= (was[e.id][i] || 16) + 1)).length : 0 // under 1px is not a change anyone sees
+    const stuck = [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
+      .filter(e => grew[e.id] && !sizes(html(e)).some((v, i) => v >= (grew[e.id][i] || 16) + 1)).length // under 1px is not a change anyone sees
     if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }))
     return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size })
       + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck })}` : '')
@@ -3733,8 +3735,8 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 // On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
 // the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages; floor: per
-// box, sizes its type never shrinks under (in order of the box's sizes)
-const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}) => withRenderer(async () => {
+// box, sizes its type never shrinks under (in order of the box's sizes); only: those boxes, the rest stay as they are
+const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
@@ -3748,7 +3750,7 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}) => wi
       for (const sl of pages) {
         for (const e of sl.elements as any[]) {
           const html = e.type === 'text' ? e.content : e.text?.content
-          if ((e.type !== 'shape' && e.type !== 'text') || !plain(html) || e.rotate) continue
+          if ((e.type !== 'shape' && e.type !== 'text') || !plain(html) || e.rotate || (only && !only.has(e.id))) continue
           const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
           const box = node?.parentElement
           if (!node || !box) continue
