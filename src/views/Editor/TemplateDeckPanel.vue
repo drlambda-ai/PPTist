@@ -745,6 +745,19 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   return lastEditTerse // the model's own sentence misstated the edit too often (audited 2026-11-02): code reports
 }
 
+// Does the message say what a new deck is ABOUT? The router filled the topic with an audience ("une présentation pour un
+// congrès scientifique avec des experts") and replaced the user's deck on medicine with a generic one (2026-11-19), the
+// very example its tool description gives. Unreadable counts as no: the deck is kept and edited instead
+const namesSubject = async (message: string, topic: string) => {
+  if (s.docs.length || (s.images || []).length) return true // built from their file
+  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+    `A user of a slide editor wrote: ${JSON.stringify(message.slice(0, 2000))}\nA model read its topic as: ${JSON.stringify(topic.slice(0, 300))}\n`
+    + 'Does the message name what a NEW presentation should be about (a subject: "climate change", "my company", "photosynthesis")? '
+    + 'An audience, purpose, occasion, style or length alone ("for a scientific congress", "for my class", "more professional", "13 slides") is not a subject. '
+    + 'Return JSON {"subject": true|false}.' }) }).catch(() => null)
+  return r?.ok ? (await r.json().catch(() => ({})))?.subject === true : false
+}
+
 // A text box grows to fit its content when its page is shown. After an edit, show the page and shrink the font sizes
 // of any changed box that grew past its old height (translations run longer), so it never spills onto other elements.
 let fitQueue: Promise<void> = Promise.resolve() // one page shown at a time, even when pages are edited in parallel
@@ -2895,7 +2908,7 @@ const deckTurn = async (text: string) => {
     if (error) throw new Error(error)
     // replacing the deck needs a topic in this very message: a complaint ("same problem") rebuilt a deck on a guess
     const newDeck = calls.find((c: any) => c.action === 'create_deck')
-    if (newDeck && !String(newDeck.args?.topic_in_this_message || '').trim()) {
+    if (newDeck && (!String(newDeck.args?.topic_in_this_message || '').trim() || !(await namesSubject(text, String(newDeck.args.topic_in_this_message))))) {
       done.push('create_deck -> skipped: the latest message names no topic for a new deck. Do not replace the deck: edit it or ask_user')
       continue
     }
