@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: test-server tooling only (scripts/e2e), retries connect errors before any response
+Reviewed-At: 2026-11-19T08:44:13Z
