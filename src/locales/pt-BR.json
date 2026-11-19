@@ -1252,5 +1252,6 @@
   "Which text goes on which page?": "Qual texto vai em qual página?",
   "Placed your text on {p0} page(s).": "Seu texto foi colocado em {p0} página(s).",
   "Page(s) {p0} were not changed.": "A(s) página(s) {p0} não foi(ram) alterada(s).",
-  "your original request": "seu pedido original"
+  "your original request": "seu pedido original",
+  "Upgrade to the advanced model": "Fazer upgrade para o modelo avançado"
 }

@@ -15,8 +15,9 @@
         </div>
         <div class="msg" :class="m.role" v-for="(m, i) in s.history" :key="i">{{ m.text }}<div class="rate" v-if="m.turn && chatslide?.feedback && (m.rating !== undefined || i === s.history.length - 1)"><span :class="{ on: m.rating === 1 }" :aria-label="t('Good reply')" @click="rate(m, true)"><i-icon-park-outline:thumbs-up /></span><span :class="{ on: m.rating === 0 }" :aria-label="t('Bad reply')" @click="rate(m, false)"><i-icon-park-outline:thumbs-down /></span></div><input class="why" v-if="m.rating === 0 && m.comment === undefined" v-model="drafts[i]" :placeholder="t('What went wrong? (optional)')" @keydown.enter="e => { if (!e.isComposing && e.keyCode !== 229) comment(m, i) }" @blur="comment(m, i)" /></div>
         <div class="msg assistant loading" v-if="busy">{{ busy }}</div>
-        <div class="choices" v-if="!busy && s.pending?.options?.length">
-          <span class="choice" v-for="o in s.pending.options" :key="o" @click="input = o; send()">{{ o }}</span>
+        <div class="choices" v-if="!busy && (s.pending?.options?.length || upgradeHint)">
+          <span class="choice" v-for="o in s.pending?.options || []" :key="o" @click="input = o; send()">{{ o }}</span>
+          <span class="choice" v-if="upgradeHint" @click="hostSteps()?.offerAdvanced?.()">{{ t('Upgrade to the advanced model') }}</span>
         </div>
       </div>
 
@@ -1961,11 +1962,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // credits and is on paid plans; anyone else gets the standard result and, when it mattered, the upgrade offer
     const canAdvanced = !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced) // the eval's paid user
     const offer = () => {
+      const host = hostSteps()
+      upgradeHint.value = !!host?.offerAdvanced
       // once per session: a frustrated user got the line and the paywall on two turns in a row (2026-11-11)
       if (advancedOffered) return ''
       advancedOffered = true
-      chatslide?.offerAdvanced?.()
-      return chatslide?.offerAdvanced ? (t('Requests like this work better on our advanced model, on paid plans.')) : ''
+      host?.offerAdvanced?.()
+      return host?.offerAdvanced ? (t('Requests like this work better on our advanced model, on paid plans.')) : ''
     }
     // "improve the design" with nothing concrete: the standard model moved boxes a few pixels and said it improved the
     // design (5 of 5 replays of a real user's request, 2026-11-11); the advanced model redesigned the page (2 of 2).
@@ -2725,6 +2728,8 @@ const usedBackgrounds = new Set<string>() // background photos already tried in 
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
 let advancedOffered = false // the paid-model offer, shown once per session
+// the upgrade button: after every turn the advanced model would have done better, not only the one the paywall opened on
+const upgradeHint = ref(false)
 let openedSlides: Record<string, any> = {} // slide id -> the page as it was when this project was first opened here
 const helperPages = new Set<string>() // pages the editor added for pictures: not "new pages the user asked for"
 // each page as it was when the editor opened the deck this time. Never an older session's copy: "go back to the previous
@@ -3279,6 +3284,7 @@ const finalize = async (instruction: string, reply: string, free: string[] = [],
 const send = () => {
   const text = input.value.trim()
   input.value = ''
+  upgradeHint.value = false
   say('user', text)
   // every message goes through the router and edits the deck in the editor; only an explicit request for a new
   // presentation builds one (create_deck), and that stays undoable

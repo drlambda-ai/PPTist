@@ -1252,5 +1252,6 @@
   "Which text goes on which page?": "哪段文字放在哪一頁？",
   "Placed your text on {p0} page(s).": "已將你的文字放到 {p0} 頁上。",
   "Page(s) {p0} were not changed.": "第 {p0} 頁未變更。",
-  "your original request": "你最初的要求"
+  "your original request": "你最初的要求",
+  "Upgrade to the advanced model": "升級到進階模型"
 }

@@ -1252,5 +1252,6 @@
   "Which text goes on which page?": "Який текст на яку сторінку?",
   "Placed your text on {p0} page(s).": "Ваш текст розміщено на {p0} стор.",
   "Page(s) {p0} were not changed.": "Сторінку {p0} не змінено.",
-  "your original request": "ваш початковий запит"
+  "your original request": "ваш початковий запит",
+  "Upgrade to the advanced model": "Перейти на розширену модель"
 }
