@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high, three rounds on 197e456a..d6882305; earlier findings (bigger ending smaller, auto-height boxes, points/same_as_page floor, scoped resize touching other boxes) closed.
+Declined: fit can stop while enlarged text still overlaps slightly (sqrt estimate, 3766-3772) - master has no fit after a resize and overlaps more; the patch narrows it.
+Declined: shape text that fits its shape is not checked against the element below (3765) - needs a shape that already overlapped before the resize.
+Declined-By: Claude (session cd46e05e), cost if wrong: some enlarged text still overlaps the element below with a success reply, as today.
+Regression: 41 real rejected turns 20/21/20 (prev build 21/21/19); editor-cases 104/106, both misses pass 3/3 on rerun.
