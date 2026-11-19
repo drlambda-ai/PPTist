@@ -2404,9 +2404,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // pictures the user said to keep are never the one replaced: "keep the nurse picture, change the other image" replaced
     // the nurse, three messages in a row (2026-11-16). The other one is the next picture they did not keep, else the
     // background picture
-    const kept = new Set((Array.isArray(args.keep_pictures) ? args.keep_pictures : []).map(Number))
+    // numbered as the image is (pictureNo): on a page with only a background picture, its 0 and 1 are the same picture
+    const kept = new Set((Array.isArray(args.keep_pictures) ? args.keep_pictures : []).map((n: unknown) => pictureNo(sl, Number(n))))
     const free = (k: number) => !kept.has(k) && !replacedThisTurn.has(`${id}:${k}`)
-    const other = () => content.findIndex((_, k) => free(k + 1)) + 1 || (firstBackdrop(sl) && content.length && free(0) ? 0 : -1)
+    // "all the pictures" never reaches the background picture
+    const other = () => content.findIndex((_, k) => free(k + 1)) + 1 || (firstBackdrop(sl) && content.length && free(0) && !args.all_pictures ? 0 : -1)
     const askWhich = (background: boolean) => {
       const { width: W, height: H } = slideSize()
       const where = (e: any) => [e.top + e.height / 2 < H / 3 ? t('top') : e.top + e.height / 2 > (2 * H) / 3 ? t('bottom') : t('middle'),
@@ -2416,21 +2418,24 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         options: [...(background ? [t('The background picture')] : []), ...content.slice(0, 3).map((e, k) => `${t('Picture {p0}', { p0: k + 1 })} (${where(e)})`), ...(background ? [] : [t('All of them')])],
       }, ids)
     }
-    // the router named the background picture but the user's words do not: asked, never moved onto a picture the router
-    // did not name ("find a picture of homeless people" and "another one, like a city slum", after background changes,
-    // each replaced the nurse picture the user kept asking for, 2026-11-16). Right after a background change it stands
-    const unsure0 = image === 0 && !said && !lastChangedBackground() && content.length > 0
-    if (unsure0 && !args.all_pictures && !(args.earlier > 0) && firstBackdrop(sl) && content.some((_, k) => !kept.has(k + 1))) {
-      return askedThisTurn ? '' : askWhich(true)
-    }
-    // "change the picture(s)" means the pictures on the page, not the background, unless the user said background
-    // (a user asked for slide 5's pictures and got its background replaced, 2026-11-10)
-    if (unsure0) {
-      image = content.findIndex((_, k) => free(k + 1)) + 1 || (content.every((_, k) => kept.has(k + 1)) ? 0 : 1)
+    // the router named the background picture (image 0) but the user's words do not say background. It stands when the
+    // words pick it (picture_named) or the previous message changed the background ("another one, like a city slum");
+    // otherwise the one content picture not kept is meant ("change the picture"; slide 5's pictures got its background
+    // replaced, 2026-11-10), the background when that one is kept ("keep the nurse, change the other image" replaced the
+    // nurse, 2026-11-16), and with several content pictures and nothing saying which, the user is asked
+    if (image === 0 && !said && !lastChangedBackground() && content.length && !args.picture_named && !(args.earlier > 0)) {
+      const left = content.map((_, k) => k + 1).filter(free)
+      if (left.length > 1 && !args.all_pictures) return askedThisTurn ? '' : askWhich(true)
+      image = left[0] ?? (content.every((_, k) => kept.has(k + 1)) ? 0 : 1)
     }
     if (kept.has(image)) {
       image = other()
       if (image < 0) return t('You asked to keep every picture on page {p0}, so none was replaced.', { p0: pos(id) + 1 })
+    }
+    // "all the pictures" means the content pictures, never the background picture; none left: nothing to replace
+    if (args.all_pictures && image === 0 && content.length) {
+      image = content.findIndex((_, k) => free(k + 1)) + 1
+      if (!image) return kept.size ? t('You asked to keep every picture on page {p0}, so none was replaced.', { p0: pos(id) + 1 }) : ''
     }
     // a page with only a background picture: "change the image / the cover photo" means that picture (the eval's
     // "Change the image on the slide" got a small extra picture, 2026-11-12); only a request to ADD one keeps it
