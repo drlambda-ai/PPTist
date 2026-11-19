@@ -5,7 +5,6 @@ import { readFileSync, existsSync, appendFileSync } from 'fs'
 import { extname, join } from 'path'
 const DIST = process.env.E2E_DIST || '/tmp/pptist-e2e/dist'
 const LOG = process.env.E2E_LOG || '/tmp/pptist-e2e/calls.log'
-const APP = process.env.E2E_APP || ''
 const types: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' }
 const handlers: Record<string, any> = {}
 // a connection to the AI vendor that never opened is tried again: on a flaky local line 7 of 20 requests timed out on
@@ -38,16 +37,8 @@ http.createServer(async (req, res0) => {
     if (usd) appendFileSync(LOG, `$ ${m[1]} ${usd}\n`) // what the replay spent, summed by the backtest
     return
   }
-  // the restyle stand-in runs ChatSlide's own export code in the page (E2E_APP = the app.chatslide.ai checkout): that
-  // code reads a picture through the app's image proxy and its template artwork from the app's public folder
-  if (APP && path === '/api/fetch_image') {
-    const r = await fetch(url.searchParams.get('image_url') || '').catch(() => null)
-    if (!r?.ok) { res0.writeHead(502); res0.end(); return }
-    res0.writeHead(200, { 'Content-Type': r.headers.get('content-type') || 'application/octet-stream' }); res0.end(Buffer.from(await r.arrayBuffer())); return
-  }
   if (path.startsWith('/api/')) { res0.writeHead(200, { 'Content-Type': 'application/json' }); res0.end('{}'); return } // record_turn, deck saves
-  const own = join(DIST, path === '/' ? 'index.html' : path)
-  const f = !existsSync(own) && APP && path.startsWith('/images/') && !path.includes('..') ? join(APP, 'public', path) : own
+  const f = join(DIST, path === '/' ? 'index.html' : path)
   if (!existsSync(f)) { res0.writeHead(404); res0.end(); return }
   res0.writeHead(200, { 'Content-Type': types[extname(f)] || 'application/octet-stream' }); res0.end(readFileSync(f))
 }).listen(Number(process.env.E2E_PORT) || 3001, process.env.E2E_HOST || '::1', () => console.log('ready')) // E2E_HOST=127.0.0.1 or E2E_PORT=3002 when another run holds [::1]:3001

@@ -1258,14 +1258,5 @@
   "your original request": "درخواست اولیه شما",
   "Upgrade to the advanced model": "ارتقا به مدل پیشرفته",
   "Put the earlier picture back on page {p0}.": "تصویر قبلی به اسلاید {p0} برگردانده شد.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم.",
-  "That template is not one of ChatSlide's: {p0}.": "این قالب از قالب‌های ChatSlide نیست: {p0}.",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "قالب‌های ChatSlide برای اسلایدهای ۱۶:۹ هستند و شکل اسلایدهای این ارائه متفاوت است، بنابراین نمی‌توان اسلایدهای آن را با این قالب بازسازی کرد.",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "اسلاید {p0} همان‌طور باقی ماند: فقط یک تصویر است و متنی ندارد که در قالب قرار بگیرد.",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "اسلاید {p0} همان‌طور باقی ماند: نمودار، جدول یا دیاگرام دارد که جایی در اسلاید قالب برای آن نیست.",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "اسلاید {p0} همان‌طور باقی ماند: طراحی آن تماماً بر پایهٔ یک عکس تمام‌صفحه است.",
-  "Rebuilding page {p0} with the template…": "در حال بازسازی اسلاید {p0} با قالب…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "اسلاید {p0} همان‌طور باقی ماند: همهٔ متن آن قابل انتقال به این قالب نبود.",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "همهٔ اسلایدها با قالب «{p0}» بازسازی شدند: همان متن‌ها و تصاویر در طراحی و چیدمان‌های آن.",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "اسلاید {p0} با قالب «{p1}» بازسازی شد: همان متن‌ها و تصاویر در طراحی و چیدمان آن."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم."
 }

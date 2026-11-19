@@ -1258,14 +1258,5 @@
   "your original request": "seu pedido original",
   "Upgrade to the advanced model": "Fazer upgrade para o modelo avançado",
   "Put the earlier picture back on page {p0}.": "A imagem anterior foi recolocada na página {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Não tenho mais a imagem anterior da página {p0}. Anexe-a e eu a recoloco, ou diga o que ela mostra e eu encontro uma parecida.",
-  "That template is not one of ChatSlide's: {p0}.": "Esse template não é um dos templates do ChatSlide: {p0}.",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Os templates do ChatSlide são para slides em 16:9. Esta apresentação tem outro formato, então não é possível reconstruir os slides com um deles.",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "O slide {p0} foi mantido como está: ele contém apenas uma imagem, sem texto próprio para inserir em um template.",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "O slide {p0} foi mantido como está: ele contém um gráfico, uma tabela ou um diagrama, que não cabe em um slide de template.",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "O slide {p0} foi mantido como está: seu design é uma foto que ocupa o slide inteiro.",
-  "Rebuilding page {p0} with the template…": "Reconstruindo o slide {p0} com o template…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "O slide {p0} foi mantido como está: não foi possível transferir todo o texto para esse template.",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Todos os slides foram reconstruídos com o template \"{p0}\": os mesmos textos e imagens, com o design e os layouts do template.",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "O slide {p0} foi reconstruído com o template \"{p1}\": os mesmos textos e imagens, com o design e o layout do template."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Não tenho mais a imagem anterior da página {p0}. Anexe-a e eu a recoloco, ou diga o que ela mostra e eu encontro uma parecida."
 }

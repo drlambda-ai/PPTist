@@ -68,7 +68,7 @@ defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a float
 const chatLeft = ref(-8)
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend, type RestyleTexts } from '@/embed'
+import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import { isPC } from '@/utils/common'
@@ -148,7 +148,7 @@ const mainStore = useMainStore()
 const slidesStore = useSlidesStore()
 const snapshotStore = useSnapshotStore() // undo/redo are async (IndexedDB): await them before saving
 const { slides, slideIndex, viewportSize, viewportRatio, theme } = storeToRefs(slidesStore)
-const { importPPTXFile, pptxToSlides } = useImport()
+const { importPPTXFile } = useImport()
 const { exportPPTX } = useExport()
 const { AIPPT, getMdContent } = useAIPPT()
 const { resetSlides } = useSlideHandler()
@@ -559,52 +559,6 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
     return common.has(t) ? '' : t
   }).join(' ').replace(/\s+/g, ' ').trim()
 }
-// true when a picture has (almost) no see-through part: over a photo it would hide it
-const opaquePicture = async (src: string) => {
-  const img = new Image()
-  img.src = src
-  await img.decode()
-  const c = document.createElement('canvas')
-  c.width = 32
-  c.height = 18
-  const g = c.getContext('2d')!
-  g.drawImage(img, 0, 0, 32, 18)
-  const d = g.getImageData(0, 0, 32, 18).data
-  let solid = 0
-  for (let k = 3; k < d.length; k += 4) if (d[k] > 250) solid++
-  return solid > 0.9 * 32 * 18
-}
-// A page's words for a template restyle: its title, then its points in reading order, each with the heading that sits
-// right above it in its column (bolder or bigger type than the text under it). Line breaks are kept. The 1, 2, 3
-// counters ChatSlide's layouts draw are left out: the new layout draws its own.
-const restyleTexts = (sl: Slide): RestyleTexts => {
-  const html = (e: any) => String(e.content ?? e.text?.content ?? '')
-  const lines = (e: any) => {
-    const body = new DOMParser().parseFromString(html(e).replace(/<br\s*\/?>/gi, '\n'), 'text/html').body
-    const blocks = [...body.querySelectorAll('p, li')].filter(b => !b.querySelector('p, li'))
-    return (blocks.length ? blocks.map(b => b.textContent || '') : [body.textContent || '']).flatMap(x => x.split('\n')).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n')
-  }
-  const texts = readingOrder(sl).filter((e: any) => elText(e))
-  const title: any = texts.find((e: any) => e.textType === 'title' || e.text?.type === 'title') || texts[0]
-  let body = texts.filter(e => e !== title)
-  const counters = body.filter(e => /^\d{1,2}$/.test(elText(e)))
-  if (counters.length && counters.map(e => Number(elText(e))).sort((a, b) => a - b).every((v, k) => v === k + 1)) body = body.filter(e => !counters.includes(e))
-  const size = (e: any) => Math.max(0, ...[...html(e).matchAll(/font-size:\s*([\d.]+)px/g)].map(m => Number(m[1])))
-  const bold = (e: any) => /<strong|<b>|font-weight:\s*(bold|[6-9]00)/.test(html(e))
-  const used = new Set<any>()
-  const items: RestyleTexts['items'] = []
-  for (const e of body as any[]) {
-    if (used.has(e)) continue
-    used.add(e)
-    const under: any = lines(e).includes('\n') ? undefined : (body as any[]).find(o => !used.has(o) && o.top >= e.top + e.height / 2 && o.top - (e.top + e.height) < Math.max(e.height, 24)
-      && Math.min(e.left + e.width, o.left + o.width) - Math.max(e.left, o.left) > Math.min(e.width, o.width) / 2 && ((bold(e) && !bold(o)) || size(e) > size(o)))
-    if (under) used.add(under)
-    items.push(under ? { heading: lines(e), text: lines(under) } : { heading: '', text: lines(e) })
-  }
-  // one box holding the title and the text under it: its first line is the title
-  const [head = '', ...rest] = title ? lines(title).split('\n') : []
-  return { title: head, items: rest.length ? [{ heading: '', text: rest.join('\n') }, ...items] : items }
-}
 const deckLines = () => {
   const count: Record<string, number> = {}
   for (const sl of slides.value) for (const t of new Set(sl.elements.map(elText))) if (t) count[t] = (count[t] || 0) + 1
@@ -620,7 +574,6 @@ let userText = '' // the message being handled: replies are written in its langu
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
-const restyledThisTurn = new Set<string>() // pages rebuilt with a ChatSlide template by the current turn
 // page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
@@ -2701,124 +2654,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     await hostSteps()!.goto!('refund')
     return t('Opening the refund page.')
   }
-  if (action === 'restyle_page') {
-    const host = hostSteps()
-    const options = host?.restyleOptions?.()
-    const targets: string[] = args.whole_deck ? slides.value.map(x => x.id) : args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value].id]
-    if (!targets.length) fail(t('There is no page {p0} (the deck has {p1}).', { p0: Number(args.pages?.[0]) || 0, p1: slides.value.length }))
-    // A new design for a page is the paid redesign: its gate (edit_page, redesign) is the one a free user meets here
-    // too, with the same offer. The same step outside ChatSlide, where there are no templates.
-    const canAdvanced = !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)
-    if (!canAdvanced || !host?.restyle || !options?.templates.length) {
-      return runCall(text, 'edit_page', { index: ids.indexOf(targets[0]) + 1, instruction: String(args.instruction || 'Redesign this page so it looks better.'), page_named: true, translate_to: '',
-        hard: false, redesign: true, new_content: false, whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: '' }, ids)
-    }
-    const asked = String(args.template || '').trim().toLowerCase()
-    const template = options.templates.find(x => x.name.toLowerCase() === asked) || options.templates.find(x => x.label.toLowerCase() === asked)
-    if (!template) fail(t('That template is not one of ChatSlide\'s: {p0}.', { p0: String(args.template || '').slice(0, 60) }))
-    const { width: W, height: H } = slideSize()
-    if (Math.abs(viewportRatio.value - 9 / 16) > 0.01) fail(t('ChatSlide\'s templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.'))
-    const palette = template.palettes.includes(args.palette) ? args.palette : template.own || template.palettes[0]
-    const layout = options.layouts.some(x => x.name === args.layout) ? args.layout : ''
-    const logos = logoSpots()
-    let rebuilt: string[] = []
-    const kept: string[] = [], was: Record<string, Slide> = {}
-    for (const id of targets) {
-      const i = pos(id)
-      const sl = slides.value[i]
-      const texts = restyleTexts(sl)
-      if (isFlat(sl) || onlyFullPicture(sl) || !texts.title) {
-        kept.push(t('Page {p0} was left as it is: it is one picture with no text of its own to put into a template.', { p0: i + 1 }))
-        continue
-      }
-      // A chart, table or media, or a drawing made of shapes (three or more bars, boxes or marks): a template page has
-      // no place for it. Not a drawing: the shapes ChatSlide's own layouts draw (a number's circle; cards, bands and
-      // plates, which are large), a rule or two under a heading, and a box nothing shows of.
-      const seen = (e: any) => !!(e.fill || e.gradient || e.pattern || (e.outline?.width > 0 && e.outline?.color))
-      const own = (e: any) => (Math.abs(e.width - e.height) < 2 && e.width <= W * 0.1) || e.width * e.height >= W * H * 0.04
-      if (sl.elements.some(e => ['chart', 'table', 'line', 'latex', 'video', 'audio'].includes(e.type)) || sl.elements.filter((e: any) => e.type === 'shape' && !elText(e) && seen(e) && !own(e)).length > 2) {
-        kept.push(t('Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.', { p0: i + 1 }))
-        continue
-      }
-      // The page's own full-page photo (a cover's): the lower of two full-slide pictures (the upper is the old design's
-      // artwork), or the only one in a deck whose other pages have none (a design with no artwork). A single full-slide
-      // picture otherwise is the old design's artwork, which the template replaces.
-      const full = sl.elements.filter((e): e is PPTImageElement => e.type === 'image' && isBackdrop(e))
-      const photo = full.length > 1 || (full.length === 1 && !slides.value.some(x => x.id !== id && x.elements.some(e => e.type === 'image' && isBackdrop(e)))) ? full[0] : undefined
-      if (photo && (texts.items.length > 2 || !/^https?:/.test(photo.src))) {
-        kept.push(t('Page {p0} was left as it is: its design is its own full-page photo.', { p0: i + 1 }))
-        continue
-      }
-      // the page's pictures go into the layout's picture places; a logo, an icon and a picture that is not a link stay
-      // where they are, and so does any picture the layout has no place for
-      const content = readingOrder(sl).filter((e): e is PPTImageElement => e.type === 'image' && !isBackdrop(e))
-      const placeable = content.filter(e => /^https?:/.test(e.src) && !logos.has(imgSpot(e)) && e.width * e.height >= W * H * 0.01)
-      busy.value = t('Rebuilding page {p0} with the template…', { p0: i + 1 })
-      const url = await host.restyle(i + 1, { template: template.name, palette, layout, texts, images: placeable.map(e => ({ src: e.src, ratio: e.width / e.height })), photo: photo?.src || '' })
-      if (!url) fail(t('That template is not one of ChatSlide\'s: {p0}.', { p0: template.label }))
-      const page = (await pptxToSlides(await (await fetch(url)).arrayBuffer(), W)).slides[0]
-      URL.revokeObjectURL(url)
-      // an empty box the layout drew for a heading the page does not have
-      const drawn = (page?.elements || []).filter((e: any) => !(e.type === 'shape' && !elText(e) && !seen(e)))
-      // every line of the page is on the new one, or the page stays as it was
-      const now = drawn.map((e: any) => plain(e.content ?? e.text?.content)).join(' ').replace(/\s+/g, ' ')
-      const all = [texts.title, ...texts.items.flatMap(x => [x.heading, x.text])].flatMap(x => x.split('\n')).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean)
-      if (!page || all.some(x => !now.includes(x))) {
-        kept.push(t('Page {p0} was left as it is: not all of its text could be carried into that template.', { p0: i + 1 }))
-        continue
-      }
-      // the page's own photo stays in sight: a template whose cover artwork is one opaque picture goes under it
-      const layers = drawn.filter((e: any) => e.type === 'image' && isBackdrop(e))
-      if (photo && layers.length > 1 && await opaquePicture((layers[1] as PPTImageElement).src)) drawn.unshift(...drawn.splice(drawn.indexOf(layers[1]), 1))
-      const copy = (e: any) => JSON.parse(JSON.stringify(e))
-      if (photo && layers.length) drawn[drawn.indexOf(layers[0])] = { ...copy(photo), left: 0, top: 0, width: W, height: H } // the photo itself, not the copy the template page carries
-      // The page's own pictures (their links, as they were) go where the layout put its pictures, each whole inside its
-      // place; more pictures than places share those places as a grid. With no place for pictures they stay where they were.
-      const places = drawn.filter((e): e is PPTImageElement => e.type === 'image' && !isBackdrop(e))
-      let cells = places.slice(0, placeable.length).map(e => ({ left: e.left, top: e.top, width: e.width, height: e.height }))
-      if (places.length && placeable.length > places.length) {
-        const left = Math.min(...places.map(e => e.left)), top = Math.min(...places.map(e => e.top))
-        const width = Math.max(...places.map(e => e.left + e.width)) - left, height = Math.max(...places.map(e => e.top + e.height)) - top
-        const n = placeable.length, cols = width > height * 1.5 ? n : n <= 2 ? 1 : 2, rows = Math.ceil(n / cols), gap = 8
-        const w = (width - gap * (cols - 1)) / cols, h = (height - gap * (rows - 1)) / rows
-        cells = placeable.map((_, k) => ({ left: left + (k % cols) * (w + gap), top: top + Math.floor(k / cols) * (h + gap), width: w, height: h }))
-      }
-      const pictures = placeable.map((e, k) => {
-        const c = cells[k]
-        if (!c) return copy(e)
-        const scale = Math.min(c.width / e.width, c.height / e.height)
-        return { ...copy(e), width: e.width * scale, height: e.height * scale, left: c.left + (c.width - e.width * scale) / 2, top: c.top + (c.height - e.height * scale) / 2, rotate: 0 }
-      })
-      was[id] = copy(sl)
-      slidesStore.updateSlide({ elements: [...drawn.filter(e => !(places as PPTElement[]).includes(e)), ...pictures, ...copy(content.filter(e => !placeable.includes(e)))], background: page.background, animations: [] }, id)
-      rebuilt.push(id)
-    }
-    // the template's boxes have its own sizes: longer text grows or shrinks to fit, measured once its fonts are in (as
-    // on first open). A page whose words still do not fit goes back to how it was.
-    if (rebuilt.length) await new Promise(r => setTimeout(r, 1500))
-    const off = rebuilt.length ? await fitOverflow(new Set(rebuilt)).catch(() => new Set<string>()) : new Set<string>()
-    for (const id of off) {
-      slidesStore.updateSlide({ elements: was[id].elements, background: was[id].background, animations: was[id].animations }, id)
-      kept.push(t('Page {p0} was left as it is: not all of its text could be carried into that template.', { p0: pos(id) + 1 }))
-    }
-    rebuilt = rebuilt.filter(id => !off.has(id))
-    // no page took the template: the redesign there was before this step does it (a page or three; never a whole deck)
-    if (!rebuilt.length && targets.length <= 3) {
-      const lines: string[] = []
-      for (const id of targets) {
-        lines.push(await runCall(text, 'edit_page', { index: ids.indexOf(id) + 1, instruction: String(args.instruction || 'Redesign this page so it looks better.'), page_named: true, translate_to: '',
-          hard: false, redesign: true, new_content: false, whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: '' }, ids))
-      }
-      return lines.join('\n')
-    }
-    if (!rebuilt.length) throw new NoChange(kept.join('\n'))
-    touched(rebuilt)
-    rebuilt.forEach(id => restyledThisTurn.add(id))
-    slidesStore.updateSlideIndex(pos(rebuilt[0]))
-    const where = rebuilt.map(id => pos(id) + 1).join(', ')
-    return [rebuilt.length === slides.value.length ? t('Rebuilt every page with the "{p0}" template: the same text and pictures in its design and layouts.', { p0: template.label })
-      : t('Rebuilt page {p0} with the "{p1}" template: the same text and pictures in its design and layout.', { p0: where, p1: template.label }), ...kept].join('\n')
-  }
   if (action === 'apply_theme') {
     const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
     if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(t('That theme has invalid colours.'))
@@ -3083,7 +2918,6 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   askedThisTurn = false
   userText = text
   editedThisTurn.clear()
-  restyledThisTurn.clear()
   picturedThisTurn.clear()
   readThisTurn.clear()
   roomMadeThisTurn.clear()
@@ -3142,7 +2976,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // asking the router again (asked to re-plan it, the router redid page 1 and stopped, 2026-11-11)
   // a font change takes every page in one step: page by page, identical lines merged and the reply listed 4 changes
   // for 9 pages, and the user asked again (2026-11-17)
-  const allAtOnce = ['set_font_size', 'set_font', 'set_text_style', 'restyle_page']
+  const allAtOnce = ['set_font_size', 'set_font', 'set_text_style']
   const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
     ? [...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action)).map(c => ({ action: c.action,
         args: { ...c.args, pages: pendingAtStart.pages || [], page_named: true, whole_deck_option: '' } })),
@@ -3194,8 +3028,6 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
         brief: s.brief || undefined,
-        // ChatSlide's templates a page can be rebuilt with: on paid plans, as the redesign it stands in for
-        restyle: (chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced) ? hostSteps()?.restyleOptions?.() : undefined,
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),
       }),
       headers: { 'Content-Type': 'application/json' },
@@ -3514,7 +3346,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // "we can change and ask a follow-up question"). "Add historical images" / "too much text" changed one page silently.
   // edit_page has its own offer (whole_deck_option, set by the router when the request could mean the deck): adding facts
   // to one slide got a pointless 'the same on the other pages?' (2026-11-11). set_background: one pass per message
-  const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'set_text_style', 'remove_images', 'restyle_page']
+  const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'set_text_style', 'remove_images']
   let followUp = ''
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
   if ((unfinished || round === rounds) && !askedThisTurn) {
@@ -3575,8 +3407,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
 // run), else what was wrong, in one sentence for the second attempt
 const checkTurn = async (text: string, was: Slide[], reply: string) => {
   const texts = (sl: Slide) => sl.elements.map(elText).filter(Boolean).join(' | ').slice(0, 700)
-  // a page rebuilt with a template: its own pictures are counted, not the full-page artwork of the design it had
-  const shown = (sl: Slide, own = false) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image' && !(own && isBackdrop(e))).length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
+  const shown = (sl: Slide) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
   const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
   const now = new Set(slides.value.map(x => x.id))
   const lines: string[] = []
@@ -3584,8 +3415,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string) => {
     const o = old.get(x.id)
     if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
     else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${texts(x).slice(0, 120)}`)
-    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, restyledThisTurn.has(x.id))}\n  after: ${shown(x, restyledThisTurn.has(x.id))}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${restyledThisTurn.has(x.id)
-      ? '\n  (this page was rebuilt with a designed ChatSlide template: new artwork, fonts and layout, its own words and pictures kept; the 1, 2, 3 beside the points are the layout\'s own numbers)' : ''}`)
+    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
   })
   was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
   const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, 300)}`).join('\n')
@@ -3723,22 +3553,18 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 // On first open the pages come from ChatSlide's PowerPoint build, whose boxes have the template's sizes: longer text ran
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
 // the next element; when that is not room enough its type shrinks (never under 60%).
-const fitOverflow = (only?: Set<string>) => withRenderer(async () => {
+const fitOverflow = () => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
-    let again = only || new Set(slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
-    // A page just rebuilt with a template (only): its type shrinks round by round until the words fit, down to the same
-    // 60% in all; a box's shrinking so far is kept here
-    const shrunk = new Map<string, number>()
-    for (let round = 0; round < (only ? 6 : 3) && again.size; round++) {
+    let again = new Set(slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
+    for (let round = 0; round < 3 && again.size; round++) {
       const pages = slides.value.filter(x => again.has(x.id))
       toRender.value = JSON.parse(JSON.stringify(pages))
       await nextTick()
       await new Promise(r => setTimeout(r, 400))
       again = new Set()
       for (const sl of pages) {
-        const words: { e: any, need: number }[] = [] // each text box with the height its words take
         for (const e of sl.elements as any[]) {
           if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
           const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
@@ -3746,56 +3572,23 @@ const fitOverflow = (only?: Set<string>) => withRenderer(async () => {
           if (!node || !box) continue
           const pad = parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
           const need = node.offsetHeight + pad
-          words.push({ e, need })
           if (need <= e.height + 2) continue
           // what it would run into: anything under it in its columns, except a band that sits behind other elements
           // (one that starts below this box's top: a picture already under its lower edge counts)
           const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top > e.top + 4 && o.left < e.left + e.width && o.left + o.width > e.left
             && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
           const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
-          const so = only ? shrunk.get(e.id) || 1 : 1
-          if (room <= 8 || (room <= e.height + 2 && round && (!only || so <= 0.6))) continue // off the slide, or nowhere to grow and already shrunk once
+          if (room <= 8 || (room <= e.height + 2 && round)) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
-            const k = Math.max(0.6 / so, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            shrunk.set(e.id, so * k)
+            const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
             props.text = { ...e.text, content: String(e.text.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, Math.round(Number(v) * k * 10) / 10)}px`) }
           }
           slidesStore.updateElement({ id: e.id, props, slideId: sl.id })
           again.add(sl.id)
         }
-        // A page just rebuilt with a template: a line the layout places inside a taller box (the line under a cover's
-        // title) moves under that box's words when they reach it (a two-line title ran through it).
-        if (!only || again.has(sl.id)) continue
-        for (const { e: a, need } of words) {
-          if (a.text.align !== 'top') continue
-          const hit = words.map(w => w.e).find(b => b.top > a.top + 4 && b.top < a.top + need - 4 && b.top + b.height <= a.top + a.height + 4 && b.left < a.left + a.width && b.left + b.width > a.left)
-          if (!hit) continue
-          slidesStore.updateElement({ id: hit.id, props: { top: a.top + need + 6 }, slideId: sl.id })
-          again.add(sl.id)
-          break
-        }
       }
     }
-    // the pages just rebuilt whose words still do not fit: a box smaller than its words, or words past the page's edge
-    const off = new Set<string>()
-    if (only) {
-      const pages = slides.value.filter(x => only.has(x.id))
-      toRender.value = JSON.parse(JSON.stringify(pages))
-      await nextTick()
-      await new Promise(r => setTimeout(r, 400))
-      for (const sl of pages) {
-        for (const e of sl.elements as any[]) {
-          if (e.type !== 'shape' || !plain(e.text?.content) || e.rotate) continue
-          const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
-          const box = node?.parentElement
-          if (!node || !box) continue
-          const need = node.offsetHeight + parseFloat(getComputedStyle(box).paddingTop) + parseFloat(getComputedStyle(box).paddingBottom)
-          if (need > e.height + 4 || e.top + (e.text.align === 'top' ? need : (e.height + need) / 2) > H + 2) off.add(sl.id)
-        }
-      }
-    }
-    return off
   }
   finally {
     toRender.value = []

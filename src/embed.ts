@@ -40,15 +40,7 @@ export interface ChatSlideHost {
   askFiles?: (question: string) => Promise<{ answer: string, source: string } | null>
   // AI picture through ChatSlide's image route (its credits, gates and moderation); { src } or { error }
   generateImage?: (prompt: string, aspectRatio: '16:9' | '9:16') => Promise<{ src?: string, error?: string }>
-  // ChatSlide's own templates, for rebuilding a page with one: what can be chosen (own = the palette this project was
-  // made with, on its template) ...
-  restyleOptions?: () => { templates: { name: string, label: string, art: boolean, palettes: string[], own?: string }[], layouts: { name: string, fits: string }[] }
-  // ... and page `page` (1-based) as a one-page .pptx (blob: URL): the template's design and layout ('' = the one that
-  // fits) holding this text, these pictures (links, each with its width / height on the page) and the page's own
-  // full-page photo ('' = none). null when it cannot be built
-  restyle?: (page: number, look: { template: string, palette: string, layout: string, texts: RestyleTexts, images: { src: string, ratio: number }[], photo: string }) => Promise<string | null>
 }
-export interface RestyleTexts { title: string, items: { heading: string, text: string }[] }
 
 // The Share button (desktop and phone bars): the editor had none, so shares fell to zero at launch (2026-11-10).
 export async function shareDeck(t: (k: string, v?: Record<string, string | number>) => string, say: (text: string) => void) {

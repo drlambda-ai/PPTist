@@ -1258,14 +1258,5 @@
   "your original request": "ваш исходный запрос",
   "Upgrade to the advanced model": "Перейти на продвинутую модель",
   "Put the earlier picture back on page {p0}.": "Прежнее изображение возвращено на слайд {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Прежнего изображения слайда {p0} у меня больше нет. Прикрепите его, и я верну его на место, или скажите, что на нём изображено, и я подберу похожее.",
-  "That template is not one of ChatSlide's: {p0}.": "Этот шаблон не из ChatSlide: {p0}.",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "В ChatSlide шаблоны рассчитаны на слайды формата 16:9. В этой презентации используется другой формат слайдов, поэтому пересобрать её с помощью шаблона нельзя.",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "Слайд {p0} оставлен без изменений: он состоит из одного изображения без собственного текста, который можно поместить в шаблон.",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "Слайд {p0} оставлен без изменений: на нём есть диаграмма, таблица или схема, для которых нет места в шаблоне.",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "Слайд {p0} оставлен без изменений: весь слайд занимает фотография.",
-  "Rebuilding page {p0} with the template…": "Пересобираем слайд {p0} с помощью шаблона…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "Слайд {p0} оставлен без изменений: не весь его текст удалось перенести в этот шаблон.",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Все слайды пересобраны с помощью шаблона \"{p0}\": тот же текст и изображения в его дизайне и макетах.",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "Слайд {p0} пересобран с помощью шаблона \"{p1}\": тот же текст и изображения в его дизайне и макете."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Прежнего изображения слайда {p0} у меня больше нет. Прикрепите его, и я верну его на место, или скажите, что на нём изображено, и я подберу похожее."
 }

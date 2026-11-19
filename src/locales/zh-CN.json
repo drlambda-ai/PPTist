@@ -1258,14 +1258,5 @@
   "your original request": "你最初的要求",
   "Upgrade to the advanced model": "升级到高级模型",
   "Put the earlier picture back on page {p0}.": "已将之前的图片恢复到第 {p0} 页。",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "我已没有第 {p0} 页之前的那张图片。请把它作为附件发来，我会放回去；或者告诉我图片内容，我来找一张相似的。",
-  "That template is not one of ChatSlide's: {p0}.": "该模板不是 ChatSlide 的模板：{p0}。",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "ChatSlide 的模板适用于 16:9 页面，而此演示文稿的幻灯片比例不同，因此无法用该模板重建页面。",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "第 {p0} 页保持原样：它只有一张图片，没有可放入模板的文本。",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "第 {p0} 页保持原样：它包含图表、表格或示意图，模板页面无法容纳。",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "第 {p0} 页保持原样：它使用了自己的整页照片设计。",
-  "Rebuilding page {p0} with the template…": "正在用模板重建第 {p0} 页…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "第 {p0} 页保持原样：无法将其中的所有文本都放入该模板。",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "已使用“{p0}”模板重建所有页面：保留了相同的文本和图片，并应用了该模板的设计和布局。",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "已使用“{p1}”模板重建第 {p0} 页：保留了相同的文本和图片，并应用了该模板的设计和布局。"
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "我已没有第 {p0} 页之前的那张图片。请把它作为附件发来，我会放回去；或者告诉我图片内容，我来找一张相似的。"
 }

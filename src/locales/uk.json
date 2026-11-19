@@ -1258,14 +1258,5 @@
   "your original request": "ваш початковий запит",
   "Upgrade to the advanced model": "Перейти на розширену модель",
   "Put the earlier picture back on page {p0}.": "Попереднє зображення повернено на слайд {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Попереднього зображення слайда {p0} у мене більше немає. Прикріпіть його, і я поверну його на місце, або скажіть, що на ньому зображено, і я підберу схоже.",
-  "That template is not one of ChatSlide's: {p0}.": "Цього шаблону немає серед шаблонів ChatSlide: {p0}.",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Шаблони ChatSlide — це сторінки у форматі 16:9, а формат слайдів у цій презентації інший, тому перебудувати її сторінки за допомогою шаблону неможливо.",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "Слайд {p0} залишено без змін: це одне зображення без власного тексту, який можна було б додати до шаблону.",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "Слайд {p0} залишено без змін: на ньому є діаграма, таблиця або схема, для яких у шаблоні немає місця.",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "Слайд {p0} залишено без змін: його дизайн — це повноформатне фото.",
-  "Rebuilding page {p0} with the template…": "Перебудова слайда {p0} за шаблоном…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "Слайд {p0} залишено без змін: не весь його текст вдалося перенести до цього шаблону.",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Усі слайди перебудовано за шаблоном \"{p0}\": той самий текст і зображення в його дизайні та макетах.",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "Слайд {p0} перебудовано за шаблоном \"{p1}\": той самий текст і зображення в його дизайні та макеті."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Попереднього зображення слайда {p0} у мене більше немає. Прикріпіть його, і я поверну його на місце, або скажіть, що на ньому зображено, і я підберу схоже."
 }

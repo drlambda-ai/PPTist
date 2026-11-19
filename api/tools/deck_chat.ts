@@ -131,14 +131,6 @@ const TOOLS = [
     colors: { type: 'array', items: { type: 'string' }, description: '6 accent colours #RRGGBB' },
     font: { type: 'string', description: 'A font family ONLY if the user asked for a font or typeface; else "" (keeps the fonts they have)' },
   }, ['pages', 'background', 'font_color', 'colors', 'font']),
-  fn('restyle_page', 'Rebuild pages with one of ChatSlide\'s designed templates (listed under "Page templates" below the deck): each page keeps its own words and pictures and gets that template\'s artwork, fonts and a layout that fits them. For a wish about how pages LOOK as a whole, with no concrete change named: "make it more creative / more atmospheric / more attractive / more professional", "I don\'t like the design", "improve the design", "redesign slide 8 so it is as full as the others", "change the layout", "another design", "make all slides one style". Never for a colour, font, size, background, picture or wording the user names (those have their own tools), and never when the user asks for a theme or colours (apply_theme).', {
-    pages: { ...pages, description: 'The pages to rebuild: the ones the user names, else the page they are looking at; [] with whole_deck true' },
-    whole_deck: { type: 'boolean', description: 'true when the wish is about the presentation or all slides ("make the presentation more atmospheric", "all slides one style"); false for "this slide" or named pages' },
-    template: { type: 'string', description: 'A template name exactly as listed under "Page templates": the one whose look fits the wish and the deck\'s topic (one marked "art" for creative, atmospheric, fun or attractive). To match the rest of the deck ("like the other slides") the one marked as this deck\'s own, when one is. Asked again ("another one", "I don\'t like it") -> a different template than the one the last reply names' },
-    palette: { type: 'string', description: 'One of that template\'s palettes as listed, or "" for its usual one' },
-    layout: { type: 'string', description: 'A layout name as listed, ONLY when the user asks for another layout or arrangement; else "" (the editor picks the one that fits the page\'s text and pictures)' },
-    instruction: { type: 'string', description: 'The user\'s wish for the look, in English' },
-  }, ['pages', 'whole_deck', 'template', 'palette', 'layout', 'instruction']),
   fn('use_file_look', 'Give the deck the colours and/or the logo OF the user\'s own presentation file (a .pptx listed under "Attached files"): "use the colour and logo of my previous presentation", "make it look like my original slides", "keep my corporate design", "take the logo from my file". Done directly, keeps the wording. Never ask the user to attach a file that is listed.', {
     file: { type: 'string', description: 'The .pptx file name exactly as listed' },
     colors: { type: 'boolean', description: 'true when they want its colours, design or look (also when they just say "like my presentation")' },
@@ -563,16 +555,6 @@ Rules:
    A complaint about a QUALITY names the problem to fix, not the instruction ("muy superficial, sin datos" -> add depth
    and figures from the material; "too much text" -> shorten); fix only what it names, on the page(s) it names.`
 
-// With ChatSlide's templates on hand (a user who may use them), restyle_page and its rule join the prompt. Without
-// them the router gets the tools and rules it had before, to the byte: told "never restyle_page when no templates are
-// listed", it told a free user that no templates were listed (replay 2026-11-20).
-const RESTYLE = `
-9. "Page templates" are listed below the deck: a wish for a better, different, more creative, more atmospheric or more
-   professional DESIGN, or another layout, with no colour or theme named -> restyle_page (never edit_page with redesign,
-   never apply_theme for it, never ask_user); a theme or colours by name stay apply_theme.`
-const prompt = (restyle: boolean) => ({ system: restyle ? SYSTEM + RESTYLE : SYSTEM, tools: restyle ? TOOLS : TOOLS.filter((t: any) => t.function.name !== 'restyle_page') })
-type Prompt = ReturnType<typeof prompt>
-
 const parseArgs = (raw: any) => {
   if (raw && typeof raw === 'object') return raw
   try {
@@ -606,13 +588,13 @@ const keepLanguage = async (calls: any[]) => {
   }
 }
 
-const viaOpenAI = async ({ system, tools }: Prompt, model: string, context: string, history: any[], user: string) => {
+const viaOpenAI = async (model: string, context: string, history: any[], user: string) => {
   const r = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
-      model, tools, tool_choice: 'required', parallel_tool_calls: false,
-      messages: [{ role: 'system', content: system }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }],
+      model, tools: TOOLS, tool_choice: 'required', parallel_tool_calls: false,
+      messages: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }],
     }),
   })
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
@@ -639,7 +621,7 @@ const asCall = (d: string): { name: string, args: string, result: string } | nul
 }
 
 // gpt-6.x: function tools with reasoning are only served by the Responses API
-const viaResponses = async ({ system, tools }: Prompt, model: string, context: string, history: any[], user: string, done: string[] = []) => {
+const viaResponses = async (model: string, context: string, history: any[], user: string, done: string[] = []) => {
   // A real tool loop: the steps already run are the model's own tool calls and their results, and after a step the
   // model may answer in plain text, which ends the message. As a "Done so far" text list with a tool call forced every
   // round, the router proposed a step it had just run in 34 of 100 replayed real conversations (client guards then
@@ -656,8 +638,8 @@ const viaResponses = async ({ system, tools }: Prompt, model: string, context: s
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getKey()}` },
     body: JSON.stringify({
       model, reasoning: { effort: 'low' }, tool_choice: ranSomething ? 'auto' : 'required', parallel_tool_calls: false,
-      tools: tools.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
-      input: [{ role: 'system', content: system }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }, ...steps],
+      tools: TOOLS.map((t: any) => ({ type: 'function', name: t.function.name, description: t.function.description, parameters: t.function.parameters })),
+      input: [{ role: 'system', content: SYSTEM }, { role: 'system', content: context }, ...history.slice(-6), { role: 'user', content: user }, ...steps],
     }),
   })
   if (!r.ok) throw new Error(`OpenAI ${r.status}: ${await r.text()}`)
@@ -672,12 +654,12 @@ const viaResponses = async ({ system, tools }: Prompt, model: string, context: s
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
-const viaAnthropic = async ({ system, tools: all }: Prompt, model: string, context: string, history: any[], user: string) => {
+const viaAnthropic = async (model: string, context: string, history: any[], user: string) => {
   const key = process.env.ANTHROPIC_API_KEY
   if (!key) throw new Error('ANTHROPIC_API_KEY not set')
-  const tools = all.map((t: any, i: number) => ({
+  const tools = TOOLS.map((t: any, i: number) => ({
     name: t.function.name, description: t.function.description, input_schema: t.function.parameters,
-    ...(i === all.length - 1 ? { cache_control: { type: 'ephemeral' } } : {}),
+    ...(i === TOOLS.length - 1 ? { cache_control: { type: 'ephemeral' } } : {}),
   }))
   // turns must alternate user/assistant and start with the user
   const turns = history.slice(-6).filter((h: any) => h?.content).reduce((acc: any[], h: any) => {
@@ -694,7 +676,7 @@ const viaAnthropic = async ({ system, tools: all }: Prompt, model: string, conte
     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({
       model, max_tokens: 2048, tools, tool_choice: { type: 'auto', disable_parallel_tool_use: true }, // some Claude models refuse a forced tool choice
-      system: [{ type: 'text', text: `${system}\nAlways respond by calling exactly one tool.`, cache_control: { type: 'ephemeral' } }],
+      system: [{ type: 'text', text: `${SYSTEM}\nAlways respond by calling exactly one tool.`, cache_control: { type: 'ephemeral' } }],
       messages: turns,
     }),
   })
@@ -798,15 +780,11 @@ async function handler(req: any, res: any) {
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
-    // ChatSlide's own templates (the host lists them, for a user who may use them): restyle_page rebuilds pages with one
-    const look = body.restyle && Array.isArray(body.restyle.templates) && body.restyle.templates.length ? body.restyle : null
-    const templates = look ? `\n\nPage templates (for restyle_page): ${look.templates.slice(0, 40).map((x: any) => `${String(x.name).slice(0, 40)} ("${String(x.label).slice(0, 40)}"${x.art ? ', art' : ''}${x.own ? `, this deck's own, palette ${String(x.own).slice(0, 30)}` : ''}; palettes: ${(x.palettes || []).slice(0, 8).map((q: any) => String(q).slice(0, 30)).join(', ')})`).join('; ')}`
-        + `\nLayouts: ${(look.layouts || []).slice(0, 20).map((x: any) => `${String(x.name).slice(0, 40)} (${String(x.fits).slice(0, 80)})`).join('; ')}` : ''
     const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now.${grown} The user is looking at page ${current}. ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`
-      : ''}\n\nDeck:\n${deck}${fileList}${briefFile}${briefText}${templates}`
+      : ''}\n\nDeck:\n${deck}${fileList}${briefFile}${briefText}`
     // per-request model choice is for side-by-side tests only, never in production
     const model = process.env.VERCEL_ENV !== 'production' && ALLOWED.includes(body.model) ? body.model : MODEL
     // "Add more colors" after a question about another request got the question again (2026-11-14): a message that
@@ -815,10 +793,9 @@ async function handler(req: any, res: any) {
       ? `. Already done for it (do not repeat; do what is left): ${body.pending.done.map((d: unknown) => String(d).slice(0, 200)).join(' | ').slice(0, 4000)}` : ''}]` : ''
     const doneText = done.length ? `\n\nDone so far:\n${done.map((d: string, i: number) => `${i + 1}. ${d}`).join('\n')}` : ''
     const user = instruction + pending + doneText
-    const with_ = prompt(!!look)
-    const route = (m: string) => m.startsWith('claude') ? viaAnthropic(with_, m, context, history, user)
-      : m.startsWith('gpt-6') ? viaResponses(with_, m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Go through the message part by part (every change asked for, and every question asked): call the next tool for the first part that no step below has done or answered yet (a question is answered with answer_question). Only when no part is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
-      : viaOpenAI(with_, m, context, history, user)
+    const route = (m: string) => m.startsWith('claude') ? viaAnthropic(m, context, history, user)
+      : m.startsWith('gpt-6') ? viaResponses(m, context, history, instruction + pending + (done.length ? '\n\n("Done so far" = the tool calls below and their results: the steps already run for this message, on the deck as it is now. Go through the message part by part (every change asked for, and every question asked): call the next tool for the first part that no step below has done or answered yet (a question is answered with answer_question). Only when no part is left, answer with the single word DONE and no tool call. If a part was not done and cannot be, call finish and say which in not_done.)' : ''), done)
+      : viaOpenAI(m, context, history, user)
     // routing fallback when Anthropic is unavailable: the cheap model by default (Quanlai, 2026-11-02: cost first);
     // ROUTER_FALLBACK_MODEL=gpt-6.1-sol routes better (164/220 vs Haiku 157 on the real-prompt eval) at ~10x the price
     const calls = await route(model).catch(e => {

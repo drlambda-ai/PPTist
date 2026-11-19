@@ -20,10 +20,5 @@ window.__chatslide = {
   // ?versions=a.json,b.json: the deck's saved copies, newest first (decks/ files), one hour apart (&step=24: a day)
   ...(q.get('versions') ? { versions: async () => q.get('versions').split(',').map((f, k) => ({ url: location.origin + '/decks/' + f, at: new Date(Date.now() - k * (Number(q.get('step')) || 1) * 3600e3).toISOString() })) } : {}),
 }
-// ?restyle=1: ChatSlide's templates, through the app's own restyle code (serve.sh with E2E_APP bundles it)
-if (q.get('restyle')) document.write('<script src="app-restyle.js"><\/script>')
-</script>
-<script>
-if (window.__appRestyle) Object.assign(window.__chatslide, { restyleOptions: () => window.__appRestyle.restyleOptions(), restyle: async (page, look) => { const b = await window.__appRestyle.restylePptx(page, look); return b ? URL.createObjectURL(b) : null } })
 </script>
 <iframe src="index.html"></iframe></body></html>

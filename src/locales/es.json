@@ -1258,14 +1258,5 @@
   "your original request": "tu solicitud original",
   "Upgrade to the advanced model": "Pasar al modelo avanzado",
   "Put the earlier picture back on page {p0}.": "Se restauró la imagen anterior en la diapositiva {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Ya no tengo la imagen anterior de la diapositiva {p0}. Adjúntala y la volveré a poner, o dime qué muestra y buscaré una parecida.",
-  "That template is not one of ChatSlide's: {p0}.": "Esa plantilla no es de ChatSlide: {p0}.",
-  "ChatSlide's templates are 16:9 pages, and this deck has another slide shape, so its pages cannot be rebuilt with one.": "Las plantillas de ChatSlide son para diapositivas 16:9, y esta presentación tiene otro formato, así que no se pueden reconstruir sus diapositivas con una de ellas.",
-  "Page {p0} was left as it is: it is one picture with no text of its own to put into a template.": "La diapositiva {p0} se dejó como está: es una imagen sin texto propio que se pueda colocar en una plantilla.",
-  "Page {p0} was left as it is: it holds a chart, a table or a diagram, which a template page has no place for.": "La diapositiva {p0} se dejó como está: contiene un gráfico, una tabla o un diagrama, que no caben en una diapositiva de plantilla.",
-  "Page {p0} was left as it is: its design is its own full-page photo.": "La diapositiva {p0} se dejó como está: su diseño es una foto que ocupa toda la diapositiva.",
-  "Rebuilding page {p0} with the template…": "Reconstruyendo la diapositiva {p0} con la plantilla…",
-  "Page {p0} was left as it is: not all of its text could be carried into that template.": "La diapositiva {p0} se dejó como está: no se pudo trasladar todo su texto a esa plantilla.",
-  "Rebuilt every page with the \"{p0}\" template: the same text and pictures in its design and layouts.": "Se reconstruyeron todas las diapositivas con la plantilla \"{p0}\": el mismo texto e imágenes en su diseño y diseños de diapositiva.",
-  "Rebuilt page {p0} with the \"{p1}\" template: the same text and pictures in its design and layout.": "Se reconstruyó la diapositiva {p0} con la plantilla \"{p1}\": el mismo texto e imágenes en su diseño y diseño de diapositiva."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Ya no tengo la imagen anterior de la diapositiva {p0}. Adjúntala y la volveré a poner, o dime qué muestra y buscaré una parecida."
 }
