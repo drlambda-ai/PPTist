@@ -3559,7 +3559,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // nor when putting an earlier picture back was all the message did: the check sees a page's texts and picture
   // count, so "no change"
   if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0))) {
-    const problem = await checkTurn(text, startSlides, reply)
+    const problem = await checkTurn(text, startSlides, reply, pendingAtStart)
     if (problem) {
       slidesStore.setSlides(startSlides)
       slidesStore.setTheme(startTheme)
@@ -3587,26 +3587,41 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
 
 // What a turn did, read by a small model against the message: '' when it did what was asked (or the check could not
 // run), else what was wrong, in one sentence for the second attempt
-const checkTurn = async (text: string, was: Slide[], reply: string) => {
-  const texts = (sl: Slide) => sl.elements.map(elText).filter(Boolean).join(' | ').slice(0, 700)
+// It is given what the router had. Without the slide count asked for when the deck was made it called "25 slides were
+// asked, 15 are missing" an invented claim; without the pasted 21-slide plan that a question's answer continued it called
+// that plan's speaker notes unasked; and it could not see a background picture being hidden ("the orange patches are
+// not confirmed removed"). Each undid a right turn and ran it again: 9 of its 12 rejections in two replays of 11 real
+// turns (2026-11-20), one of them a 21-page build written twice
+const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending) => {
+  // a page's text is cut to the room there is, and the cut is marked: cut bare, at 700 characters a page and 7,000 in
+  // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
+  const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
+  const room = Math.max(120, Math.min(700, Math.floor(6000 / Math.max(1, differ))))
+  const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… (cut here for length: the rest is there, not shown)` : t)
+  const texts = (sl: Slide) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
   const shown = (sl: Slide) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
   const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
   const now = new Set(slides.value.map(x => x.id))
+  const hidden = (sl: Slide) => sl.elements.filter((e: any) => e.type === 'image' && isBackdrop(e) && e.filters?.opacity === '0%').length
   const lines: string[] = []
   slides.value.forEach((x, k) => {
     const o = old.get(x.id)
     if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
-    else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${texts(x).slice(0, 120)}`)
-    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
+    else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x), 120)}`)
+    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
   })
   was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
-  const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, 300)}`).join('\n')
+  const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, m.role === 'user' ? 6000 : 300)}`).join('\n')
+  // only the count: given the request's text too, it held "there are no pictures" to the schematic drawings that text
+  // asked for, and the second attempt put AI pictures on all ten pages (replay 2026-11-20)
+  const made = s.brief?.pages ? `When the deck was made the user asked for ${s.brief.pages} slides.\n` : ''
+  const answers = pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(String(pending.request || '').slice(0, 6000))}: that request is what was asked.\n` : ''
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
-    `You check an AI slide editor's work on one chat message.\nEarlier conversation:\n${earlier || '(none)'}\n`
+    `You check an AI slide editor's work on one chat message.\n${made}Earlier conversation:\n${earlier || '(none)'}\n${answers}`
     + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
-    + `What changed in the deck:\n${lines.join('\n').slice(0, 7000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
+    + `What changed in the deck:\n${cut(lines.join('\n'), 9000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
     + 'Did it do what the message asks: the right pages, every part asked, nothing the user did not ask for, and does the reply say truthfully what was done? '
-    + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change. '
+    + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it. '
     + 'Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \"\" when ok>"}.' }) }).catch(() => null)
   const v = r?.ok ? await r.json().catch(() => null) : null
   return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
