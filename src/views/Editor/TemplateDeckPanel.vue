@@ -1358,9 +1358,18 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const ratio = await imageRatio(src), frame = el.width / el.height
   const keep = ratio ? Math.min(1, frame / ratio) * 100 : 100, keepH = ratio ? Math.min(1, ratio / frame) * 100 : 100
   const clip = { shape: el.clip?.shape || 'rect', range: [[(100 - keep) / 2, (100 - keepH) / 2], [(100 + keep) / 2, (100 + keepH) / 2]] }
-  keepPic(el)
-  slidesStore.updateElement({ id: el.id, props: { src, clip } as any, slideId })
-  s.pics = { ...s.pics, [el.id]: query }
+  // another full-slide picture showing the very same photo (set_background puts it on each of them) is that photo too:
+  // replaced alone, the copy above it hid the new one and "Replaced the background picture" showed nothing new (nurse
+  // deck, replayed 2026-11-20)
+  const old = el.src
+  const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === old) : []
+  for (const e of [el, ...copies]) {
+    keepPic(e)
+    slidesStore.updateElement({ id: e.id, props: { src, clip } as any, slideId })
+    s.pics = { ...s.pics, [e.id]: query }
+  }
+  // the slide's own background, the same photo, shows at the edges the picture does not reach
+  if (isBackdrop(el) && sl.background?.type === 'image' && sl.background.image?.src === old) slidesStore.updateSlide({ background: { ...sl.background, image: { ...sl.background.image, src } } }, slideId)
   if (isBackdrop(el)) showBackdrop(slideId, el.id)
   touched([slideId])
   return { note: pictureNote, backdrop: isBackdrop(el) }
@@ -2659,9 +2668,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const el = image === 0 ? firstBackdrop(sl) : pictures(sl)[Math.max(0, image - 1)]
       const was = el && s.was?.[el.id]?.[args.earlier - 1]
       if (el && was) {
-        keepPic(el)
-        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
-        s.pics = { ...s.pics, [el.id]: was.shows }
+        // its copies above it too (changeImage replaces them together), or they hide the picture put back
+        const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === el.src) : []
+        for (const e of [el, ...copies]) {
+          keepPic(e)
+          slidesStore.updateElement({ id: e.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
+          s.pics = { ...s.pics, [e.id]: was.shows }
+        }
         if (isBackdrop(el)) showBackdrop(id, el.id)
         touched([id])
         replacedThisTurn.add(`${id}:${image}`)
