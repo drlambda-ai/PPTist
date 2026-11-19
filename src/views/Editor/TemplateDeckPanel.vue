@@ -2759,7 +2759,9 @@ const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && 
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
 const deckTurn = async (text: string, again = ''): Promise<void> => {
-  const startSlides = JSON.parse(JSON.stringify(slides.value)), startS = JSON.parse(JSON.stringify(s)) // for a second attempt
+  // for a second attempt: the deck, its theme and page size, and the chat state
+  const startSlides = JSON.parse(JSON.stringify(slides.value)), startS = JSON.parse(JSON.stringify(s))
+  const startTheme = JSON.parse(JSON.stringify(slidesStore.theme)), startRatio = slidesStore.viewportRatio
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
   if (!again) newTurn() // a new message: charged on its own (a second attempt stays the same message)
   replyTurn = currentTurn()
@@ -2800,7 +2802,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   sitePaywalledPage = ''
   replacedThisTurn.clear()
   const pagesAtStart = slides.value.length
-  takeSpend() // spend from an earlier, failed turn never lands in this footnote
+  if (!again) takeSpend() // spend from an earlier, failed turn never lands in this footnote (a first attempt does)
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
@@ -3249,6 +3251,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     const problem = await checkTurn(text, startSlides, reply)
     if (problem) {
       slidesStore.setSlides(startSlides)
+      slidesStore.setTheme(startTheme)
+      slidesStore.setViewportRatio(startRatio)
+      lastGoodSlides = null // a failed retry must not bring the rejected attempt back
       for (const k of Object.keys(s)) if (!(k in startS)) delete (s as any)[k]
       Object.assign(s, startS)
       slidesStore.updateSlideIndex(Math.max(0, startSlides.findIndex((x: Slide) => x.id === startPageId)))
@@ -3279,6 +3284,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string) => {
   slides.value.forEach((x, k) => {
     const o = old.get(x.id)
     if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
+    else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${texts(x).slice(0, 120)}`)
     else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
   })
   was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
