@@ -116,6 +116,10 @@ interface Session {
   // what each picture the chat added or replaced shows (element id -> its search words): "the police photo" names one.
   // Without it every picture read "large image" and the router changed the page on screen, not page 6 (2026-11-13)
   pics?: Record<string, string>
+  // the pictures an image held before the chat replaced it (element id -> oldest first), listed for the router as
+  // "earlier pictures here": a user asked six times for "the first nurse image", got an Undo or a new stock photo each
+  // time, and uploaded it again herself (2026-11-16)
+  was?: Record<string, { src: string, clip: any, shows: string }[]>
   // turn: the chat message this reply answers (its x-turn-id); rating 1 up, 0 down; comment: sent with a thumbs-down
   history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string }[]
   versions: { spec: any, deckUrl: string, h: number }[]
@@ -535,7 +539,10 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
       const n = numbered.indexOf(e) + 1
-      if (!n) return e === backdrop ? '[image 0: background picture covering the whole slide]' : '[a see-through design layer covering the whole slide, not a picture]'
+      // numbered as change_image "earlier" takes them; the picture it shows now is not one to put back
+      const earlier = (s.was?.[e.id] || []).map((p, k) => (p.src === e.src ? '' : `${k + 1}${k ? '' : ' (the first)'}${p.shows ? ` "${p.shows.replace(/["\]]/g, '').slice(0, 40)}"` : ''}`)).filter(Boolean)
+      const had = earlier.length ? `, earlier pictures here (change_image "earlier" puts one back): ${earlier.join('; ')}` : ''
+      if (!n) return e === backdrop ? `[image 0: background picture covering the whole slide${had}]` : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
       const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
@@ -544,7 +551,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const attached = (s.images || []).find(m => m.url && m.url === e.src)
       const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
       const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].replace(/["\]]/g, '').slice(0, 60)}"` : ''
-      return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}]`
+      return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}${had}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
     const t = elText(e)
@@ -1233,6 +1240,14 @@ const imageRatio = (src: string) => new Promise<number>((ok) => {
   im.src = src
 })
 
+// the picture an image holds goes on its list before the chat replaces it
+const keepPic = (el: any) => {
+  const list = [...(s.was?.[el.id] || [])]
+  if (list.some(p => p.src === el.src)) return
+  list.push({ src: el.src, clip: el.clip, shows: s.pics?.[el.id] || '' })
+  if (list.length > 5) list.splice(1, 1) // the first one stays: it is the one users ask for
+  s.was = { ...s.was, [el.id]: list }
+}
 const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
   const sl = slides.value.find(x => x.id === slideId)
   // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
@@ -1244,6 +1259,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   const ratio = await imageRatio(src), frame = el.width / el.height
   const keep = ratio ? Math.min(1, frame / ratio) * 100 : 100, keepH = ratio ? Math.min(1, ratio / frame) * 100 : 100
   const clip = { shape: el.clip?.shape || 'rect', range: [[(100 - keep) / 2, (100 - keepH) / 2], [(100 + keep) / 2, (100 + keepH) / 2]] }
+  keepPic(el)
   slidesStore.updateElement({ id: el.id, props: { src, clip } as any, slideId })
   s.pics = { ...s.pics, [el.id]: query }
   if (isBackdrop(el)) showBackdrop(slideId, el.id)
@@ -2371,6 +2387,27 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // ("insert real photos of X" swapped the background)
     // the page is one flat picture: the pictures the user sees are inside it, and replacing it would replace the page
     if (isFlat(sl) && !args.wants_additional_picture) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: pos(id) + 1 }))
+    // an earlier picture of this image, back as it was: nothing is searched
+    if (args.earlier > 0) {
+      const el = image === 0 ? firstBackdrop(sl) : pictures(sl)[Math.max(0, image - 1)]
+      const was = el && s.was?.[el.id]?.[args.earlier - 1]
+      if (el && was) {
+        keepPic(el)
+        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
+        s.pics = { ...s.pics, [el.id]: was.shows }
+        if (isBackdrop(el)) showBackdrop(id, el.id)
+        touched([id])
+        replacedThisTurn.add(`${id}:${image}`)
+        slidesStore.updateSlideIndex(pos(id))
+        return t('Put the earlier picture back on page {p0}.', { p0: pos(id) + 1 })
+      }
+      // not kept (replaced before the editor kept them, or by hand): a search for what it showed, as before; with
+      // no words for that, said, never a guess passed off as it
+      if (!String(args.query || '').trim()) {
+        askedThisTurn = true
+        return t('I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.', { p0: pos(id) + 1 })
+      }
+    }
     // "replace the pictures on all slides" has nothing to replace on a page without one: no new picture there (eval
     // 2026-11-15 added pictures to the two pages that had none)
     if (args.every_page && !said && !content.length && !args.wants_additional_picture) return t('Page {p0} has no picture to replace.', { p0: pos(id) + 1 })
@@ -2733,6 +2770,8 @@ const renumber = () => {
 }
 
 let deckBeforeCreate: Slide[] | null = null
+let beforeLastChange = '' // the deck before the last message that changed it (JSON): where a chat Undo goes back to
+let undoSteps = 1 // editor steps that Undo took, for putting the change back
 // A new deck replaced the one in the editor: Undo (button or chat) puts that one back in a single step and keeps it
 // across reloads (marked edited, so the saved slides win over a built template version).
 const restoreDeckBeforeCreate = () => {
@@ -2770,8 +2809,6 @@ let directAllowed = false // true only while add_site_pictures places the pictur
 const usedBackgrounds = new Set<string>() // background photos already tried in this session: "again" never brings one back
 let tappedRestore = false // this message is the tap on a restore confirmation
 let turnSelected = '' // what was selected on the canvas when the message was sent
-let beforeLastChange = '' // the deck before the last message that changed it (JSON): where a chat Undo goes back to
-let undoSteps = 1 // editor steps that Undo took, for putting the change back
 let advancedOffered = false // the paid-model offer, shown once per session
 // the upgrade button: after every turn the advanced model would have done better, not only the one the paywall opened on
 const upgradeHint = ref(false)
@@ -3277,7 +3314,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // of 100 real conversations, 2026-11-19). A miss is undone and the message runs again, told what was wrong. Not after
   // a question, a step ChatSlide opened or confirms, or a new deck
   const own = ['talk_to_human', 'download_deck', 'share_deck', 'open_refund', 'open_step', 'open_design', 'version_history', 'undo', 'redo', 'restore_original', 'delete_pages', 'create_deck']
-  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action))) {
+  // nor after an earlier picture was put back: the check sees a page's texts and picture count, so "no change"
+  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action) || c.args?.earlier > 0)) {
     const problem = await checkTurn(text, startSlides, reply)
     if (problem) {
       slidesStore.setSlides(startSlides)
@@ -3292,6 +3330,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   }
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
+    beforeLastChange = JSON.stringify(startSlides)
     renumber()
     addHistorySnapshot()
     if (s.mode !== 'native') s.edited = true // a template deck or a deck opened in the editor: keep the edited copy
@@ -3330,7 +3369,6 @@ const checkTurn = async (text: string, was: Slide[], reply: string) => {
   return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
 
-    beforeLastChange = JSON.stringify(startSlides)
 // ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
 // arguments, result), so a complaint like "I don't see a change" can be traced to the edit before it. Never charged.
 const recordTurn = (message: string, reply: string, steps: string[], ok: boolean) => {

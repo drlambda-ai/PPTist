@@ -1253,5 +1253,7 @@
   "Placed your text on {p0} page(s).": "متن شما روی {p0} صفحه قرار گرفت.",
   "Page(s) {p0} were not changed.": "صفحه {p0} تغییر نکرد.",
   "your original request": "درخواست اولیه شما",
-  "Upgrade to the advanced model": "ارتقا به مدل پیشرفته"
+  "Upgrade to the advanced model": "ارتقا به مدل پیشرفته",
+  "Put the earlier picture back on page {p0}.": "تصویر قبلی به اسلاید {p0} برگردانده شد.",
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم."
 }

@@ -1253,5 +1253,7 @@
   "Placed your text on {p0} page(s).": "已將你的文字放到 {p0} 頁上。",
   "Page(s) {p0} were not changed.": "第 {p0} 頁未變更。",
   "your original request": "你最初的要求",
-  "Upgrade to the advanced model": "升級到進階模型"
+  "Upgrade to the advanced model": "升級到進階模型",
+  "Put the earlier picture back on page {p0}.": "已將先前的圖片還原到第 {p0} 頁。",
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "我已沒有第 {p0} 頁先前的那張圖片。請把它附上，我會放回去；或告訴我圖片內容，我來找一張相似的。"
 }

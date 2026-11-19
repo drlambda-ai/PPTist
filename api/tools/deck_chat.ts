@@ -150,6 +150,7 @@ const TOOLS = [
     every_page: { type: 'boolean', description: 'true when the user asked to replace the pictures on every / each / all slides ("replace the pictures on all slides"): one change_image per page, one per round, each on that page\'s own topic; the editor then lists the pages still to do; false otherwise' },
     image: { type: 'integer', description: 'Number of the image on that page as listed; 1 if there is only one. 0 = the background picture covering the whole slide, only when the user asks for the background picture' },
     query: { type: 'string', description: 'Search words (English; for wikimedia the exact name of the real thing) or the image-generation prompt' },
+    earlier: { type: 'integer', description: 'To put back a picture this image had before ("the first one", "the nurse picture you had", "the previous picture", "верни ту картинку", "ảnh cũ"): its number under that image\'s "earlier pictures here" (1 when the image lists none), and in query what that picture showed when the user says it ("nurse sitting with a patient"), else "": searched only if the editor no longer has the picture. 0 = a new picture' },
     source: { type: 'string', enum: ['photo', 'wikimedia', 'ai', 'attached'], description: SOURCE },
     page_named: { type: 'boolean', description: 'true if the user named the page, or asked for every/each/all/the other slides (in this message or the question it answers: one step per page, each naming its page); false ONLY for "this slide"/"here"/nothing' },
     said_background: { type: 'string', description: 'The user\'s own words that ask for the background, copied exactly as they wrote them ("фон", "nền", "背景", "background"), never words that describe a photo; "" when they do not ask for the background' },
@@ -159,7 +160,7 @@ const TOOLS = [
     asked_for_ai: { type: 'boolean', description: 'true ONLY when the user\'s own words ask for an AI-generated, drawn, cartoon or illustrated picture ("generate", "draw", "AI", "нарисуй", "vẽ"); "make/add/insert a picture" is false' },
     specific_thing: { type: 'string', description: 'When the picture must show one specific, named real thing that a look-alike would misrepresent: a person ("a photo of Daniel Stufflebeam", "Elon Musk"), a building or landmark ("the Sydney Opera House"), an artwork, a product model ("the iPhone 15"), an event, a named animal: its full, correctly spelled name. "" for anything a general photo can show (a doctor, a city at night, coffee beans, a laptop). It comes from Wikimedia only; with no match the user is asked to upload one.' },
     own_brand: { type: 'string', description: 'When the pictures must show ONE specific brand\'s, company\'s or product\'s own things (its products, shop, team, app screens): that brand\'s name, from the message or the deck. "" for anything a general photo can show.' },
-  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture', 'every_page']),
+  }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture', 'every_page', 'earlier']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
@@ -529,6 +530,11 @@ Rules:
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
    "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
+   Bring back / include / restore a picture that was there before ("the first picture", "the nurse picture that you
+   had", "the original image", "верни ту картинку") -> change_image with "earlier" on the image that lists "earlier
+   pictures here" (the first one when the words do not say which): that is the only step, never add_image, never a
+   new search, never undo. The picture they want back is not on the page now, so it is a listed earlier one: never
+   ask which. The editor says so itself when it no longer has the picture.
    "Keep / leave / don't touch slide N" ("оставь первый слайд", "giữ nguyên trang 1") -> that page gets no step at all in
    this message: no edit, no restyle, no added subtitle, however much the rest of the deck is redone.
    "The previous version / go back / как было / предыдущий вариант / revert" -> undo, never restore_original.

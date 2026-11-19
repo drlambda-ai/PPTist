@@ -1253,5 +1253,7 @@
   "Placed your text on {p0} page(s).": "Votre texte a été placé sur {p0} page(s).",
   "Page(s) {p0} were not changed.": "La ou les page(s) {p0} n’ont pas été modifiées.",
   "your original request": "votre demande initiale",
-  "Upgrade to the advanced model": "Passer au modèle avancé"
+  "Upgrade to the advanced model": "Passer au modèle avancé",
+  "Put the earlier picture back on page {p0}.": "L’image précédente a été remise sur la diapositive {p0}.",
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Je n’ai plus l’image précédente de la diapositive {p0}. Joignez-la et je la remettrai, ou dites-moi ce qu’elle montre et j’en trouverai une semblable."
 }

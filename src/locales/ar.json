@@ -1253,5 +1253,7 @@
   "Placed your text on {p0} page(s).": "تم وضع نصك على {p0} صفحة.",
   "Page(s) {p0} were not changed.": "لم تتغير الصفحة {p0}.",
   "your original request": "طلبك الأصلي",
-  "Upgrade to the advanced model": "الترقية إلى النموذج المتقدم"
+  "Upgrade to the advanced model": "الترقية إلى النموذج المتقدم",
+  "Put the earlier picture back on page {p0}.": "أُعيدت الصورة السابقة إلى الصفحة {p0}.",
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "لم تعد الصورة السابقة للصفحة {p0} متوفرة لديّ. أرفقها وسأعيدها، أو أخبرني بما تُظهره وسأجد صورة مشابهة."
 }
