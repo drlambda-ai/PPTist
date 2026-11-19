@@ -3285,7 +3285,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string) => {
     const o = old.get(x.id)
     if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
     else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${texts(x).slice(0, 120)}`)
-    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
+    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}`)
   })
   was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
   const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, 300)}`).join('\n')
