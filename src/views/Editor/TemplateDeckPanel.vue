@@ -3128,6 +3128,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
   let failed = 0 // steps of this message that failed
   let leftNudged = false // a not_done the router was sent back over, once per message
+  let wordsNudged = false // an answer that only offered the change asked for was sent back, once per message
   currentAtSend = startPageId || ''
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -3299,6 +3300,14 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       continue
     }
     if (!work.length) break
+    // an answer that only offers or promises the change the message asks for is sent back once, to be made: "there are
+    // 6 topics, why so little, is 10 slides the limit?" got "25 were asked, 15 are missing, shall I add them?" (4 of 4
+    // replays, 2026-11-20), and "I thought you would help" got "I will tidy the layout" and no change (2026-11-11)
+    if (!wordsNudged && !askedThisTurn && work.some((c: any) => c.action === 'answer_question' && c.args?.change_not_made === true)) {
+      wordsNudged = true
+      done.push(`not sent: your answer ("${String(work[0].args?.answer || '').slice(0, 300)}") only offers or promises a change the message asks for, and words leave the deck as it was. Make that change now with its tool, on the most likely reading (the user can undo). Answer in words only if no tool here can make it.`)
+      continue
+    }
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
     // the same page edited twice already this turn: a third pass is the router looping (seen: 7 edits of page 2)

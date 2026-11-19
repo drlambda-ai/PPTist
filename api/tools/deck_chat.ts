@@ -291,7 +291,8 @@ const TOOLS = [
   }, ['not_done', 'skipped_tools']),
   fn('answer_question', 'Answer a question about the deck or the editor without changing anything, or ask what the user means when the request is truly ambiguous.', {
     answer: { type: 'string', description: 'Only in the language and script of the user\'s message. A heading or line of a slide written in another language is given by its meaning in the user\'s language ("Project Overview"), without the original words: no "项目概览 (Project Overview)"' },
-  }, ['answer']),
+    change_not_made: { type: 'boolean', description: 'true when the message asks for a change to the deck (also by complaining, or by asking why something is missing or why there is so little), a tool here can make it, and this answer only describes, offers or promises it ("I can add the 15 missing slides", "Shall I add them?", "I will tidy the layout"); false for a question about the deck or the editor that asks for no change, small talk, and when two readings would change different things' },
+  }, ['answer', 'change_not_made']),
 ]
 
 // LANGUAGE: asked to write its instructions in the deck's language, the router wrote Spanish, German, Russian or
