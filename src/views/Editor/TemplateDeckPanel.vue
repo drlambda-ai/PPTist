@@ -130,7 +130,8 @@ interface Session {
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
   // offer: a button for an optional next step; it reaches the router only when the user taps it (an untouched offer
   // pulled the next, unrelated message onto its page, 2026-11-11). A question (ask_user) holds for any reply.
-  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  pending?: { request: string, question: string, options?: string[], done?: string[], offer?: boolean, localize?: boolean, repeat?: { action: string, args: any }[], pages?: number[], from?: number, like?: number } | null // an ask_user waiting for the user's answer; done: steps already run for it
+  shaped?: string[] // pages (ids) whose text look a message changed on that page alone: "the same on the other pages" then carries the page's look (pending.like)
   deleteAsked?: string[] // pages the user was asked to confirm deleting; only the next message can delete them
   savedVersions?: Record<string, string> // version history offered in the chat: button label -> that saved copy
 }
@@ -519,6 +520,30 @@ const pictures = (sl: Slide) => {
   const backdrop = firstBackdrop(sl)
   return content.length ? content : backdrop ? [backdrop] : []
 }
+// The text look of a page, for its title and for its body: the size of the main text (the longest), whether all of it
+// is bold, and its alignment when every paragraph has the same one. It is what "the same on the other pages" carries
+// from a page the user shaped over several messages (match_look); text under 9px (a watermark) is no part of it
+const lookHtml = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
+const lookSize = (e: any) => Math.max(0, ...[...lookHtml(e).matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1]))
+const lookTexts = (sl: Slide, title: boolean) => {
+  const marked = (e: any) => e.textType === 'title' || e.text?.type === 'title'
+  const first = sl.elements.some(marked) ? null : readingOrder(sl).find((e: any) => elText(e))
+  return (sl.elements as any[]).filter(e => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e) && lookSize(e) >= 9 && (marked(e) || e === first) === title)
+}
+const lookMain = (els: any[]) => els.reduce((a, e) => (elText(e).length > elText(a).length ? e : a), els[0])
+const textLook = (sl: Slide) => [true, false].map((title) => {
+  const els = lookTexts(sl, title)
+  if (!els.length) return null
+  const heavy = (x: Element | null): boolean => !!x && (/^(strong|b)$/i.test(x.tagName) || /bold|[6-9]00/.test((x as HTMLElement).style?.fontWeight || '') || heavy(x.parentElement))
+  const bodies = els.map(e => new DOMParser().parseFromString(lookHtml(e), 'text/html').body)
+  const bold = bodies.every((b) => {
+    const w = b.ownerDocument.createTreeWalker(b, NodeFilter.SHOW_TEXT)
+    for (let n = w.nextNode(); n; n = w.nextNode()) if ((n as Text).data.trim() && !heavy(n.parentElement)) return false
+    return true
+  })
+  const aligns = new Set(bodies.flatMap(b => Array.from(b.querySelectorAll<HTMLElement>('p, li')).map(p => p.style.textAlign)))
+  return { size: lookSize(lookMain(els)), bold, align: aligns.size === 1 ? [...aligns][0] : '' }
+})
 // One numbering everywhere (page list, selection, change_image, remove_images, "already replaced"): content pictures are
 // 1.., the full-slide picture 0; on a page with no content picture the lowest full-slide picture is 1, and 0 means it too
 // (counted as two pictures, the cover photo was replaced twice in one message).
@@ -2316,6 +2341,54 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched(targets)
     return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
+  // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
+  // messages: the other pages take that page's text look as it is now, not the last step again. A user centred,
+  // bolded and enlarged page 6 over three messages, said "smaller", tapped the button, and the nine other pages only
+  // shrank (2026-11-17). Each page's main title and body text go to that page's sizes, the rest in proportion, never
+  // past what the box and the free space under it hold; bold and alignment are copied when the whole of it has them
+  if (action === 'match_look') {
+    const src = slides.value[pos(idOf(args.from))]
+    const targets = nums(args.pages).filter((id: string) => id !== src.id)
+    const { width: W, height: H } = slideSize()
+    const want = textLook(src)
+    let n = 0
+    for (const id of targets) {
+      const sl = slides.value[pos(id)]
+      ;[true, false].forEach((title, r) => {
+        const look = want[r], els = lookTexts(sl, title)
+        if (!look || !els.length) return
+        // how far a box's text can grow: the room down to the next thing under it (as fitOverflow reads it), at about
+        // half an em a letter and a line and a half of height
+        const fits = (e: any) => {
+          const under = (sl.elements as any[]).filter(o => o.id !== e.id && o.top > e.top + 4 && o.left < e.left + e.width && o.left + o.width > e.left
+            && !(o.type === 'shape' && !elText(o) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
+          const room = Math.max(e.height, Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top)
+          const letters = [...elText(e)].reduce((a, ch) => a + (ch > '\u2e7f' ? 2 : 1), 0)
+          return Math.min(room / 1.5, Math.sqrt(Math.max(40, e.width - 20) * room / (0.9 * letters)))
+        }
+        // one factor for the page's title, one for its body, so its own text keeps its proportions: up to the other
+        // page's size, as far as every box holds it. A page with a title only (a cover, a closing page) keeps its sizes
+        const k = look.size / lookSize(lookMain(els))
+        const f = !lookTexts(sl, false).length ? 1 : k > 1 ? Math.min(k, ...els.map(e => Math.max(1, fits(e) / lookSize(e)))) : k
+        for (const e of els) {
+          const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html')
+          if (look.align) doc.body.querySelectorAll<HTMLElement>('p, li').forEach((p) => { p.style.textAlign = look.align })
+          const content = doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, v) => `font-size: ${Math.max(9, Math.round(+v * f))}px`)
+          if (content === lookHtml(e)) continue
+          if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content }, slideId: id })
+          else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content } }, slideId: id })
+          n++
+        }
+      })
+    }
+    for (const [r, scope] of ['titles', 'body'].entries()) {
+      if (want[r]?.bold) await runCall(text, 'set_text_style', { pages: targets.map((id: string) => pos(id) + 1), scope, phrase: '', color: '', bold: 'on', italic: 'same', underline: 'same' }, ids).then(() => n++).catch(() => undefined)
+    }
+    if (!n) fail(t('There is no such text to style there.'))
+    await fitOverflow().catch(() => undefined) // a box whose text still runs over grows into the free space or shrinks
+    touched(targets)
+    return t("Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.", { p0: pos(src.id) + 1, p1: targets.length })
+  }
   // The user's own text, page by page: each page gets only its part. Given the whole text, each page picked a part
   // itself and slide 3 took slide 2's (replayed 2026-11-18, 4 decks); one page edit at a time stopped after slide 1
   if (action === 'place_texts') {
@@ -3061,7 +3134,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // for 9 pages, and the user asked again (2026-11-17)
   const allAtOnce = ['set_font_size', 'set_font', 'set_text_style']
   const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
-    ? [...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action)).map(c => ({ action: c.action,
+    // from a page shaped over earlier messages (like): its look as it is now, in place of the last size step again
+    ? [...(pendingAtStart.like ? [{ action: 'match_look', args: { from: pendingAtStart.like, pages: pendingAtStart.pages || [] } }] : []),
+      ...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action) && !(pendingAtStart.like && c.action === 'set_font_size')).map(c => ({ action: c.action,
         args: { ...c.args, pages: pendingAtStart.pages || [], page_named: true, whole_deck_option: '' } })),
       ...(pendingAtStart.pages || []).flatMap(pg => pendingAtStart.repeat!.filter(c => !allAtOnce.includes(c.action)).map(c => ({ action: c.action,
         args: { ...c.args, index: pg, pages: [pg], page_named: true, whole_deck_option: '' } }))), { action: 'finish', args: { not_done: '' } }]
@@ -3431,6 +3506,12 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // to one slide got a pointless 'the same on the other pages?' (2026-11-11). set_background: one pass per message
   const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'set_text_style', 'remove_images']
   let followUp = ''
+  // a message that changed the text look of the page it was sent on, and no other page, shaped that page
+  const startNow = slides.value.find(x => x.id === startPageId), startWas = startSlides.find((x: Slide) => x.id === startPageId)
+  const shapedBefore = !!startPageId && !!s.shaped?.includes(startPageId)
+  if (changed && startNow && startWas && editedThisTurn.size === 1 && editedThisTurn.has(startNow.id) && JSON.stringify(textLook(startNow)) !== JSON.stringify(textLook(startWas))) {
+    s.shaped = [...new Set([...(s.shaped || []), startNow.id])].slice(-50)
+  }
   // more to do than one message runs (16 steps, one deck-wide pass of a kind): one tap continues, nothing is dropped
   if ((unfinished || round === rounds) && !askedThisTurn) {
     followUp = t('There is more to do from your message. Tap Continue and I will carry on.')
@@ -3445,7 +3526,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
     // the router learns which pages are left and what was done here, so it neither redoes this page nor skips one
     s.pending = { request: text, question: `${followUp} (the other pages: ${others.join(', ')})`, options: [t('Do the same on the other {p0} pages', { p0: others.length })], done: done.slice(-30), offer: true, localize: true,
-      repeat: ran.map(c => ({ action: c.action, args: c.args })), pages: others }
+      repeat: ran.map(c => ({ action: c.action, args: c.args })), pages: others,
+      like: shapedBefore && ran.every(c => allAtOnce.includes(c.action)) ? here : undefined }
     save()
   }
   const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine

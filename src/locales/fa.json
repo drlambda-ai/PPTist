@@ -1175,6 +1175,7 @@
   "Yes, delete them": "بله، حذفشان کن",
   "No, keep them": "نه، نگه‌شان دار",
   "Resized the text in {p0} text boxes across {p1} page(s).": "اندازهٔ متن در {p0} کادر متن در {p1} صفحه تغییر کرد.",
+  "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "به {p1} صفحه ظاهر متن صفحهٔ {p0} داده شد: اندازه‌های آن تا جایی که متن جا شود، پررنگی و ترازبندی آن.",
   "That page has no text to match.": "متنی برای تطبیق در آن صفحه وجود ندارد.",
   "Which picture on page {p0} should I change?": "کدام تصویر در صفحهٔ {p0} را باید تغییر دهم؟",
   "Picture {p0}": "تصویر {p0}",

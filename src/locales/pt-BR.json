@@ -1175,6 +1175,7 @@
   "Yes, delete them": "Sim, excluir",
   "No, keep them": "Não, manter",
   "Resized the text in {p0} text boxes across {p1} page(s).": "O texto em {p0} caixas de texto em {p1} página(s) foi redimensionado.",
+  "Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.": "{p1} página(s) receberam a aparência do texto da página {p0}: seus tamanhos até onde o texto cabe, seu negrito e seu alinhamento.",
   "That page has no text to match.": "Essa página não tem texto para comparar.",
   "Which picture on page {p0} should I change?": "Qual imagem da página {p0} devo alterar?",
   "Picture {p0}": "Imagem {p0}",
