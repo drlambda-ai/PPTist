@@ -2735,12 +2735,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a page whose background is mostly painted over by big shapes would look unchanged: recolour those shapes too
     if (!args.photo_query) {
       const { width: W, height: H } = slideSize()
-      // a band already that colour has nothing to recolour: a full-slide white shape under "uniform white" came back as
-      // "the large shapes on page 1 could not be recoloured and may still cover it", and the turn was run again (2026-11-18, replayed 2026-11-20)
+      const bandsOf = (id: string) => slides.value[pos(id)].elements
+        .filter((e: any) => e.type === 'shape' && !elText(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25) // full-width bands only, never cards or diagrams
+      // a page whose bands all have that colour already has nothing to recolour: a full-slide white shape under "uniform
+      // white" came back as "the large shapes on page 1 could not be recoloured and may still cover it", and the turn was
+      // run again (2026-11-18, replayed 2026-11-20). One band of another colour and the page is recoloured as before
       const already = (e: any) => !e.gradient && !e.pattern && String(e.fill || '').toLowerCase() === String(args.color).toLowerCase()
-      const covered = targets.filter(id => slides.value[pos(id)].elements
-        .filter((e: any) => e.type === 'shape' && !elText(e) && !already(e) && e.width >= W * 0.9 && e.width * (e.height || 0) >= W * H * 0.25) // full-width bands only, never cards or diagrams
-        .reduce((a: number, e: any) => a + Math.min(e.width, W) * Math.min(e.height, H), 0) >= W * H * 0.45)
+      const covered = targets.filter(id => bandsOf(id).reduce((a: number, e: any) => a + Math.min(e.width, W) * Math.min(e.height, H), 0) >= W * H * 0.45
+        && !bandsOf(id).every(already))
       for (let i = 0; i < covered.length; i += 3) {
         await Promise.all(covered.slice(i, i + 3).map(id => editSlide(pos(id), `Change the page's BACKGROUND to ${args.color}: recolour only the large decorative background shapes (full-width bands, full-page panels) to ${args.color} or a lighter/darker tint of it; keep cards, text boxes, pictures and their colours unchanged and keep text readable.`)
           .catch((err) => {
@@ -3220,7 +3222,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     }
     // after steps that only read material (the attached paper, the web): the deck is built from it, with the router's
     // full instruction ("here is my paper" read the file and stopped, 2026-11-12)
-    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d))
+    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d) || d.startsWith('not sent: ')) // the sent-back answer is no step
     if (newDeck?.args?.from_users_file && !s.docs.length && !(s.images || []).length) { // no file to build it from: ask for it
       const ask = await runCall(text, 'create_deck', newDeck.args, slides.value.map(x => x.id))
       replies.push(ask)
@@ -3571,7 +3573,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // nor when putting an earlier picture back was all the message did: the check sees a page's texts and picture
   // count, so "no change"
   if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0))) {
-    const problem = await checkTurn(text, startSlides, reply, pendingAtStart)
+    // the question is passed only when the message is one of its own buttons: any other reply may be a new request
+    // ("never mind, make the background white"), and the check would hold it to the request it dropped
+    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null)
     if (problem) {
       slidesStore.setSlides(startSlides)
       slidesStore.setTheme(startTheme)
