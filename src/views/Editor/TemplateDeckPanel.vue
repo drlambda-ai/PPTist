@@ -797,6 +797,61 @@ const editSlide = async (index: number, instruction: string, advanced = false, f
 // image: "rewrite the text", "make the title bigger" moved or stretched the picture, or stacked a second title over the
 // painted one, and the reply said the page was updated
 const FLAT_NOTE = '\n(This page is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized or moved. Unless the request is to add something new on top (a text box, a shape, a label) or to change that picture as a whole, change nothing, and say in "reply" that the page is one flat picture whose text cannot be edited here.)'
+// The words painted in such a picture, each line with the box its letters fill on the canvas. The page model sees no
+// picture, so "underline the last sentence", "a check icon before Application" and "an arrow" were answered "this page
+// has no elements" three times, and a drawn arrow landed on a heading (a paying user, 2026-11-14). A vision model reads
+// the picture once (a fraction of a cent; boxes within a few px on the user's page), and marks go by those boxes.
+type PaintedLine = { text: string, left: number, top: number, width: number, height: number }
+const paintedRead = new Map<string, Promise<PaintedLine[]>>() // by picture, for this session
+const paintedKnown = new Map<string, PaintedLine[]>() // the lines already read, by slide picture: where a new picture must not go
+const paintedPicture = (sl: Slide): { src: string, box?: { left: number, top: number, width: number, height: number } } => {
+  if (sl.background?.type === 'image' && sl.background.image?.imported) return { src: sl.background.image.src || '' }
+  const pic = onlyFullPicture(sl) ? sl.elements.find((e: any) => e.type === 'image') as any : null
+  return pic ? { src: pic.src || '', box: pic } : { src: '' }
+}
+const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
+  const { src, box } = paintedPicture(sl)
+  // a link, or a picture small enough to send (a request body is capped at 4.5MB)
+  if (!/^https:\/\//.test(src) && !(/^data:image\/(png|jpeg|webp);base64,/.test(src) && src.length < 3_000_000)) return Promise.resolve([])
+  const { width: W, height: H } = slideSize()
+  const key = `${src.slice(0, 200)}|${src.length}|${W}x${H}|${box ? [box.left, box.top, box.width, box.height].join(',') : ''}`
+  const had = paintedRead.get(key)
+  if (had) return had
+  const read = (async () => {
+    // where the picture lies on the canvas: a background covers the slide (cropped evenly when its shape differs)
+    const size = await new Promise<{ w: number, h: number } | null>((ok) => {
+      const im = new Image()
+      im.onload = () => ok({ w: im.naturalWidth, h: im.naturalHeight })
+      im.onerror = () => ok(null)
+      im.src = src
+    })
+    if (!size?.w || !size.h) return []
+    const k = box ? 0 : Math.max(W / size.w, H / size.h)
+    const at = box ? { left: box.left, top: box.top, width: box.width, height: box.height }
+      : { left: (W - size.w * k) / 2, top: (H - size.h * k) / 2, width: size.w * k, height: size.h * k }
+    const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: src,
+      instruction: 'This picture is one presentation slide. List every line of text painted in it, top to bottom, each with the box its letters fill, in percent of the picture (x = left edge, y = top edge, w = width, h = height, each 0-100). JSON {"lines": [{"text": "...", "x": 0, "y": 0, "w": 0, "h": 0}]}' }) })
+    const lines = r.ok ? (await r.json().catch(() => ({})))?.lines : null
+    return (Array.isArray(lines) ? lines : []).map((l: any) => ({ text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+      left: Math.round(at.left + (toNum(l?.x) / 100) * at.width), top: Math.round(at.top + (toNum(l?.y) / 100) * at.height),
+      width: Math.round((toNum(l?.w) / 100) * at.width), height: Math.round((toNum(l?.h) / 100) * at.height) }))
+      .filter(l => l.text && [l.left, l.top, l.width, l.height].every(Number.isFinite) && l.width > 0 && l.height > 0).slice(0, 60)
+  })().catch(() => [] as PaintedLine[])
+  paintedRead.set(key, read)
+  read.then((lines) => {
+    if (lines.length) paintedKnown.set(src, lines)
+    else paintedRead.delete(key) // unread (a failed call, no text): asked again next time
+  })
+  return read
+}
+const paintedNote = async (sl: Slide) => {
+  const lines = await paintedLines(sl)
+  if (!lines.length) return isFlat(sl) ? FLAT_NOTE : ''
+  return '\n(The page itself is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized, moved or deleted. What CAN be done is to put NEW elements on top of it (any element listed above was put there this way and is edited as usual).'
+    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px:\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}`).join('\n')}\n`
+    + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape.'
+    + ' When the request needs the painted text itself changed (its wording, colour, size or font, or deleting it), change nothing and say in "reply" that the page is one flat picture whose text cannot be edited here, and that marks or new text can be put on top.)'
+}
 const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
@@ -817,9 +872,10 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   // arrows was answered "there is no arrow on this page" (2026-11-14, replayed 2026-11-20)
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}) }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
+  const painted = await paintedNote(slide)
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${isFlat(slide) ? FLAT_NOTE : ''}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${painted}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || t('That edit could not be applied.'))
@@ -1271,7 +1327,9 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
   const C = 24, R = 14, cw = W / C, rh = H / R
   const busyCell = Array.from({ length: R }, () => new Array(C).fill(false))
   for (let r = Math.floor(R * 0.86); r < R; r++) busyCell[r].fill(true) // the footer band
-  for (const e of sl.elements as any[]) {
+  // on a page that is one flat picture the text is painted in it: its lines are taken too (two pictures asked for
+  // "the space above the page number" covered the page's text, replay 2026-11-20)
+  for (const e of [...sl.elements, ...(paintedKnown.get(paintedPicture(sl).src) || [])] as any[]) {
     if (!e.width || !e.height || e.width * e.height > W * H * 0.6) continue
     for (let r = Math.max(0, Math.floor(e.top / rh)); r < Math.min(R, Math.ceil((e.top + e.height) / rh)); r++) {
       for (let c = Math.max(0, Math.floor(e.left / cw)); c < Math.min(C, Math.ceil((e.left + e.width) / cw)); c++) busyCell[r][c] = true
@@ -1306,7 +1364,8 @@ const roomFor = async (id: string, wanted: { left: number, top: number, width: n
   }
   let box = free(wanted)
   if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: at() + 1 })) // made room once: never shrink it again
-  if (!box) { // a full page: make room rather than refuse
+  // painted text cannot move aside: no room is no room
+  if (!box && !(paintedPicture(slides.value[at()]).src && !slides.value[at()].elements.some((e: any) => elText(e)))) { // a full page: make room rather than refuse
     roomMadeThisTurn.add(id)
     await editSlide(at(), `Make room for ${what}: rearrange and narrow the text so the right 40% of the slide is free of text, keeping all the wording and keeping it readable. Do not change the wording.`).catch(() => undefined)
     const room = { left: 0.58 * W, top: 0.2 * H, width: 0.38 * W, height: 0.6 * H }
@@ -1525,6 +1584,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   const pos = (id: string) => slides.value.findIndex(x => x.id === id)
   const nums = (ps: number[]) => [...new Set((ps || []).map(idOf))].filter(id => pos(id) >= 0)
   const n = slides.value.length
+  // a new picture or table on a page that is one flat picture: its painted lines are read first, so it is not put on them
+  if (['add_image', 'add_table_page', 'use_file_images'].includes(action)) {
+    const on = slides.value.find(x => x.id === ids[Number(args.index || args.on_page) - 1])
+    if (on && paintedPicture(on).src) await paintedLines(on)
+  }
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.after) > slides.value.length) args.after = slides.value.length
   if (['add_page', 'add_chart_page', 'add_table_page'].includes(action) && Number(args.layout_from) > slides.value.length) args.layout_from = slides.value.length
   // pages from the user's own file, and none is attached: ask for it (the request waits for the file), never invent
@@ -1849,11 +1913,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const { width: W, height: H } = slideSize()
     const row = { left: 0.05 * W, top: 0.6 * H, width: 0.9 * W, height: 0.3 * H }
     const fb = freeBox(slides.value[at], row)
-    const roomy = items.length <= 4 && !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8 // five or six: a grid page
+    // a page that is one flat picture: its text is painted and cannot move aside, and the router was told where its
+    // lines are, so the pictures go in the free box nearest to the place the router chose
+    const flatPage = !!paintedPicture(slides.value[at]).src && !slides.value[at].elements.some((e: any) => elText(e))
+    const roomy = !flatPage && items.length <= 4 && !!fb && fb.width >= row.width * 0.8 && fb.height >= row.height * 0.8 // five or six: a grid page
     // no row free: up to four pictures go on this page in the room made for them ("add photos of A and B on this
     // slide" became a new, unstyled page, 2026-11-15)
     let area: { left: number, top: number, width: number, height: number } | null = null
-    if (!roomy && items.length <= 4) {
+    if (flatPage) {
+      const b = args.box || { x: 5, y: 60, w: 90, h: 30 }
+      const pc = (v: number) => Math.min(Math.max(Number(v) || 0, 0), 100) / 100
+      area = freeBox(slides.value[at], { left: pc(b.x) * W, top: pc(b.y) * H, width: Math.max(pc(b.w), 0.1) * W, height: Math.max(pc(b.h), 0.08) * H })
+    }
+    else if (!roomy && items.length <= 4) {
       try {
         area = await roomFor(ids[at], { left: 0.55 * W, top: 0.2 * H, width: 0.4 * W, height: 0.6 * H }, 'pictures', { width: 0.25 * W, height: 0.3 * H })
       }
@@ -2421,6 +2493,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
+    // a page that is one flat picture has no text to style: its painted words are underlined or marked on top by the
+    // page edit, which is given where they are ("underline the last sentence" was answered "no such text", 2026-11-14)
+    const flatOne = targets.length === 1 ? slides.value[pos(targets[0])] : undefined
+    if (flatOne && paintedPicture(flatOne).src && !flatOne.elements.some((e: any) => inScope(flatOne, e))) {
+      const how = [color && `colour ${color}`, ...Object.entries(want).filter(([, v]) => v !== 'same').map(([k, v]) => (v === 'on' ? k : `not ${k}`))].filter(Boolean).join(', ')
+      return runCall(text, 'edit_page', { index: pos(targets[0]) + 1, instruction: `Style asked for (${how}) on ${phrase ? `the words "${phrase}"` : args.scope === 'titles' ? 'the title' : 'the text the user means'}. The user's message: "${text.slice(0, 400)}"`, page_named: true, translate_to: '', hard: false, redesign: false, new_content: false, whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: '' }, ids)
+    }
     // a mark's element goes, its own size or colour stays (on a span)
     const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach((x) => {
       const keep = x.getAttribute('style') ? Object.assign(root.ownerDocument.createElement('span'), { style: x.getAttribute('style') }) : null
@@ -3372,6 +3451,12 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     const tx = elText(e)
     return tx ? `the text "${tx.slice(0, 80)}"` : `a ${e.type}`
   }).join('; ') : ''
+  // the page on screen is one flat picture: the router is told the lines painted in it and where they are, in the
+  // percent of the slide its picture boxes use ("in the space above the page number 02" had no place, 2026-11-13)
+  const paintedAtSend = startSl && paintedPicture(startSl).src ? (await paintedLines(startSl)).map((l) => {
+    const { width: W, height: H } = slideSize()
+    return `"${l.text.replace(/"/g, '\'').slice(0, 80)}" (${[l.left / W, l.top / H, l.width / W, l.height / H].map(v => Math.round(v * 100)).join(', ')})`
+  }).join('; ').slice(0, 2500) : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
   let failed = 0 // steps of this message that failed
@@ -3450,6 +3535,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         before: pagesAtStart, added: slides.value.map((x, k) => (idsAtStart.has(x.id) ? 0 : k + 1)).filter(Boolean),
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
+        painted: paintedAtSend || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: filePages(d.text).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
         brief: s.brief || undefined,
