@@ -431,6 +431,21 @@ const fileOf = async (name: string) => {
   const blob = doc?.project ? await hostSteps()?.file?.(doc.name).catch(() => null) : null
   return blob ? new File([blob], doc!.name) : undefined
 }
+// A file's text by page or slide, from the markers its reader wrote: "[page N]" on a line of its own (a PDF read here),
+// "[slide N] ..." (a .pptx read here), "Slide N:" on a line of its own (a .pptx the project already had, read by
+// ChatSlide). "Take the definition from slide 2 of my example" read the whole file, or the deck's own slide 2
+// (a paying user, four messages, 2026-11-11): only "[page N]" was known, so a presentation file had no pages at all
+const PAGE_MARK = /^(?:\[page (\d+)\]$|\[slide (\d+)\](?= |$)|Slide (\d+):$)/
+const filePages = (text: string): { n: number, text: string }[] => {
+  const out: { n: number, text: string }[] = []
+  for (const line of text.split('\n')) {
+    const m = line.match(PAGE_MARK)
+    if (m) out.push({ n: Number(m[1] || m[2] || m[3]), text: line })
+    else if (out.length) out[out.length - 1].text += `\n${line}`
+  }
+  // markers a reader wrote count up from 1; anything else is the document's own words ("Slide 3:" inside a text)
+  return out.length && out.every((p, k) => p.n === k + 1) ? out : []
+}
 const uploadContent = (file: File) => run(t('Reading {p0}…', { p0: file.name }), async () => {
   const r = await deckApi('read', { url: await uploadFile(file), name: file.name })
   s.docs.push({ name: r.name, text: r.text })
@@ -2058,14 +2073,26 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         return t('Read {p0}{p1}.', { p0: doc.name, p1: '' })
       }
     }
-    const parts = doc.text.split(/^(?=\[page \d+\]$)/m)
     const want: number[] = args.pages || []
-    const total = parts.filter(p => /^\[page \d+\]/.test(p)).length
+    let parts = filePages(doc.text)
+    // a PDF the project already had comes from ChatSlide as one text with no page marks: asked for a page, its original
+    // is read here once, page by page, like a file attached in the chat
+    if (want.length && !parts.length && doc.project && /\.pdf$/i.test(doc.name)) {
+      busy.value = t('Reading {p0}…', { p0: doc.name })
+      const file = await fileOf(doc.name).catch(() => undefined)
+      const again = file ? await deckApi('read', { url: await uploadFile(file), name: file.name }).catch(() => null) : null
+      if (again?.text && filePages(String(again.text)).length) {
+        doc.text = String(again.text)
+        save()
+        parts = filePages(doc.text)
+      }
+    }
+    const total = parts.length
     const missing = want.filter(n => n < 1 || n > total)
     if (want.length && total && missing.length === want.length) fail(t('{p0} has only {p1} pages.', { p0: doc.name, p1: total }))
     const got = want.filter(n => !missing.includes(n))
-    const picked = want.length && total ? parts.filter(p => got.includes(+(p.match(/^\[page (\d+)\]/)?.[1] || 0))).join('\n') : doc.text
-    if (!picked.replace(/\[page \d+\]/g, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }) : '' }))
+    const picked = want.length && total ? parts.filter(p => got.includes(p.n)).map(p => p.text).join('\n') : doc.text
+    if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }) : '' }))
     memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
     const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
     return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }) : '' })) + skipped
@@ -3322,7 +3349,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         before: pagesAtStart, added: slides.value.map((x, k) => (idsAtStart.has(x.id) ? 0 : k + 1)).filter(Boolean),
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
-        files: s.docs.map(d => ({ name: d.name, pages: (d.text.match(/^\[page \d+\]$/gm) || []).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
+        files: s.docs.map(d => ({ name: d.name, pages: filePages(d.text).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
         brief: s.brief || undefined,
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),

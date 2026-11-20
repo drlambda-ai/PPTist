@@ -362,6 +362,11 @@ Rules:
    in the file", "the data I uploaded") -> read_file first (the pages named, else the whole file), then act on what it
    returned. Exactly one file attached = that file, whatever the user calls it ("the Word file", "my table"): read it,
    never ask which. Several files and the message does not say which -> answer_question asking which file (name them).
+   Content taken "from slide N" when a presentation or PDF of the user's is listed and the words point at it ("from
+   slide 4 of the example", "как в презентации, предложенной в начале", "from my original slides"), or when slide N
+   of this deck is the very page being changed or holds nothing of the kind ("слайд 2: вставить определение, взять
+   из слайда №2"): that is page N of THE FILE -> read_file with pages [N], then the edit with what it returned
+   (source_pages []). Otherwise "slide N" is a page of this deck (source_pages).
    "What is in my picture / the image / the photo" with ONE attached picture -> read_file on that picture (it reads
    its text), then write it onto the slides; never ask which picture or whether to read it.
    The user mentions a file but none is attached -> ask_user (options []): ask them to attach it with the 📎 icon, so
