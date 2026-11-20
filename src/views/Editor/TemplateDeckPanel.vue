@@ -2174,6 +2174,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a long pasted message is material: page by page, its words go on the page, not the router's summary of them
     // (a pasted 11-slide plan edited one page at a time came back reworded, 2026-11-19)
     if (text.length > 600 && !args.translate_to) args = { ...args, instruction: `${args.instruction}\n\nThe user's own message, in full: where it gives text for this page, use that part word for word, every sentence:\n${fence(text.slice(0, 12000))}` }
+    // "slide 5: main clinical signs: 1 skin ..." gives the page its topic: the new text was added in a corner of the
+    // old page, its old text squeezed aside, and the user asked three more times ("make a NEW slide 5", "redo slide 5
+    // completely", 2026-11-11; replayed 2026-11-20: the same on 2 of 3 such messages). The router says the page takes
+    // new content; the page edit is then told the old content goes
+    if (args.replaces_content === true && !args.translate_to) args = { ...args, instruction: `${args.instruction}\n\nThis page takes NEW content: what the instruction gives replaces what the page says now. Delete every text box, picture, chart and table that belongs to the old content (anything about another subject, or naming the author or the event on a page that is not the cover); keep the page's design (background, decorative shapes, logo, footer, page number) and anything that already is part of the new content. A card, panel or number badge that held old content is used for the new content or deleted, never left empty, and text stays inside its card. Then lay the new content out over the free area: one title, and the body in readable sizes. Never squeeze old text aside and never leave it beside or under the new.` }
+    // text and pictures for one page in one message: the text filled the page, so the pictures went to a new page
+    // after it ("slide 11 ... with pictures" got them on slide 12) or into the corners over the text (2026-11-11). The
+    // page edit keeps the part free that the picture step asks for first
+    if (Number(args.pictures_next) > 0 && !args.translate_to) {
+      const { width: W, height: H } = slideSize()
+      args = { ...args, instruction: `${args.instruction}\n\n${Math.min(Number(args.pictures_next), 6)} picture(s) will be placed on this page right after this edit: keep the right part of the page free for them. No text, shape or table may lie right of x = ${Math.round(W * 0.53)}px between y = ${Math.round(H * 0.18)}px and y = ${Math.round(H * 0.84)}px (the title may run across the top above that). Put the text in the left part, in readable sizes, shortened only if it cannot fit.` }
+    }
     if (sources.length) args = { ...args, whole_deck_option: '', instruction: `${args.instruction}\n\n${sources.map((id: string) => `Text of page ${pos(id) + 1} (the source to use):\n${readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')}`).join('\n\n').slice(0, 4000)}` }
     // a named page is not a whole-deck question: the offer also ends the turn, which cut off "and insert pictures"
     // after "slide 5: <text>" (2026-11-11)
