@@ -3657,6 +3657,8 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
   const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
   const room = Math.max(120, Math.min(700, Math.floor(6000 / Math.max(1, differ))))
+  // both sides of every changed page fit under the cap below: at 9,000 a ten-page update showed pages 1-9, and the
+  // check undid it as "the reply claims 10 pages, the change log shows 9" (replay of a real turn, 2026-11-20)
   const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… (cut here for length: the rest is there, not shown)` : t)
   const texts = (sl: Slide) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
   const shown = (sl: Slide) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
@@ -3674,12 +3676,15 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, m.role === 'user' ? 6000 : 300)}`).join('\n')
   // only the count: given the request's text too, it held "there are no pictures" to the schematic drawings that text
   // asked for, and the second attempt put AI pictures on all ten pages (replay 2026-11-20)
-  const made = s.brief?.pages ? `When the deck was made the user asked for ${s.brief.pages} slides.\n` : ''
+  // and only while the deck is shorter than that, as the router is told it: a project recorded as 1 slide made the check
+  // call a ten-page update of a ten-page deck "instead of the one-slide deck asked for"; the update was undone and the
+  // second attempt added one page (replay of a real turn, 2026-11-20)
+  const made = Number(s.brief?.pages) > was.length ? `When the deck was made the user asked for ${s.brief!.pages} slides.\n` : ''
   const answers = pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(String(pending.request || '').slice(0, 6000))}: that request is what was asked.\n` : ''
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
     `You check an AI slide editor's work on one chat message.\n${made}Earlier conversation:\n${earlier || '(none)'}\n${answers}`
     + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
-    + `What changed in the deck:\n${cut(lines.join('\n'), 9000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
+    + `What changed in the deck:\n${cut(lines.join('\n'), 20000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
     + 'Did it do what the message asks: the right pages, every part asked, nothing the user did not ask for, and does the reply say truthfully what was done? '
     + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it. '
     + 'Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \"\" when ok>"}.' }) }).catch(() => null)
