@@ -2303,22 +2303,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
     const color = /^#[0-9a-f]{6}$/i.test(String(args.color || '')) ? String(args.color) : ''
-    let phrase = String(args.phrase || '').trim()
+    const phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
-    // words that are whole text boxes, one after another ("the part with the title and my name" came as both boxes'
-    // text in one phrase, found in neither, 2026-11-20): those boxes are styled, as with no words named
-    const flatWords = (x: string) => x.replace(/\s+/g, ' ').trim().toLowerCase()
-    const boxes = phrase ? targets.flatMap((id: string) => (slides.value[pos(id)].elements as any[]).filter(e => inScope(slides.value[pos(id)], e) && flatWords(phrase).includes(flatWords(elText(e))))) : []
-    // longest first, each taking its own words out of the phrase: "Sales plan" is that box, not also the box "Sales"
-    let unnamed = flatWords(phrase)
-    const named = [...boxes].sort((a, b) => elText(b).length - elText(a).length).filter((e) => {
-      const words = flatWords(elText(e))
-      if (!unnamed.includes(words)) return false
-      unnamed = unnamed.replace(words, ' ')
-      return true
-    })
-    const whole = new Set<string>(named.length && !unnamed.trim() ? named.map(e => e.id) : [])
-    if (whole.size) phrase = ''
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
     // a mark's element goes, its own size or colour stays (on a span)
     const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach((x) => {
@@ -2390,13 +2376,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const id of targets) {
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
-        if (!inScope(sl, e) || (whole.size && !whole.has(e.id))) continue
+        if (!inScope(sl, e)) continue
         const was = String(e.type === 'text' ? e.content : e.text.content), now = restyle(was)
         if (now === was) continue
         if (color && !phrase && [...letters(e)].every(c => c === tinycolor(color).toHex())) already.push([id, e])
-        const box = color && !phrase ? { defaultColor: color } : {}
-        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...box, content: now }, slideId: id })
-        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...box, content: now } }, slideId: id })
+        const whole = color && !phrase ? { defaultColor: color } : {}
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
         n++
       }
     }
@@ -3447,9 +3433,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
       || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && animatedThisTurn(c.args?.pages))
       // nor recolours text again after its colour turned out to be there already and it got a band instead
-      // (the same colour on those pages; another colour or another page is another part of the message)
-      || work.find((c: any) => c.action === 'set_text_style' && c.args?.color && ran.some(r => r.args?.backed && tinycolor(r.args.color).toHex() === tinycolor(c.args.color).toHex()
-        && (!r.args.pages?.length || !c.args.pages?.length || c.args.pages.some((n: number) => r.args.pages.includes(n)))))
+      // (the very same call only: another colour, scope or page is another part of the message)
+      || work.find((c: any) => c.action === 'set_text_style' && ran.some(r => r.args?.backed && JSON.stringify({ ...r.args, backed: undefined }) === JSON.stringify(c.args || {})))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
