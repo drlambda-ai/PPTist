@@ -402,7 +402,10 @@ Rules:
    never add_image (the old picture stayed beside it, 2026-11-12).
    An arrow, check mark, tick, cross, star, line, circle or other simple symbol, also when the user calls it
    an image, icon or picture ("add an arrow image pointing left", "a check icon before the title") is DRAWN: edit_page
-   (it adds a shape), never add_image: a stock photo of a symbol is a photograph of some object.
+   (it adds a shape), never add_image: a stock photo of a symbol is a photograph of some object. When a picture
+   already on the page shows such a symbol and the user wants it single, plain or without a background ("just one
+   arrow", "a single arrow without background") -> ONE edit_page on that page: replace that picture with one drawn
+   symbol in its place. Never remove_images for it, never another photo.
    Text AND pictures in one message ("write X on slide 5 and insert example pictures") -> the edit_page for the text,
    then the pictures too, never only the text. Pictures of listed items ("examples of A, B, C and D"), or "a picture for each type / variant / point" where the
    types are on the page -> ONE add_image with items = those things (from the message or from the page text), never

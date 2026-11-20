@@ -8,7 +8,10 @@ You edit ONE slide. The canvas is {W}px wide and {H}px tall, origin at the top-l
 
 Each element is a JSON object with at least: id, type, left, top, width, height, rotate.
 - type "text": has "content" (an HTML string, e.g. "<p>Hello</p>"), "defaultColor", "defaultFontName", optional "fill".
-- type "image": has "src" (a placeholder token: keep it exactly as given).
+- type "image": has "src" (a placeholder token: keep it exactly as given) and sometimes "shows" (what the picture
+  shows; a note for you, never a field to change). A picture that shows a simple symbol (an arrow, a check mark, a
+  star) which the user wants as ONE clean symbol, without a background, or drawn: delete that image and add the
+  symbol as a shape in its place.
 - type "chart" / "table": keep them; you may move or resize them.
 Text styling lives in two places: "defaultFontName"/"defaultColor" on the element, and inline CSS in "content"
 (e.g. <span style="font-family: Microsoft YaHei; font-size: 24px; color: #1a2b8c;"><strong>...</strong></span>).

@@ -813,7 +813,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
     return { ...rest, text: { content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', align: 'middle' } }
   }
-  const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}` }
+  // a picture says what it shows (the words it was searched or drawn for): "just one arrow" about a stock photo of
+  // arrows was answered "there is no arrow on this page" (2026-11-14, replayed 2026-11-20)
+  const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}) }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
@@ -833,8 +835,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     ...live.elements.filter(e => !removed.has(e.id)).map((e: any) => {
       const c = changes[e.id]
       if (!c) return e
-      const { src: _src, path, layer: _layer, ...rest } = c // image sources and tokenised paths are never taken from the model
-      void _src; void _layer // layer is a stacking instruction, applied below, not an element field
+      const { src: _src, path, layer: _layer, shows: _shows, ...rest } = c // image sources and tokenised paths are never taken from the model
+      void _src; void _layer; void _shows // layer is a stacking instruction, applied below, not an element field; shows is a note for the model
       // a position or size that is not a number is dropped: top ":" from the model threw a heading into the corner
       // of the slide (2026-11-11, a user's "improve the design")
       for (const k of GEOMETRY) {
