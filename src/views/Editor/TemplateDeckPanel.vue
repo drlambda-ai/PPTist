@@ -863,6 +863,13 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   const unflat = (e0: any) => {
     const e = { ...e0, ...Object.fromEntries(GEOMETRY.filter(k => k in e0).map(k => [k, Number.isFinite(toNum(e0[k])) ? toNum(e0[k]) : 0])) }
     delete e.layer // a stacking instruction, applied by the merge
+    // a shape is drawn scaled from its viewBox [w, h]: the model often writes an SVG viewBox string ("0 0 1000 563"),
+    // which drew a 2px underline as a black block over half the page (replay 2026-11-20). The string's size is kept,
+    // anything else unreadable becomes the shape's own size
+    if (e.type === 'shape') {
+      const vb = typeof e.viewBox === 'string' ? e.viewBox.trim().split(/[\s,]+/).map(Number).slice(-2) : e.viewBox
+      e.viewBox = Array.isArray(vb) && vb.length === 2 && vb.every((v: any) => Number.isFinite(Number(v)) && Number(v) > 0) ? vb.map(Number) : [e.width || 1, e.height || 1]
+    }
     if (e.type !== 'shape' || e.content === undefined) return e
     const { content, defaultColor, defaultFontName, ...rest } = e
     if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
