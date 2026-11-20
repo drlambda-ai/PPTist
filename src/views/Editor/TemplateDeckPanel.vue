@@ -120,7 +120,9 @@ interface Session {
   // the pictures an image held before the chat replaced it (element id -> oldest first), listed for the router as
   // "earlier pictures here": a user asked six times for "the first nurse image", got an Undo or a new stock photo each
   // time, and uploaded it again herself (2026-11-16)
-  was?: Record<string, { src: string, clip: any, shows: string }[]>
+  // others / background: for a background picture, the page's other full-slide pictures and its background as they
+  // were then, so a picture put back puts each of them back too
+  was?: Record<string, { src: string, clip: any, shows: string, others?: Record<string, { src: string, clip: any }>, background?: any }[]>
   // the letter sizes a text box had before the chat first resized it (element id -> px, in order): "back as it was"
   // puts them back exactly. Asked after two "bigger" messages, a 0.8 scale left other sizes, on the wrong pages (2026-11-19)
   sizes?: Record<string, number[]>
@@ -1339,11 +1341,24 @@ const imageRatio = (src: string) => new Promise<number>((ok) => {
 })
 
 // the picture an image holds goes on its list before the chat replaces it
-const keepPic = (el: any) => {
+const keepPic = (el: any, sl?: Slide) => {
   const list = [...(s.was?.[el.id] || [])]
   // links only: an embedded picture (a data: URL) kept here could push the saved session past the storage limit
-  if (el.src.startsWith('data:') || list.some(p => p.src === el.src)) return
-  list.push({ src: el.src, clip: el.clip, shows: s.pics?.[el.id] || '' })
+  if (el.src.startsWith('data:')) return
+  // a background picture keeps the page's other full-slide pictures and background with it (pass the slide as it is
+  // before anything on it changes)
+  const page = sl && isBackdrop(el) ? {
+    others: Object.fromEntries(sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && !e.src.startsWith('data:'))
+      .map((e: any) => [e.id, { src: e.src, clip: e.clip }])),
+    background: sl.background && !String(sl.background.image?.src || '').startsWith('data:') ? JSON.parse(JSON.stringify(sl.background)) : undefined,
+  } : {}
+  const at = list.findIndex(p => p.src === el.src)
+  if (at >= 0) {
+    if (sl) list[at] = { ...list[at], ...page }
+    s.was = { ...s.was, [el.id]: list }
+    return
+  }
+  list.push({ src: el.src, clip: el.clip, shows: s.pics?.[el.id] || '', ...page })
   if (list.length > 5) list.splice(1, 1) // the first one stays: it is the one users ask for
   s.was = { ...s.was, [el.id]: list }
 }
@@ -1363,8 +1378,9 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   // deck, replayed 2026-11-20)
   const old = el.src
   const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === old) : []
+  keepPic(el, sl)
   for (const e of [el, ...copies]) {
-    keepPic(e)
+    if (e !== el) keepPic(e)
     slidesStore.updateElement({ id: e.id, props: { src, clip } as any, slideId })
     s.pics = { ...s.pics, [e.id]: query }
   }
@@ -2668,13 +2684,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const el = image === 0 ? firstBackdrop(sl) : pictures(sl)[Math.max(0, image - 1)]
       const was = el && s.was?.[el.id]?.[args.earlier - 1]
       if (el && was) {
-        // its copies above it too (changeImage replaces them together), or they hide the picture put back
-        const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === el.src) : []
-        for (const e of [el, ...copies]) {
+        // the copies above it and the slide background that were replaced with it (they show its picture now) go back
+        // to what each of them held then, or they hide the picture put back
+        const now = el.src
+        const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === now && was.others?.[e.id]) : []
+        const bgBack = isBackdrop(el) && was.background && sl.background?.type === 'image' && sl.background.image?.src === now
+        keepPic(el, sl)
+        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
+        s.pics = { ...s.pics, [el.id]: was.shows }
+        for (const e of copies) {
           keepPic(e)
-          slidesStore.updateElement({ id: e.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
-          s.pics = { ...s.pics, [e.id]: was.shows }
+          slidesStore.updateElement({ id: e.id, props: { ...was.others![e.id] } as any, slideId: id })
         }
+        if (bgBack) slidesStore.updateSlide({ background: was.background }, id)
         if (isBackdrop(el)) showBackdrop(id, el.id)
         touched([id])
         replacedThisTurn.add(`${id}:${image}`)
@@ -2765,12 +2787,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       background = { type: 'image', image: { src, size: 'cover' } }
     }
     else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(t('Which background colour?'))
+    // each full-slide picture keeps what it and the rest of the page held, before any of it changes
+    if (args.photo_query) for (const id of targets) for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) keepPic(e, slides.value[pos(id)])
     for (const id of targets) slidesStore.updateSlide({ background }, id)
     // a full-slide picture covers the background fill: a new background PHOTO replaces that picture, or nothing shows
     if (args.photo_query) {
       for (const id of targets) {
         for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) {
-          keepPic(e)
           slidesStore.updateElement({ id: e.id, props: { src: background.image.src } as any, slideId: id })
           s.pics = { ...s.pics, [e.id]: String(args.photo_query) }
           showBackdrop(id, e.id)
