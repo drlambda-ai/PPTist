@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high. Paid-user fixes 177f9749..919c7cfa: two P2 (band on unnamed boxes, painted-text cache key) closed by 9be450fd; regression in pasted multi-slide text (master 3/3, build 1/4) fixed by 026dd92b, reviewed pass.
+Declined: a title fragment under 4 characters in its own box is not banded (2607) - the live build bands neither box; cost if wrong: that fragment stays hard to read.
+Declined-By: Claude (session cd46e05e).
+Regression: 110 cases 105/110 on 9be450fd; the 5 misses rerun 3x each on master and build, only ed-numbered-text-literal regressed, now 3/3; paid-user cases 4/4.
