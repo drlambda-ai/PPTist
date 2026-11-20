@@ -715,6 +715,28 @@ const overlapNote = (sl: Slide) => {
   return pairs.length ? `\n(Measured on this page, these elements overlap: ${pairs.slice(0, 8).join('; ')}. Fix them when the request is about layout, overlap, or text that is covered or cut off.)` : ''
 }
 
+// A line break the page model writes as <br> becomes its own paragraph: the editor's text boxes have no line-break
+// node, so "<p>Name<br>University<br>Department</p>" is shown as one line. "Write my name, the university and the
+// department one under another" was answered "updated" three times with the three still on one line (a paying user,
+// 2026-11-15; the same in 1 of 3 replays, 2026-11-20). Each part keeps the paragraph's and the runs' own styles
+const brToParagraphs = (html: string) => {
+  if (!/<br\b/i.test(html)) return html
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (let br = doc.body.querySelector('br'); br; br = doc.body.querySelector('br')) {
+    const block = br.closest('p, li') as HTMLElement | null
+    if (!block) { br.replaceWith(doc.createTextNode(' ')); continue }
+    const range = doc.createRange()
+    range.setStartBefore(block.firstChild || br)
+    range.setEndBefore(br)
+    const first = block.cloneNode(false) as HTMLElement
+    first.append(range.extractContents()) // the part before the break, inside copies of the runs it sat in
+    br.remove()
+    if (first.textContent?.trim()) block.before(first)
+    // a break at the very end leaves an empty rest: the paragraph that held it goes
+    if (!block.textContent?.trim() && !block.querySelector('br')) block.remove()
+  }
+  return doc.body.innerHTML
+}
 // Out of credits for the advanced model: the standard one (no credit) does the edit, without the paywall.
 // fallback: out of credits for the advanced model, use the standard one. Off for a redesign: the standard model's
 // "redesign" is a few pixels (backtest 2026-11-11), so the user is told about the credits instead.
@@ -831,6 +853,13 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     while (at < stay.length && fullSlide(stay[at])) at++
     merged.splice(0, merged.length, ...stay.slice(0, at), ...back, ...stay.slice(at), ...front)
   }
+  // text the model wrote: its line breaks become paragraphs (only in what it changed or added)
+  const wrote = new Set<string>([...Object.keys(changes), ...(ret.patch.added || []).map((e: any) => e?.id)])
+  merged.forEach((e: any, k: number) => {
+    if (!wrote.has(e.id)) return
+    if (e.type === 'text' && typeof e.content === 'string') merged[k] = { ...e, content: brToParagraphs(e.content) }
+    else if (e.type === 'shape' && typeof e.text?.content === 'string') merged[k] = { ...e, text: { ...e.text, content: brToParagraphs(e.text.content) } }
+  })
   // a reply that describes changes the merge did not make is never shown as done
   if (JSON.stringify(merged) === JSON.stringify(live.elements)) throw unchanged()
   const before: Record<string, number> = Object.fromEntries(live.elements.filter((e: any) => e.type === 'text').map((e: any) => [e.id, e.height]))

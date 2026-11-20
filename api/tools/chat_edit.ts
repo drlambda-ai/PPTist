@@ -45,7 +45,8 @@ Rules:
   lower its font size so it fits the element's width and height; never let it spill onto other elements.
 - Keep every element fully on-canvas (0..{W} horizontally, 0..{H} vertically).
 - Preserve fields you are not changing.
-- Text "content" must stay valid HTML.
+- Text "content" must stay valid HTML. Each line of text is its own <p>: lines that go one under another are
+  separate paragraphs, never one paragraph with <br> (the editor shows <br> as nothing, so the lines run together).
 
 Respond ONLY with JSON: {"reply": "<one short sentence to the user, in the language of the instruction>", "elements": [ ...full updated array... ]}.`
 
