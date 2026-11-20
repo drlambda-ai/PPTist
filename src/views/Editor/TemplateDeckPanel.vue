@@ -69,6 +69,7 @@ const chatLeft = ref(-8)
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend } from '@/embed'
+import { fitCheck } from './turnCheckPrompt'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import tinycolor from 'tinycolor2'
@@ -3700,53 +3701,53 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   // a page's text is cut to the room there is, and the cut is marked: cut bare, at 700 characters a page and 7,000 in
   // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
   const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
-  const room = Math.max(120, Math.min(700, Math.floor(6000 / Math.max(1, differ))))
-  // both sides of every changed page fit under the cap below: at 9,000 a ten-page update showed pages 1-9, and the
-  // check undid it as "the reply claims 10 pages, the change log shows 9" (replay of a real turn, 2026-11-20)
-  const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… (cut here for length: the rest is there, not shown)` : t)
-  const texts = (sl: Slide) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
-  const shown = (sl: Slide) => `${texts(sl)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
+  const room0 = Math.max(120, Math.min(700, Math.floor(6000 / Math.max(1, differ))))
+  // every changed page keeps its line, whatever else the record holds (fitCheck): at 9,000 characters a ten-page update
+  // showed pages 1-9, and the check undid it as "the reply claims 10 pages, the change log shows 9" (replay of a real
+  // turn, 2026-11-20). Under 120 characters a side the mark is the short one, said in the rules
+  const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… ${n < 120 ? '(cut)' : '(cut here for length: the rest is there, not shown)'}` : t)
+  const texts = (sl: Slide, room: number) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
+  const shown = (sl: Slide, room: number) => `${texts(sl, room)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
   const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
   const now = new Set(slides.value.map(x => x.id))
   const hidden = (sl: Slide) => sl.elements.filter((e: any) => e.type === 'image' && isBackdrop(e) && e.filters?.opacity === '0%').length
-  const lines: string[] = []
-  slides.value.forEach((x, k) => {
-    const o = old.get(x.id)
-    if (!o) lines.push(`page ${k + 1} NEW: ${shown(x)}`)
-    else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x), 120)}`)
-    else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl)}\n  after: ${shown(x)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
-  })
-  was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x)}`) })
-  const earlier = s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, m.role === 'user' ? 6000 : 300)}`).join('\n')
+  const changes = (room: number) => {
+    const lines: string[] = []
+    slides.value.forEach((x, k) => {
+      const o = old.get(x.id)
+      if (!o) lines.push(`page ${k + 1} NEW: ${shown(x, room)}`)
+      else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x, room), 120)}`)
+      else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
+    })
+    was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x, room)}`) })
+    return lines
+  }
+  const earlier = (userMax: number) => s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, m.role === 'user' ? userMax : 300)}`).join('\n')
   // only the count: given the request's text too, it held "there are no pictures" to the schematic drawings that text
   // asked for, and the second attempt put AI pictures on all ten pages (replay 2026-11-20)
   // and only while the deck is shorter than that, as the router is told it: a project recorded as 1 slide made the check
   // call a ten-page update of a ten-page deck "instead of the one-slide deck asked for"; the update was undone and the
   // second attempt added one page (replay of a real turn, 2026-11-20)
   const made = Number(s.brief?.pages) > was.length ? `When the deck was made the user asked for ${s.brief!.pages} slides.\n` : ''
-  const answers = pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(String(pending.request || '').slice(0, 6000))}: that request is what was asked.\n` : ''
+  const answers = (max: number) => (pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(cut(String(pending.request || ''), max))}: that request is what was asked.\n` : '')
   const flat = (t: string) => t.replace(/\s+/g, ' ').trim()
   const ran = steps.filter(d => !d.startsWith('note: ') && !d.startsWith('not sent: ')).map((d) => {
     const at = d.indexOf(' -> ')
     return at < 0 ? cut(flat(d), 500) : `${cut(flat(d.slice(0, at)), 300)} -> ${cut(flat(d.slice(at + 4)), 500)}`
   })
-  const perPage = Math.max(100, Math.min(500, Math.floor(6000 / Math.max(1, was.length))))
-  const deckWas = was.map((_, k) => `page ${k + 1}: ${cut(pagesWere[k] || '', perPage)}`)
-  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
-    'You check an AI slide editor\'s work on one chat message, from the record below. Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \\"\\" when ok>"}.\n'
+  const deckWas = (per: number) => was.map((_, k) => `page ${k + 1}: ${cut(pagesWere[k] || '', Math.max(60, Math.min(per, Math.floor(6000 / Math.max(1, was.length)))))}`)
+  const head = 'You check an AI slide editor\'s work on one chat message, from the record below. Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \\"\\" when ok>"}.\n'
     + 'ok is false only when the record itself shows one of these:\n'
     + '1. A part of the message was not done at all, or was only offered or promised, and no step result and no line of the reply says why (nothing of that kind on the page, no room, a paid plan, something it cannot do). Look at the deck as it was first: a page with nothing of the kind asked (no picture to replace or remove) is no missed part, and a thing drawn as a shape (an arrow, a box) where a picture of it was asked is done.\n'
     + '2. Something was changed that the message did not ask for and the request does not need: the words already on a page put into another language though the message asks for no translation, a page added or removed and left there, pages rewritten that were not meant. What a step reports as part of its own work (the text colour that goes with a background, the font that goes with a file\'s look) is not this, and the language of the reply never is.\n'
     + '3. The work went to a page other than the one the message means, and neither the deck as it was nor a step result explains it. The page the user was looking at is only where "this slide" and "here" point. The editor picks pages by its own rules with the whole deck in view, and these are right: a picture or thing the message names is changed on the page that has it (each picture\'s line in the deck as it was says what it shows); new pictures for a page with no room go on a new page after it; the logo, a change for an audience and a change to "the presentation" or "the slides" go on every page; a request for every page skips the pages that have nothing of that kind.\n'
     + '4. The reply says a change was made, of a kind you are shown, and the list of changes has nothing of it. The deck is what is checked: a reply that is clumsy, or wrong in a number or a side remark while the deck is right, is no reason.\n'
-    + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong.\n'
+    + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong; anything marked as cut, shortened or left out for length (it is there, only not shown).\n'
     + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it.\n'
-    + `${made}${answers}${s.docs.length ? `Files the user gave (their "document", "file", "text"): ${s.docs.map(d => d.name).join(', ').slice(0, 600)}\n` : ''}`
+    + `${made}${s.docs.length ? `Files the user gave (their "document", "file", "text"): ${s.docs.map(d => d.name).join(', ').slice(0, 600)}\n` : ''}`
     + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
-    + `The deck when the message came, as the editor saw it (text that repeats on most pages is left out):\n${deckWas.join('\n')}\n`
-    + `The editor's steps, each with its result:\n${cut(ran.join('\n'), 5000) || '(none)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
-    + `What changed in the deck:\n${cut(lines.join('\n'), 20000) || '(nothing)'}\n`
-    + `Earlier conversation:\n${earlier || '(none)'}` }) }).catch(() => null)
+  const instruction = fitCheck({ head, reply, request: answers, earlier, deck: deckWas, steps: max => cut(ran.join('\n'), max), changes }, room0)
+  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction }) }).catch(() => null)
   const v = r?.ok ? await r.json().catch(() => null) : null
   return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
