@@ -17,16 +17,16 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
 2. Reproduce and verify in the browser: `scripts/e2e/serve.sh`, then Playwright on
    `http://[::1]:3001/harness.html?deck=<file>` (`&paid=1` for a paid user). A user's deck is
    rebuilt only in `/tmp`, never committed.
-3. Every fixed failure becomes a regression case, and the cases run before the push: add a row
-   to `~/proj/app.chatslide.ai/scripts/deck-eval/editor-cases.jsonl` (a synthetic fixture, a
-   measured `expect_*` where one exists), then with `serve.sh` up:
-   `PPTIST_EVAL_URL='http://[::1]:3001/' python3 scripts/deck-eval/run.py --file editor-cases.jsonl --no-grade -j 4`
-   (22 cases, about 3 minutes, cents). A fix that fails another case is not done. Fifty patches
-   in two days went out checked by hand only, and two of them broke earlier fixes (2026-11-12).
+3. Test only with real users' input (Quanlai, 2026-11-20: "We need to only test with real users'
+   input and figure out why"). Before a push, replay on the old and the new build, each on the
+   user's own deck as saved at send time (`make_backtest.py --accept <accept.py output> --ok <n>`):
+   the real turns users rejected (did the fix help, and why does each one still fail) and real
+   turns users accepted (a fix that breaks one is not done). Read why each failing turn fails;
+   a grade alone is not a reason.
 4. Success is what real users do, on their real decks (Quanlai, 2026-11-19: "Why don't you just
    use whatever the user actually uses?", then "focus on all of the new prompts recently, real
    prompts. Don't use fabricated content"). Only recent real prompts on the user's saved deck: no
-   generated decks, invented messages or synthetic cases in any measurement. The success rate is the share of production turns the
+   generated decks, invented messages or synthetic cases in any measurement or regression check. The success rate is the share of production turns the
    user accepted, judged from their next message in the same deck (`accept.py` in app.chatslide.ai
    `scripts/deck-eval`). A change to the router loop, its prompt or a model is backtested on
    users' own decks as they were at send time: `make_backtest.py` (its docstring has the
