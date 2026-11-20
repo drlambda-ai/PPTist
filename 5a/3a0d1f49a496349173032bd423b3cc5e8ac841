@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high. 04044c3e..5a3a0d1f: three findings on the references step (supplied references replaced, one cache for all searches, over-broad no-facts rule) fixed in 5f2c26a7; re-review closed the cache and rule findings.
+Declined: the router's search-first citation rule (deck_chat.ts:400-404) can still replace a pasted bibliography - unchanged from master; cost if wrong: same as today.
+Declined-By: Claude (session cd46e05e).
+Tests, real turns only: each fix 2 runs on its own rows (whole-deck 3 pass/1 partial in run 2; reference list 6 real papers 2/2; cat outline 1 clean picture of 2, arrows 2/2). Regression: 170 real accepted turns, 100 pass / 44 partial / 25 fail (previous build 99/44/27); of 8 turns that flipped pass->fail, 5 were ungraded (Codex limit), 3 read and not in the changed paths.
