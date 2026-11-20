@@ -1264,5 +1264,6 @@
   "your original request": "درخواست اولیه شما",
   "Upgrade to the advanced model": "ارتقا به مدل پیشرفته",
   "Put the earlier picture back on page {p0}.": "تصویر قبلی به اسلاید {p0} برگردانده شد.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم.",
+  "That step failed on our side and was not done. Please ask for it again.": "آن مرحله به‌دلیل خطایی در سمت ما انجام نشد. لطفاً دوباره درخواست کنید."
 }

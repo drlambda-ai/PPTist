@@ -1264,5 +1264,6 @@
   "your original request": "yêu cầu ban đầu của bạn",
   "Upgrade to the advanced model": "Nâng cấp lên mô hình nâng cao",
   "Put the earlier picture back on page {p0}.": "Đã đưa ảnh trước đó trở lại trang chiếu {p0}.",
-  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Tôi không còn giữ ảnh trước đó của trang chiếu {p0}. Hãy đính kèm ảnh đó để tôi đặt lại, hoặc cho tôi biết ảnh thể hiện gì để tôi tìm ảnh tương tự."
+  "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Tôi không còn giữ ảnh trước đó của trang chiếu {p0}. Hãy đính kèm ảnh đó để tôi đặt lại, hoặc cho tôi biết ảnh thể hiện gì để tôi tìm ảnh tương tự.",
+  "That step failed on our side and was not done. Please ask for it again.": "Bước đó bị lỗi ở phía chúng tôi nên chưa được thực hiện. Vui lòng yêu cầu lại."
 }

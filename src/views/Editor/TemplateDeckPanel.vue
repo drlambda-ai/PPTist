@@ -310,12 +310,22 @@ const hostSteps = () => chatslide || (window as any).__evalHost as typeof chatsl
 if (!(window as any).__deckFetchRetry) {
   (window as any).__deckFetchRetry = true
   const fetch0 = window.fetch.bind(window)
+  // the services that answer with one JSON object: an answer that does not parse is asked for once more. A broken
+  // answer from the picture search ended a paying user's message with "Unexpected non-whitespace character after JSON
+  // at position 4" and she typed the whole request again (2026-11-11). Only the unpaid ones: a paid page edit or AI
+  // picture that answered 200 is charged, and asking again would charge the user twice
+  const jsonTool = (u: string) => /\/api\/tools\/(research|deck_chat|ask_json|img_search)(\?|$)/.test(u)
+  const readable = async (r: Response) => !r.ok || await r.clone().json().then(() => true, () => false)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String((input as any).url || input)
     try {
-      return await fetch0(input, init)
+      const r = await fetch0(input, init)
+      if (!jsonTool(url) || await readable(r)) return r
+      await new Promise(ok => setTimeout(ok, 800))
+      return fetch0(input, init)
     }
     catch (e) {
-      if (!(e instanceof TypeError) || !String((input as any).url || input).includes('/api/tools/')) throw e
+      if (!(e instanceof TypeError) || !url.includes('/api/tools/')) throw e
       await new Promise(r => setTimeout(r, 1500))
       return fetch0(input, init)
     }
@@ -3549,7 +3559,10 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         lastEditTerse = '' // set only by a page edit that ran: a paywalled redesign of slide 5 was reported as the earlier "Slide 8 updated." (2026-11-17)
         reply = await runCall(text, c.action, c.args || {}, ids)
       }
-      catch (e) {
+      catch (e0) {
+        // a service answered this step with something unreadable, twice (the call is asked again once): the step
+        // failed, said plainly, and the other parts of the message go on; it never ends the message with a parser error
+        const e = e0 instanceof SyntaxError ? new StepFailed(t('That step failed on our side and was not done. Please ask for it again.')) : e0
         if (!(e instanceof StepFailed)) throw e
         memo = '' // what a failed step read never rides along with a later step
         replies.push(e.message)
