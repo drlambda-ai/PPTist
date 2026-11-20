@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high; 926c1d0b had one P2 (prompt past the 30,000-character cap could drop changed pages and reject finished work), closed by 4745ddec on re-review, no new defect.
+Evidence: 106 cases on master: check rejected 25 of 97 turns, 20 wrongly. 25-case subset on 4745ddec: 2 rejections, both true, 24/25 pass (the miss also misses on ac558dac). Partial 106-case run of 926c1d0b stopped at 43 cases, 42 pass. No full 106-case run on the final commit (owner asked to stop paid runs).
