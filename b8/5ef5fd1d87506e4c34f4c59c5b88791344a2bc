@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high; reviewed as 3b4df959 + 1c27e967 (restore findings closed), cherry-picked unchanged.
+Declined: restore originals then ask for the replacement again can leave an upper picture covering it - same as the shipped build.
+Declined: picture history saved before this patch restores only the selected layer - same as the shipped build.
+Declined-By: Claude (session cd46e05e), cost if wrong: the old picture still shows after a restore in those two sequences, as today.
