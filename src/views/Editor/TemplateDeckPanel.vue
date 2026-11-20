@@ -2409,10 +2409,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched(targets)
     const sample: any = args.same_as_page > 0 ? readingOrder(slides.value[args.same_as_page - 1]).find((e: any) => elText(e)) : null
     const sampleHtml = String(sample?.content || sample?.text?.content || '')
-    const sampleFont = sampleHtml.match(/font-family:\s*([^;"]+)/)?.[1] || sample?.defaultFontName || sample?.text?.defaultFontName
+    // a name in quotes is written &quot;Helvetica Neue&quot; once the browser has re-written the style: it read as "quot"
+    const sampleFont = sampleHtml.match(/font-family:\s*((?:&quot;|[^;"])+)/)?.[1].replace(/&quot;/g, '') || sample?.defaultFontName || sample?.text?.defaultFontName
     const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
     if (!font) fail(t('Which font?'))
-    const setIn = (html: string) => html.replace(/font-family:\s*[^;"]*/g, `font-family: ${font}`)
+    const setIn = (html: string) => html.replace(/font-family:\s*(?:&quot;|[^;"])*/g, `font-family: ${font}`)
     let n = 0
     for (const id of targets) {
       const sl = slides.value[pos(id)]
@@ -2544,6 +2545,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (want.italic === 'on') inner = `<em>${inner}</em>`
       box.innerHTML = inner
     }
+    // a style the browser re-wrote quotes its font names as &quot;: single quotes keep "font-family: &quot" out of
+    // what reads the style as text (the title's font became "&quot" after "chữ nên đậm", 2026-11-20)
+    const written = (doc: Document) => doc.body.innerHTML.replace(/&quot;/g, "'")
     const restyle = (h: string) => {
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!phrase) {
@@ -2554,7 +2558,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           b.append(box)
           style(b, box)
         })
-        return doc.body.innerHTML
+        return written(doc)
       }
       // the named words, inside one run of text; split across two runs, or to be un-bolded inside a bold run, they go to the page edit below
       const inside = (x: Element | null) => [want.bold === 'off' && 'strong, b, [style*="font-weight"]', want.italic === 'off' && 'em, i, [style*="font-style"]', want.underline === 'off' && 'u, [style*="underline"]']
@@ -2570,7 +2574,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         hit.replaceWith(box)
         box.append(hit)
         style(box, box)
-        return doc.body.innerHTML
+        return written(doc)
       }
       return h
     }
