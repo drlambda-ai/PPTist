@@ -19,6 +19,9 @@ const fn = (name: string, description: string, properties: Record<string, any>, 
   function: { name, description, parameters: { type: 'object', properties, required, additionalProperties: false } },
 })
 
+// a reference list written with no search behind it was a placeholder page ("fill in the sources here", 2026-11-15):
+// the page is given the papers found in this message, or this topic is searched first
+const REFERENCES_TOPIC = { type: 'string', description: 'When this step writes a reference list, bibliography, literature list, citations or sources onto the page: the research topic in English, 3 to 6 words, the deck\'s subject ("odontoglyphics tooth restoration"); the editor gives the page the papers found in this message, or finds them first. "" otherwise' }
 const SOURCE = 'attached: the user\'s own picture listed under "Attached pictures" (query = its file name), also whenever a picture is attached and the user says "this", "this picture", "the one I sent/gave", "add this"; wikimedia: a real, named place, person, artwork, species, building, product or event, or ANY medical subject (a disease or its types/variants, a sign, symptom, organ, anatomy, X-ray, CT, MRI, ultrasound, ECG, histology, endoscopy: Wikimedia has real medical images and diagrams; query = the medical term itself, never "medical illustration"), or the user says Wikimedia/Wikipedia/"real photo"; ai: ONLY when the user says generate/draw/AI/cartoon/illustration (it costs them 10 credits); photo: the default for everything else, a stock photo (people working, a city at night, food, a doctor with a patient); symptoms, diseases and clinical signs are wikimedia; the editor draws one itself when no stock photo matches'
 
 const TOOLS = [
@@ -38,7 +41,8 @@ const TOOLS = [
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file']),
+    references_topic: REFERENCES_TOPIC,
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file', 'references_topic']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
@@ -88,7 +92,8 @@ const TOOLS = [
     overlap: { type: 'boolean', description: 'true when the user says text on this page overlaps, collides, sits on top of or covers other text ("the heading is overlapping the body text", "текст налазит на текст", "chữ đè lên nhau"): the editor then measures the page and separates the colliding text itself. false otherwise' },
     replaces_content: { type: 'boolean', description: 'true when the user gives this page its topic or its own text, so the page BECOMES that and what it said before goes ("slide 5: main clinical signs of SSc: 1 skin ...", "слайд 9 интерстициальное поражение легких", "slide 15: mortality, and this text: ...", "redo slide 5 completely: ..."): the instruction then describes the whole new page and never says to keep or integrate the old content. false when they add to, correct, shorten, restyle or move what the page already says ("add the prevalence to slide 3", "в 3 слайд вставить ...", "also mention Y", "make the title bigger")' },
     pictures_next: { type: 'integer', description: 'How many pictures this same message asks to put on this page, which add_image places right after this edit ("slide 11: heart involvement, with pictures" -> 2 or 3; "main skin signs: A, B, C, D, insert example pictures" -> 4, one per item, at most 4): the page edit then keeps room for them. 0 when the message asks for no picture on this page' },
-  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language', 'overlap', 'replaces_content', 'pictures_next']),
+    references_topic: REFERENCES_TOPIC,
+  }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language', 'overlap', 'replaces_content', 'pictures_next', 'references_topic']),
   fn('place_texts', 'Put the user\'s OWN text on several pages, each page its own part: a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote / numbered on the slides" when that text is in an earlier message or in what they asked for when the deck was made. Each part is copied exactly as they wrote it.', {
     items: { type: 'array', description: 'One per page, in page order. Their slide numbers ARE the page numbers (\"Slide 3\" -> page 3): the page there now is replaced by their slide, a contents page included, whatever it held. Only when they number from a different start (\"Slide 0\", \"after the cover: 1 ...\") shift by that. A part for a page past the end makes a new page.', items: { type: 'object', properties: { page: page, text: { type: 'string', description: 'That page\'s part of their text, copied exactly (title first)' } }, required: ['page', 'text'], additionalProperties: false } },
   }, ['items']),

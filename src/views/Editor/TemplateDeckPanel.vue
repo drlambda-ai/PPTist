@@ -3495,6 +3495,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   const pendingAtStart = s.pending || null
   const done: string[] = again ? [`note: a first attempt at this message was undone because: ${again} Do the message right this time.`] : []
   const replies: string[] = []
+  let sources = '' // what the latest find_papers / web_search of this message found: a page writing references is given it
   const terse: string[] = [] // per step: the edit model's own sentence can contradict the rest of a multi-step turn
   const free: string[] = [] // lines the router wrote itself (any language): the reply step puts them in the user's
   let changed = false
@@ -3872,6 +3873,21 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       let reply = ''
       try {
         lastEditTerse = '' // set only by a page edit that ran: a paywalled redesign of slide 5 was reported as the earlier "Slide 8 updated." (2026-11-17)
+        // a reference list with no search behind it: the page wrote "fill in the sources here" as its literature list
+        // (a teacher's "a literature list at the end, as I asked in my request", 2026-11-15, replayed 2026-11-20). The
+        // papers found in this message go to the page itself (the router's instruction said "include the verified
+        // references" without them, and the page wrote that it had none); none found yet: they are found first, and
+        // none found anywhere fails the step and the user is told so
+        const topic = ['edit_page', 'add_page'].includes(c.action) ? String(c.args?.references_topic || '').trim() : ''
+        if (topic && !sources) {
+          const found = await runCall(text, 'find_papers', { query: topic }, ids)
+          sources = memo
+          memo = ''
+          replies.push(found)
+          terse.push(found)
+          done.push(`find_papers ${JSON.stringify({ query: topic })} -> ${found}\n${sources}`)
+        }
+        if (topic && sources) c.args = { ...c.args, instruction: `${c.args.instruction}\n\nThe sources found for it. The reference list holds only these, each written out in full (authors, year, title, journal, DOI or link), in the format the user asked for; never a placeholder or a note about the list:\n${sources}` }
         reply = await runCall(text, c.action, c.args || {}, ids)
       }
       catch (e0) {
@@ -3930,6 +3946,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       const left = everyPage
         ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) && (c.action === 'add_image' || pictures(x).length) ? k + 1 : 0)).filter(Boolean) : []
       const rest = left.length ? `\n(Every page was asked for: pages still without a ${c.action === 'add_image' ? 'new' : 'replaced'} picture: ${left.join(', ')}. Call ${c.action} for the next one, on that page's own topic.)` : ''
+      if ((c.action === 'find_papers' || c.action === 'web_search') && memo) sources = memo
       done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}${rest}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
