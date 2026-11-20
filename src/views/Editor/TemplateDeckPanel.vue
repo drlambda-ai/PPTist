@@ -3825,7 +3825,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
     // (a pass that failed did nothing: "delete pages 9-11" on a 10-page deck failed, and the right one was refused as
     // "Not done yet", 2026-11-20)
-    const passed = (d: string, action: string) => d.startsWith(`${action} `) && !d.includes(' -> failed')
+    // nor did a skipped one: a delete sent back for leaving the wrong count must still run with the right pages
+    const passed = (d: string, action: string) => d.startsWith(`${action} `) && !d.includes(' -> failed') && !d.includes(' -> skipped: ')
     const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => passed(d, c.action)))
     // the same step on the same pages again is the router repeating itself, not a second request: the turn just ends
     // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
