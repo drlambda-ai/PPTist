@@ -34,7 +34,7 @@ const TOOLS = [
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
     after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
     topics: { type: 'array', items: { type: 'string' }, description: 'One topic per new page, in order (["TikTok", "Reddit"] for "one about TikTok and one about Reddit"); [] when the pages share one topic' },
-    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
+    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2; "add 2-3 pages, an introduction, a conclusion and a bibliography" = 3 + 3 = 6: each page the message names besides the number counts, unless the deck already has it)' },
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },

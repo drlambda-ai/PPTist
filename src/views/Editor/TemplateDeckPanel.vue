@@ -3652,6 +3652,10 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     }
     if (!work.length && skipped.length && !leftNudged && done.length && !failed && !askedThisTurn && (!s.pending || s.pending.offer)) {
       leftNudged = true
+      // a page the message asks for and no step added yet is room for one more: "add 2-3 more pages ... and at last a
+      // conclusion & bibliography" declared 3, and the conclusion was refused as one page too many (2026-11-20)
+      const morePages = skipped.filter((x: string) => x.startsWith('add_page')).length
+      if (morePages && pagesWanted >= 0) pagesWanted = Math.max(pagesWanted, created() + morePages)
       done.push(`not finished: you said you have not yet called ${skipped.slice(0, 5).join(', ')} for a part the user asked for. Call it now for that part (call delete_pages itself, it shows its own confirmation; never ask_user about a deletion); never for anything they did not ask for.`)
       continue
     }
@@ -3767,7 +3771,10 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     // one deck-wide pass per turn: after pages are deleted the numbering shifts and a re-plan deleted MORE pages
     // ("delete 25-28" took 6); a second edit_all_pages re-edits every page for nothing (30 pages, twice)
     // (a second duplicate_pages copied the copies again); the reply says the rest was left for another message
-    const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => d.startsWith(`${c.action} `)))
+    // (a pass that failed did nothing: "delete pages 9-11" on a 10-page deck failed, and the right one was refused as
+    // "Not done yet", 2026-11-20)
+    const passed = (d: string, action: string) => d.startsWith(`${action} `) && !d.includes(' -> failed')
+    const again = work.find((c: any) => ['delete_pages', 'edit_all_pages', 'reorder_pages', 'set_background', 'duplicate_pages'].includes(c.action) && done.some(d => passed(d, c.action)))
     // the same step on the same pages again is the router repeating itself, not a second request: the turn just ends
     // (a single background change ended in "Not done yet: set background … tap Continue", 2026-11-11)
     // the same step on the same pages, even with other words ("nền khác": a second photo search for the same page)
@@ -3781,7 +3788,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       }
       catch { return false }
     }
-    if (again && done.some(d => d.startsWith(`${again.action} `) && (['set_background', 'delete_pages', 'duplicate_pages'].includes(again.action) ? samePages(d) : d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`)))) break
+    if (again && done.some(d => passed(d, again.action) && (['set_background', 'delete_pages', 'duplicate_pages'].includes(again.action) ? samePages(d) : d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`)))) break
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
       const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
@@ -3851,11 +3858,14 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         // over pages, or a second failure.
         // pasted text for several pages: one page already holding its part is no reason to stop; the message ended
         // there and the other pages never got theirs (replayed 2026-11-18, slides 1 and 8 of two decks)
-        const goOn = e instanceof NoChange && c.action === 'edit_page' && text.length > 300
+        // nor one page already as asked in a message with other parts: "eight slides ... the last a thank-you slide"
+        // stopped at page 7 "already explains it", the rest never done (2026-11-20). The router goes on; a page it
+        // edits twice still ends the message
+        const goOn = e instanceof NoChange && c.action === 'edit_page'
         if (!goOn) failed++
         // the step that ended the message is kept too: the turn record showed no step at all for "Page 6 was not
         // changed", so the cause could not be read from it (2026-11-14)
-        done.push(goOn ? `${c.action} ${JSON.stringify(c.args || {})} -> no change: ${e.message} (Go on with the other pages the user's text is for.)`
+        done.push(goOn ? `${c.action} ${JSON.stringify(c.args || {})} -> no change: ${e.message} (Do not retry this page. Go on with any other part of the request, or finish if none is left.)`
           : `${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
         if (repeating || (e instanceof NoChange && !goOn) || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
