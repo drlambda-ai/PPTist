@@ -2309,7 +2309,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // text in one phrase, found in neither, 2026-11-20): those boxes are styled, as with no words named
     const flatWords = (x: string) => x.replace(/\s+/g, ' ').trim().toLowerCase()
     const boxes = phrase ? targets.flatMap((id: string) => (slides.value[pos(id)].elements as any[]).filter(e => inScope(slides.value[pos(id)], e) && flatWords(phrase).includes(flatWords(elText(e))))) : []
-    const whole = new Set<string>(boxes.length && !boxes.map(e => flatWords(elText(e))).sort((a, b) => b.length - a.length).reduce((r, x) => r.split(x).join(' '), flatWords(phrase)).trim() ? boxes.map(e => e.id) : [])
+    // longest first, each taking its own words out of the phrase: "Sales plan" is that box, not also the box "Sales"
+    let unnamed = flatWords(phrase)
+    const named = [...boxes].sort((a, b) => elText(b).length - elText(a).length).filter((e) => {
+      const words = flatWords(elText(e))
+      if (!unnamed.includes(words)) return false
+      unnamed = unnamed.replace(words, ' ')
+      return true
+    })
+    const whole = new Set<string>(named.length && !unnamed.trim() ? named.map(e => e.id) : [])
     if (whole.size) phrase = ''
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
     // a mark's element goes, its own size or colour stays (on a span)
@@ -2403,10 +2411,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // answered four times with "it is already pure white" (2026-11-15), and then with "restyled" and no visible change.
     // It gets a see-through band of the opposite tone behind it, and the reply says so
     if (already.length === n && !Object.values(want).some(v => v === 'on' || v === 'off')) {
+      // on a picture: the nearest thing under at least 30% of the box is a picture that shows, not one that is hidden
+      // or lies under an opaque shape; with nothing there, the slide's background picture
       const onPicture = ([id, e]: [string, any]) => {
-        const sl = slides.value[pos(id)], under = sl.elements.slice(0, sl.elements.findIndex(x => x.id === e.id)).filter((x: any) => x.type === 'image')
-        return bareText(e) && !(e.type === 'text' && e.fill) && (sl.background?.type === 'image' || under.some((x: any) =>
-          Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height))
+        const sl = slides.value[pos(id)]
+        if (!bareText(e) || (e.type === 'text' && e.fill)) return false
+        const under = (x: any) => Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height
+        const solid = (x: any) => x.type === 'shape' && (x.opacity ?? 1) === 1 && (!!x.gradient || !!x.pattern || (!!x.fill && tinycolor(x.fill).getAlpha() === 1))
+        const behind = sl.elements.slice(0, sl.elements.findIndex(x => x.id === e.id)).reverse()
+          .find((x: any) => under(x) && ((x.type === 'image' && x.filters?.opacity !== '0%') || solid(x)))
+        return behind ? behind.type === 'image' : sl.background?.type === 'image'
       }
       const backed = already.filter(onPicture)
       if (backed.length) {
@@ -3433,7 +3447,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
       || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && animatedThisTurn(c.args?.pages))
       // nor recolours text again after its colour turned out to be there already and it got a band instead
-      || work.find((c: any) => c.action === 'set_text_style' && c.args?.color && ran.some(r => r.args?.backed))
+      // (the same colour on those pages; another colour or another page is another part of the message)
+      || work.find((c: any) => c.action === 'set_text_style' && c.args?.color && ran.some(r => r.args?.backed && tinycolor(r.args.color).toHex() === tinycolor(c.args.color).toHex()
+        && (!r.args.pages?.length || !c.args.pages?.length || c.args.pages.some((n: number) => r.args.pages.includes(n)))))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
