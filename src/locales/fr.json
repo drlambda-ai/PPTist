@@ -1255,6 +1255,8 @@
   "I could not find “{p0}” in the text there.": "Je n’ai pas trouvé « {p0} » dans le texte à cet endroit.",
   "There is no such text to style there.": "Il n’y a pas de texte de ce type à mettre en forme à cet endroit.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Style du texte modifié dans {p0} zones de texte sur {p1} page(s).",
+  "The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.": "Le texte est déjà de cette couleur, j’ai donc placé derrière lui une bande sombre semi-transparente : il ressort maintenant sur l’image.",
+  "The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.": "Le texte est déjà de cette couleur, j’ai donc placé derrière lui une bande claire semi-transparente : il ressort maintenant sur l’image.",
   "Background of page(s) {p0} set to {p1}.": "Arrière-plan de la page {p0} défini sur {p1}.",
   "Which text goes on which page?": "Quel texte va sur quelle page ?",
   "Placed your text on {p0} page(s).": "Votre texte a été placé sur {p0} page(s).",

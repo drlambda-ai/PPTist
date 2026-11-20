@@ -71,6 +71,7 @@ import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend } from '@/embed'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
+import tinycolor from 'tinycolor2'
 import { isPC } from '@/utils/common'
 import { useMainStore, useSlidesStore, useSnapshotStore } from '@/store'
 import { db } from '@/utils/database'
@@ -2277,8 +2278,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
     const color = /^#[0-9a-f]{6}$/i.test(String(args.color || '')) ? String(args.color) : ''
-    const phrase = String(args.phrase || '').trim()
+    let phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
+    // words that are whole text boxes, one after another ("the part with the title and my name" came as both boxes'
+    // text in one phrase, found in neither, 2026-11-20): those boxes are styled, as with no words named
+    const flatWords = (x: string) => x.replace(/\s+/g, ' ').trim().toLowerCase()
+    const boxes = phrase ? targets.flatMap((id: string) => (slides.value[pos(id)].elements as any[]).filter(e => inScope(slides.value[pos(id)], e) && flatWords(phrase).includes(flatWords(elText(e))))) : []
+    const whole = new Set<string>(boxes.length && !boxes.map(e => flatWords(elText(e))).sort((a, b) => b.length - a.length).reduce((r, x) => r.split(x).join(' '), flatWords(phrase)).trim() ? boxes.map(e => e.id) : [])
+    if (whole.size) phrase = ''
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
     // a mark's element goes, its own size or colour stays (on a span)
     const unwrap = (root: Element, sel: string) => root.querySelectorAll(sel).forEach((x) => {
@@ -2334,16 +2341,29 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
       return h
     }
+    // the colours a box's letters are drawn in: each run's own, else the box's
+    const letters = (e: any) => {
+      const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html'), w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), out = new Set<string>()
+      for (let node = w.nextNode(); node; node = w.nextNode()) {
+        if (!(node as Text).data.trim()) continue
+        let x = node.parentElement
+        while (x && !x.style.color) x = x.parentElement
+        out.add(tinycolor(x?.style.color || (e.type === 'text' ? e.defaultColor : e.text.defaultColor) || '#333').toHex())
+      }
+      return out
+    }
+    const already: [string, any][] = [] // boxes whose letters were all that colour before: recolouring them shows nothing
     let n = 0
     for (const id of targets) {
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
-        if (!inScope(sl, e)) continue
+        if (!inScope(sl, e) || (whole.size && !whole.has(e.id))) continue
         const was = String(e.type === 'text' ? e.content : e.text.content), now = restyle(was)
         if (now === was) continue
-        const whole = color && !phrase ? { defaultColor: color } : {}
-        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
-        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
+        if (color && !phrase && [...letters(e)].every(c => c === tinycolor(color).toHex())) already.push([id, e])
+        const box = color && !phrase ? { defaultColor: color } : {}
+        if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...box, content: now }, slideId: id })
+        else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...box, content: now } }, slideId: id })
         n++
       }
     }
@@ -2353,6 +2373,25 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (!n) fail(phrase ? t('I could not find “{p0}” in the text there.', { p0: phrase.slice(0, 60) }) : t('There is no such text to style there.'))
     touched(targets)
+    // Text that already is the colour asked for and sits on a picture is hard to read because of the picture: "the
+    // cover's text is unreadable, change its colour", "whiter", "white I said" on white letters over a pale photo was
+    // answered four times with "it is already pure white" (2026-11-15), and then with "restyled" and no visible change.
+    // It gets a see-through band of the opposite tone behind it, and the reply says so
+    if (already.length === n && !Object.values(want).some(v => v === 'on' || v === 'off')) {
+      const onPicture = ([id, e]: [string, any]) => {
+        const sl = slides.value[pos(id)], under = sl.elements.slice(0, sl.elements.findIndex(x => x.id === e.id)).filter((x: any) => x.type === 'image')
+        return bareText(e) && !(e.type === 'text' && e.fill) && (sl.background?.type === 'image' || under.some((x: any) =>
+          Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height))
+      }
+      const backed = already.filter(onPicture)
+      if (backed.length) {
+        const light = tinycolor(color).isLight()
+        for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: light ? '#00000080' : '#FFFFFFB3' }, slideId: id })
+        args.backed = true // not a look to repeat on the other pages
+        return light ? t('The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.')
+          : t('The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.')
+      }
+    }
     return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
   // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
@@ -3357,6 +3396,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
       // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
       || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && animatedThisTurn(c.args?.pages))
+      // nor recolours text again after its colour turned out to be there already and it got a band instead
+      || work.find((c: any) => c.action === 'set_text_style' && c.args?.color && ran.some(r => r.args?.backed))
     // undone for a "correction", then the router wants the very same change back: the undone change was already
     // what the user meant ("I asked for the image, not the background" after the image was changed). Put it back.
     if (extra?.action === 'change_image' && done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(extra.action, extra.args))) {
@@ -3388,6 +3429,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
                 ? 'that is exactly the change just undone because the user said it was wrong; do the request on the target the user means instead'
                 : extra.action === 'animate_pages' ? 'the animations this message asks for were just added; keep them and finish'
+                : extra.action === 'set_text_style' ? 'the text already has that colour and now stands on a band that makes it readable (see Done so far); finish'
                 : extra.action === 'set_background' ? 'the user\'s words do not ask for the page background, so it stays: for pictures use change_image (all_pictures for every picture on a page), add_image or remove_images'
                 : extra.action === 'edit_all_pages' ? 'a deck-wide edit already ran in this message (see Done so far); finish, and put in not_done only a part of the request it did not cover'
                 : stockForBrand(extra) ? 'the brand\'s own pictures are a paid feature the user was just told about; a stock photo is not their product: finish'
@@ -3551,7 +3593,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     save()
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
-    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1) && !c.args?.phrase)) { // a picture set may add pages: not repeated; named words are on one page
+    && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1) && !c.args?.phrase && !c.args?.backed)) { // a picture set may add pages: not repeated; named words are on one page
     followUp = t('Done on this page. Want the same on the other pages?')
     const here = slides.value.findIndex(x => x.id === startPageId) + 1
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
@@ -3572,7 +3614,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   const own = ['talk_to_human', 'download_deck', 'share_deck', 'open_refund', 'open_step', 'open_design', 'version_history', 'undo', 'redo', 'restore_original', 'delete_pages', 'create_deck']
   // nor when putting an earlier picture back was all the message did: the check sees a page's texts and picture
   // count, so "no change"
-  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0))) {
+  // nor a band put behind text that already had the colour asked for: the check sees no colours and no band, and
+  // undid it as "a band instead of whiter letters" (4 of 4 replays, 2026-11-20)
+  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0 || c.args?.backed))) {
     // the question is passed only when the message is one of its own buttons: any other reply may be a new request
     // ("never mind, make the background white"), and the check would hold it to the request it dropped
     const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null)

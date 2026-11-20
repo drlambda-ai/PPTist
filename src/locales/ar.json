@@ -1255,6 +1255,8 @@
   "I could not find “{p0}” in the text there.": "لم أجد «{p0}» في النص هناك.",
   "There is no such text to style there.": "لا يوجد نص كهذا لتنسيقه هناك.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "تم تغيير نمط النص في {p0} مربعات نص عبر {p1} صفحة.",
+  "The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.": "النص هناك بهذا اللون بالفعل، لذلك وضعت خلفه شريطًا داكنًا شبه شفاف: أصبح الآن بارزًا فوق الصورة.",
+  "The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.": "النص هناك بهذا اللون بالفعل، لذلك وضعت خلفه شريطًا فاتحًا شبه شفاف: أصبح الآن بارزًا فوق الصورة.",
   "Background of page(s) {p0} set to {p1}.": "تم تعيين خلفية الصفحة {p0} إلى {p1}.",
   "Which text goes on which page?": "أي نص يوضع في أي صفحة؟",
   "Placed your text on {p0} page(s).": "تم وضع نصك على {p0} صفحة.",

@@ -1255,6 +1255,8 @@
   "I could not find “{p0}” in the text there.": "Tôi không tìm thấy “{p0}” trong văn bản ở đó.",
   "There is no such text to style there.": "Ở đó không có văn bản nào như vậy để định dạng.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Đã đổi kiểu chữ trong {p0} hộp văn bản trên {p1} trang.",
+  "The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.": "Chữ ở đó vốn đã có màu này, nên tôi đặt một dải tối trong mờ phía sau: giờ chữ nổi rõ trên ảnh.",
+  "The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.": "Chữ ở đó vốn đã có màu này, nên tôi đặt một dải sáng trong mờ phía sau: giờ chữ nổi rõ trên ảnh.",
   "Background of page(s) {p0} set to {p1}.": "Đã đặt nền trang {p0} thành {p1}.",
   "Which text goes on which page?": "Đoạn văn nào cho trang nào?",
   "Placed your text on {p0} page(s).": "Đã đặt văn bản của bạn lên {p0} trang.",

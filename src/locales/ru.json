@@ -1255,6 +1255,8 @@
   "I could not find “{p0}” in the text there.": "Я не нашёл «{p0}» в тексте там.",
   "There is no such text to style there.": "Там нет такого текста для оформления.",
   "Restyled the text in {p0} text boxes across {p1} page(s).": "Оформление текста изменено в {p0} текстовых блоках на {p1} стр.",
+  "The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.": "Текст там уже этого цвета, поэтому я поместил за ним тёмную полупрозрачную полосу: теперь он выделяется на картинке.",
+  "The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.": "Текст там уже этого цвета, поэтому я поместил за ним светлую полупрозрачную полосу: теперь он выделяется на картинке.",
   "Background of page(s) {p0} set to {p1}.": "Фон страницы {p0} изменён на {p1}.",
   "Which text goes on which page?": "Какой текст на какую страницу?",
   "Placed your text on {p0} page(s).": "Ваш текст размещён на {p0} стр.",
