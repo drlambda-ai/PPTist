@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high, three rounds on the band step (d5c90498, aefe1355, 299adc6d): hidden/covered pictures, partial-phrase box, over-broad skip and once-only phrase all closed; final re-review of 299adc6d found no new defect.
+Regression: editor-cases 103/106 on the build before the last two commits (misses flaky: master 7/8, this build 7/8 on the two shaky cases); six style cases 6/6 on the final build.
