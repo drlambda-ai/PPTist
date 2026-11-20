@@ -1267,5 +1267,8 @@
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Não tenho mais a imagem anterior da página {p0}. Anexe-a e eu a recoloco, ou diga o que ela mostra e eu encontro uma parecida.",
   "That picture already is the background of page {p0}: it covers the whole page.": "Essa imagem já é o fundo do slide {p0}: ela cobre o slide inteiro.",
   "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "A imagem do slide {p0} agora é o fundo dele: cobre o slide inteiro, atrás do texto.",
+  "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "No celular não há painel de configurações de texto: diga a fonte, o tamanho ou a cor que você quer e eu aplico.",
+  "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Este slide não tem nenhuma caixa de texto para abrir as configurações de texto. Clique em um texto de qualquer slide e as configurações dele abrem à direita.",
+  "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Selecionei o texto “{p0}” e abri as configurações dele à direita: fonte, tamanho, cor, negrito e espaçamento. Clique em outro texto para alterar esse.",
   "That step failed on our side and was not done. Please ask for it again.": "Essa etapa falhou do nosso lado e não foi feita. Peça de novo, por favor."
 }

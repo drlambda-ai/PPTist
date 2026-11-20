@@ -1267,5 +1267,8 @@
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "我已沒有第 {p0} 頁先前的那張圖片。請把它附上，我會放回去；或告訴我圖片內容，我來找一張相似的。",
   "That picture already is the background of page {p0}: it covers the whole page.": "那張圖片已經是第 {p0} 頁的背景：它覆蓋了整頁。",
   "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "第 {p0} 頁上的圖片現在是該頁的背景：它覆蓋整頁，位於文字後面。",
+  "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "手機上沒有文字設定面板：告訴我你想要的字型、字級或顏色，我來設定。",
+  "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "此頁沒有可開啟文字設定的文字方塊。點選任一頁面上的文字，其設定會在右側開啟。",
+  "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "我已選取文字「{p0}」，並在右側開啟它的設定：字型、字級、顏色、粗體和間距。點選其他文字即可修改那段文字。",
   "That step failed on our side and was not done. Please ask for it again.": "這一步因我們這邊出錯而未完成。請再提一次。"
 }

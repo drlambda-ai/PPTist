@@ -1267,5 +1267,8 @@
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "لم تعد الصورة السابقة للصفحة {p0} متوفرة لديّ. أرفقها وسأعيدها، أو أخبرني بما تُظهره وسأجد صورة مشابهة.",
   "That picture already is the background of page {p0}: it covers the whole page.": "تلك الصورة هي بالفعل خلفية الشريحة {p0}: إنها تغطي الشريحة كلها.",
   "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "الصورة في الشريحة {p0} أصبحت الآن خلفيتها: تغطي الشريحة كلها خلف النص.",
+  "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "لا توجد لوحة إعدادات للنص على الهاتف: أخبرني بالخط أو الحجم أو اللون الذي تريده وسأضبطه.",
+  "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "لا يوجد في هذه الشريحة مربع نص لفتح إعدادات النص له. انقر على أي نص في أي شريحة وستُفتح إعداداته على اليمين.",
+  "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "حددت النص «{p0}» وفتحت إعداداته على اليمين: الخط والحجم واللون والخط العريض والتباعد. انقر على نص آخر لتغييره.",
   "That step failed on our side and was not done. Please ask for it again.": "فشلت تلك الخطوة من جانبنا ولم تُنفَّذ. يُرجى طلبها مرة أخرى."
 }

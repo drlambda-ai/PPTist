@@ -1267,5 +1267,8 @@
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "تصویر قبلی اسلاید {p0} دیگر در دسترس من نیست. آن را پیوست کنید تا برگردانم، یا بگویید چه چیزی را نشان می‌دهد تا تصویر مشابهی پیدا کنم.",
   "That picture already is the background of page {p0}: it covers the whole page.": "آن تصویر از قبل پس‌زمینهٔ اسلاید {p0} است: کل اسلاید را می‌پوشاند.",
   "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "تصویر اسلاید {p0} اکنون پس‌زمینهٔ آن است: کل اسلاید را پشت متن می‌پوشاند.",
+  "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "در گوشی پنل تنظیمات متن وجود ندارد: فونت، اندازه یا رنگی را که می‌خواهید بگویید تا تنظیمش کنم.",
+  "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "این اسلاید کادر متنی ندارد که تنظیمات متنش باز شود. روی متنی در هر اسلاید کلیک کنید تا تنظیماتش در سمت راست باز شود.",
+  "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "متن «{p0}» را انتخاب کردم و تنظیماتش را در سمت راست باز کردم: فونت، اندازه، رنگ، پررنگی و فاصله‌گذاری. برای تغییر متن دیگر، روی آن کلیک کنید.",
   "That step failed on our side and was not done. Please ask for it again.": "آن مرحله به‌دلیل خطایی در سمت ما انجام نشد. لطفاً دوباره درخواست کنید."
 }

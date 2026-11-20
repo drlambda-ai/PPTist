@@ -1267,5 +1267,8 @@
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Tôi không còn giữ ảnh trước đó của trang chiếu {p0}. Hãy đính kèm ảnh đó để tôi đặt lại, hoặc cho tôi biết ảnh thể hiện gì để tôi tìm ảnh tương tự.",
   "That picture already is the background of page {p0}: it covers the whole page.": "Ảnh đó đã là nền của trang {p0}: nó phủ kín cả trang.",
   "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "Ảnh trên trang {p0} giờ là nền của trang: nó phủ kín cả trang, nằm sau chữ.",
+  "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "Trên điện thoại không có bảng cài đặt chữ: hãy cho tôi biết phông chữ, cỡ chữ hoặc màu bạn muốn, tôi sẽ đặt giúp.",
+  "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Trang này không có ô chữ nào để mở cài đặt chữ. Hãy bấm vào một đoạn chữ ở bất kỳ trang nào, cài đặt của nó sẽ mở ở bên phải.",
+  "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Tôi đã chọn đoạn chữ “{p0}” và mở cài đặt của nó ở bên phải: phông chữ, cỡ chữ, màu, in đậm và giãn cách. Bấm vào đoạn chữ khác để chỉnh đoạn đó.",
   "That step failed on our side and was not done. Please ask for it again.": "Bước đó bị lỗi ở phía chúng tôi nên chưa được thực hiện. Vui lòng yêu cầu lại."
 }

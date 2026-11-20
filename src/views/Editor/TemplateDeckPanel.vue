@@ -3064,6 +3064,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })
   }
   if (action === 'open_design') {
+    // "open the text settings for me" (after five "whiter" messages changed nothing, 2026-11-15) opened the Design
+    // panel: the text of the page on screen is selected, so the toolbar on the right shows its style panel
+    if (args.panel === 'text') {
+      if (!isPC()) return t('A phone has no text settings panel: tell me the font, size or colour you want and I will set it.')
+      const sl = slides.value[slideIndex.value]
+      const first = sl && (sl.elements.find((e: any) => (e.textType === 'title' || e.text?.type === 'title') && elText(e)) || readingOrder(sl).find((e: any) => elText(e)))
+      if (!first) fail(t('This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.'))
+      mainStore.setActiveElementIdList([first.id])
+      mainStore.setToolbarState(ToolbarStates.EL_STYLE)
+      chatLeft.value = 8
+      return t('I selected the text "{p0}" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.', { p0: elText(first).slice(0, 40) })
+    }
     if (!isPC()) { // phones have no Design panel: change the design for them (a phone user asked and was turned away, 2026-11-10)
       const bg = slides.value[0]?.background?.color
       const pick = PRESET_THEMES.filter(p => p.background !== bg)

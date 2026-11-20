@@ -266,7 +266,9 @@ const TOOLS = [
     what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
     message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
   }, ['what', 'message']),
-  fn('open_design', 'Open the Design panel, where the user picks a theme or template ("change the template", "apply a theme", "other templates").', {}, []),
+  fn('open_design', 'Open a panel of the editor for the user to work in by hand: the Design panel, where they pick a theme or template ("change the template", "apply a theme", "other templates"), or the text settings ("open the text / font settings for me", "yazı ayarlarını aç", "where do I set the font myself").', {
+    panel: { type: 'string', enum: ['design', 'text'], description: 'text when the user asks to open the text, font or writing settings: the editor selects the main text of the page they are on and opens its style panel (font, size, colour, bold, spacing); design otherwise' },
+  }, ['panel']),
   fn('open_refund', 'The user wants a refund or their money back ("refund", "退款", "reembolso"): opens ChatSlide\'s refund page, where they request it.', {}, []),
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
