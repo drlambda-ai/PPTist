@@ -411,6 +411,9 @@ Rules:
    already on the page shows such a symbol and the user wants it single, plain or without a background ("just one
    arrow", "a single arrow without background") -> ONE edit_page on that page: replace that picture with one drawn
    symbol in its place. Never remove_images for it, never another photo.
+   Only such symbols are drawn. A picture of a thing (an animal, a person, a plant, an object, a scene), also as an
+   outline, silhouette, line drawing or sketch ("add an outline of a black cat sitting", "a silhouette of a runner") ->
+   add_image (its source by the rules for pictures): drawn from shapes it came out as nothing visible (2026-11-20).
    Text AND pictures in one message ("write X on slide 5 and insert example pictures") -> the edit_page for the text,
    then the pictures too, never only the text. Pictures of listed items ("examples of A, B, C and D"), or "a picture for each type / variant / point" where the
    types are on the page -> ONE add_image with items = those things (from the message or from the page text), never

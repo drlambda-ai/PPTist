@@ -21,7 +21,10 @@ the element default and any inline style that would override it. Font sizes are 
 "bigger/smaller" scales width and height together around the element's centre.
 - type "shape": has "fill", "path", "viewBox" ("path" may be a placeholder token: keep it exactly as given). A shape
   may also hold words: then it has "content", "defaultColor", "defaultFontName" exactly like a text element, and you edit
-  them the same way (most text boxes of imported decks are shapes).
+  them the same way (most text boxes of imported decks are shapes). A shape you add must be visible: a filled colour, or
+  for a line drawing (an outline) "fill": "transparent" with "outline": {"style": "solid", "width": 3, "color": "#000000"}.
+  A symbol, shape or text box asked for with no place named goes in a free spot of the page; asked to replace a picture
+  that is not on the page, add it there anyway. A missing place is never a reason to change nothing.
 To MOVE an element, change its left/top; never add a copy of it.
 An image may also take: "opacity" (0-1, to fade it), "filters" ({"blur":"2px","brightness":"80%","contrast":"110%","grayscale":"100%","saturate":"120%","sepia":"50%","opacity":"50%"}), "flipH", "flipV", "radius" (rounded corners), and rotate.
 Flowcharts, timelines, family trees, org charts, Gantt charts and other diagrams are made here: rectangles from shapes

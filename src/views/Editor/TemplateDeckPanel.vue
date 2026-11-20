@@ -901,6 +901,12 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     if (e.type === 'shape') {
       const vb = typeof e.viewBox === 'string' ? e.viewBox.trim().split(/[\s,]+/).map(Number).slice(-2) : e.viewBox
       e.viewBox = Array.isArray(vb) && vb.length === 2 && vb.every((v: any) => Number.isFinite(Number(v)) && Number(v) > 0) ? vb.map(Number) : [e.width || 1, e.height || 1]
+      // a drawing that paints nothing: "fill": "none" and no outline drew "an outline of a black cat sitting" as nothing
+      // at all, and the reply said the page was updated (a paying user's page, replayed 2026-11-20). It gets a dark
+      // outline, so what was drawn shows
+      const paints = (c: unknown) => typeof c === 'string' && c !== 'none' && tinycolor(c).isValid() && tinycolor(c).getAlpha() > 0.05
+      const outlined = toNum(e.outline?.width) > 0 && (e.outline?.color === undefined || paints(e.outline.color))
+      if (!plain(String(e.content ?? '')) && !e.gradient && !e.pattern && !paints(e.fill) && !outlined) e.outline = { style: 'solid', width: 3, color: '#222222' }
     }
     if (e.type !== 'shape' || e.content === undefined) return e
     const { content, defaultColor, defaultFontName, ...rest } = e
