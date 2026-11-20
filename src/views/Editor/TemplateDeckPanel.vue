@@ -814,9 +814,17 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
   // a link, or a picture small enough to send (a request body is capped at 4.5MB)
   if (!/^https:\/\//.test(src) && !(/^data:image\/(png|jpeg|webp);base64,/.test(src) && src.length < 3_000_000)) return Promise.resolve([])
   const { width: W, height: H } = slideSize()
-  const key = `${src.slice(0, 200)}|${src.length}|${W}x${H}|${box ? [box.left, box.top, box.width, box.height].join(',') : ''}`
+  // keyed by the whole picture (two JPEG data URLs of one length share their first characters, and then one slide
+  // was given the other's lines)
+  let hash = 0x811c9dc5
+  for (let i = 0; i < src.length; i++) hash = Math.imul(hash ^ src.charCodeAt(i), 0x01000193)
+  const key = `${(hash >>> 0).toString(36)}|${src.length}|${W}x${H}|${box ? [box.left, box.top, box.width, box.height].join(',') : ''}`
+  const known = (read: Promise<PaintedLine[]>) => read.then((lines) => {
+    if (lines.length) paintedKnown.set(src, lines)
+    else if (paintedRead.get(key) === read) paintedRead.delete(key) // unread (a failed call, no text): asked again next time
+  })
   const had = paintedRead.get(key)
-  if (had) return had
+  if (had) { known(had); return had }
   const read = (async () => {
     // where the picture lies on the canvas: a background covers the slide (cropped evenly when its shape differs)
     const size = await new Promise<{ w: number, h: number } | null>((ok) => {
@@ -838,10 +846,7 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
       .filter(l => l.text && [l.left, l.top, l.width, l.height].every(Number.isFinite) && l.width > 0 && l.height > 0).slice(0, 60)
   })().catch(() => [] as PaintedLine[])
   paintedRead.set(key, read)
-  read.then((lines) => {
-    if (lines.length) paintedKnown.set(src, lines)
-    else paintedRead.delete(key) // unread (a failed call, no text): asked again next time
-  })
+  known(read)
   return read
 }
 const paintedNote = async (sl: Slide) => {
@@ -2594,7 +2599,16 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let spanned = 0
     if (!n && phrase && targets.length === 1 && color && !Object.values(want).some(v => v === 'on' || v === 'off')) {
       const sl = slides.value[pos(targets[0])]
-      const same = (sl.elements as any[]).filter(e => inScope(sl, e) && [...letters(e)].every(c => c === tinycolor(color).toHex()))
+      // only the boxes the named words are in: the phrase is copied from the page's text, so a box belongs to it when
+      // its text is part of the phrase or holds it; a white footer elsewhere is not the title the user named
+      const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+      const named = (e: any) => {
+        const box = norm(elText(e)), asked = norm(phrase)
+        return box.length >= 4 && (asked.includes(box) || box.includes(asked))
+      }
+      const boxes = (sl.elements as any[]).filter(e => inScope(sl, e) && named(e))
+      // every named box already that colour, or the page edit recolours them
+      const same = boxes.every(e => [...letters(e)].every(c => c === tinycolor(color).toHex())) ? boxes : []
       if (same.length) { already.push(...same.map((e): [string, any] => [targets[0], e])); spanned = n = same.length }
     }
     const byPageEdit = () => { // not one plain run of text: the page edit restyles those words
