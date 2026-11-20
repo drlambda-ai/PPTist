@@ -3210,6 +3210,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   let leftNudged = false // a not_done the router was sent back over, once per message
   let wordsNudged = false // an answer that only offered the change asked for was sent back, once per message
   currentAtSend = startPageId || ''
+  const pagesAtSend = deckLines() // the deck as the router is shown it, for the check of the finished message
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
@@ -3656,7 +3657,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0 || c.args?.backed))) {
     // the question is passed only when the message is one of its own buttons: any other reply may be a new request
     // ("never mind, make the background white"), and the check would hold it to the request it dropped
-    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null)
+    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null, pagesAtSend, done)
     if (problem) {
       slidesStore.setSlides(startSlides)
       slidesStore.setTheme(startTheme)
@@ -3689,7 +3690,13 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
 // that plan's speaker notes unasked; and it could not see a background picture being hidden ("the orange patches are
 // not confirmed removed"). Each undid a right turn and ran it again: 9 of its 12 rejections in two replays of 11 real
 // turns (2026-11-20), one of them a 21-page build written twice
-const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending) => {
+// It rejected 25 of the 97 turns it read in one run of the 106 editor cases (2026-11-20), 20 of them right turns: a named
+// picture changed on the page that has it ("the user was viewing page 2"), "every slide" where the other pages had no
+// picture, a shape, a colour or a layout it is not shown, a page count off by a page that needed no change. So it also
+// gets the deck as the router saw it (what each picture shows, the logo, the pages with nothing to change) and the
+// steps with their results (the page each one worked on and why), and it fails a turn only for a ground it can show
+// from that record; its rules come first, so a long record is cut at its end, never at the question
+const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending, pagesWere: string[], steps: string[]) => {
   // a page's text is cut to the room there is, and the cut is marked: cut bare, at 700 characters a page and 7,000 in
   // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
   const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
@@ -3718,13 +3725,28 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   // second attempt added one page (replay of a real turn, 2026-11-20)
   const made = Number(s.brief?.pages) > was.length ? `When the deck was made the user asked for ${s.brief!.pages} slides.\n` : ''
   const answers = pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(String(pending.request || '').slice(0, 6000))}: that request is what was asked.\n` : ''
+  const flat = (t: string) => t.replace(/\s+/g, ' ').trim()
+  const ran = steps.filter(d => !d.startsWith('note: ') && !d.startsWith('not sent: ')).map((d) => {
+    const at = d.indexOf(' -> ')
+    return at < 0 ? cut(flat(d), 500) : `${cut(flat(d.slice(0, at)), 300)} -> ${cut(flat(d.slice(at + 4)), 500)}`
+  })
+  const perPage = Math.max(100, Math.min(500, Math.floor(6000 / Math.max(1, was.length))))
+  const deckWas = was.map((_, k) => `page ${k + 1}: ${cut(pagesWere[k] || '', perPage)}`)
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
-    `You check an AI slide editor's work on one chat message.\n${made}Earlier conversation:\n${earlier || '(none)'}\n${answers}`
+    'You check an AI slide editor\'s work on one chat message, from the record below. Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \\"\\" when ok>"}.\n'
+    + 'ok is false only when the record itself shows one of these:\n'
+    + '1. A part of the message was not done at all, or was only offered or promised, and no step result and no line of the reply says why (nothing of that kind on the page, no room, a paid plan, something it cannot do). Look at the deck as it was first: a page with nothing of the kind asked (no picture to replace or remove) is no missed part, and a thing drawn as a shape (an arrow, a box) where a picture of it was asked is done.\n'
+    + '2. Something was changed that the message did not ask for and the request does not need: the words already on a page put into another language though the message asks for no translation, a page added or removed and left there, pages rewritten that were not meant. What a step reports as part of its own work (the text colour that goes with a background, the font that goes with a file\'s look) is not this, and the language of the reply never is.\n'
+    + '3. The work went to a page other than the one the message means, and neither the deck as it was nor a step result explains it. The page the user was looking at is only where "this slide" and "here" point. The editor picks pages by its own rules with the whole deck in view, and these are right: a picture or thing the message names is changed on the page that has it (each picture\'s line in the deck as it was says what it shows); new pictures for a page with no room go on a new page after it; the logo, a change for an audience and a change to "the presentation" or "the slides" go on every page; a request for every page skips the pages that have nothing of that kind.\n'
+    + '4. The reply says a change was made, of a kind you are shown, and the list of changes has nothing of it. The deck is what is checked: a reply that is clumsy, or wrong in a number or a side remark while the deck is right, is no reason.\n'
+    + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong.\n'
+    + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it.\n'
+    + `${made}${answers}${s.docs.length ? `Files the user gave (their "document", "file", "text"): ${s.docs.map(d => d.name).join(', ').slice(0, 600)}\n` : ''}`
     + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
-    + `What changed in the deck:\n${cut(lines.join('\n'), 20000) || '(nothing)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
-    + 'Did it do what the message asks: the right pages, every part asked, nothing the user did not ask for, and does the reply say truthfully what was done? '
-    + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it. '
-    + 'Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \"\" when ok>"}.' }) }).catch(() => null)
+    + `The deck when the message came, as the editor saw it (text that repeats on most pages is left out):\n${deckWas.join('\n')}\n`
+    + `The editor's steps, each with its result:\n${cut(ran.join('\n'), 5000) || '(none)'}\nThe editor's reply: ${JSON.stringify(reply.slice(0, 1500))}\n`
+    + `What changed in the deck:\n${cut(lines.join('\n'), 20000) || '(nothing)'}\n`
+    + `Earlier conversation:\n${earlier || '(none)'}` }) }).catch(() => null)
   const v = r?.ok ? await r.json().catch(() => null) : null
   return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
