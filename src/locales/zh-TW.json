@@ -1042,6 +1042,7 @@
   "Animations removed.": "已移除動畫。",
   "Animated {p0} page(s).": "已為 {p0} 頁加入動畫。",
   "A deck needs at least one page, so I kept it.": "簡報至少需要一頁，因此保留了這一頁。",
+  "The deck already has {p0} pages.": "簡報已經有 {p0} 張投影片。",
   "Deleted {p0} page(s); {p1} remain.": "已刪除 {p0} 頁；還剩 {p1} 頁。",
   "There is no attached file \"{p0}\". Attached: {p1}.": "沒有附加檔案「{p0}」。已附加：{p1}。",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "尚未附加檔案：請點選聊天框中的 📎 圖示附加。",

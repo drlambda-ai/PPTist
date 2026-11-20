@@ -1042,6 +1042,7 @@
   "Animations removed.": "Анимации удалены.",
   "Animated {p0} page(s).": "{p0} слайдов анимировано.",
   "A deck needs at least one page, so I kept it.": "В презентации должен остаться хотя бы один слайд, поэтому я его сохранил.",
+  "The deck already has {p0} pages.": "В презентации уже есть {p0} слайдов.",
   "Deleted {p0} page(s); {p1} remain.": "Удалено {p0} слайдов; осталось {p1}.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "Файл «{p0}» не прикреплён. Прикреплены: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "Файл ещё не прикреплён. Прикрепите его значком 📎 в поле чата.",

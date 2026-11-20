@@ -1042,6 +1042,7 @@
   "Animations removed.": "أُزيلت الرسوم المتحركة.",
   "Animated {p0} page(s).": "تم تحريك {p0} من الصفحات.",
   "A deck needs at least one page, so I kept it.": "يحتاج العرض إلى صفحة واحدة على الأقل، لذا أبقيتها.",
+  "The deck already has {p0} pages.": "يحتوي العرض التقديمي بالفعل على {p0} شريحة.",
   "Deleted {p0} page(s); {p1} remain.": "تم حذف {p0} من الصفحات؛ بقي {p1}.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "لا يوجد ملف مرفق باسم \"{p0}\". المرفقات: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "لم يُرفق أي ملف بعد؛ أرفقه باستخدام أيقونة 📎 في مربع الدردشة.",

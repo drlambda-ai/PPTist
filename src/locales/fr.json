@@ -1042,6 +1042,7 @@
   "Animations removed.": "Animations supprimées.",
   "Animated {p0} page(s).": "{p0} page(s) animée(s).",
   "A deck needs at least one page, so I kept it.": "Une présentation doit comporter au moins une diapositive ; je l’ai donc conservée.",
+  "The deck already has {p0} pages.": "La présentation comporte déjà {p0} diapositives.",
   "Deleted {p0} page(s); {p1} remain.": "{p0} page(s) supprimée(s) ; il en reste {p1}.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "Le fichier joint « {p0} » est introuvable. Fichiers joints : {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "Aucun fichier joint pour le moment : ajoutez-en un avec l’icône 📎 dans la zone de chat.",

@@ -1042,6 +1042,7 @@
   "Animations removed.": "Đã xóa hiệu ứng động.",
   "Animated {p0} page(s).": "Đã tạo hiệu ứng cho {p0} trang.",
   "A deck needs at least one page, so I kept it.": "Bộ trình chiếu cần có ít nhất một trang chiếu, nên tôi đã giữ lại trang này.",
+  "The deck already has {p0} pages.": "Bản trình bày đã có {p0} trang chiếu.",
   "Deleted {p0} page(s); {p1} remain.": "Đã xóa {p0} trang; còn {p1}.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "Không có tệp đính kèm \"{p0}\". Tệp đính kèm: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "Chưa có tệp nào được đính kèm. Hãy đính kèm bằng biểu tượng 📎 trong hộp chat.",

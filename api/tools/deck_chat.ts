@@ -64,7 +64,8 @@ const TOOLS = [
   fn('delete_pages', 'Delete one or more pages.', {
     pages, user_asked_to_cut: { type: 'boolean', description: 'true ONLY if the user\'s words ask to delete, remove or cut pages, or to reduce the deck' },
     yes_to_delete_question: { type: 'boolean', description: 'true ONLY when the user\'s latest message answers the question "Delete N pages?" with a yes ("да", "yes, replace them", "можешь их заменить"); false for a no, a refusal, or any other message' },
-  }, ['pages', 'user_asked_to_cut', 'yes_to_delete_question']),
+    pages_left: { type: 'integer', description: 'When the user gives how many pages the deck should have in the end ("10 slides", "має бути 10 слайдів", "only 8", "reduce to 5"): that number, also when answering the question about it; 0 otherwise. Then list the least essential pages first: when the list is longer than needed, only its first pages go' },
+  }, ['pages', 'user_asked_to_cut', 'yes_to_delete_question', 'pages_left']),
   fn('duplicate_pages', 'Duplicate pages; each copy goes right after its original.', {
     pages, copies: { type: 'integer', description: 'How many copies of each page, usually 1' },
   }, ['pages', 'copies']),

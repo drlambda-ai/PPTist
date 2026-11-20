@@ -2162,7 +2162,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (args.effect === 'none' ? t('Animations removed.') : t('Animated {p0} page(s).', { p0: targets.length }))
   }
   if (action === 'delete_pages') {
-    const del = nums(args.pages)
+    let del = nums(args.pages)
+    // "10 slides it must be": the pages listed first go, until that many are left
+    const keep = Number(args.pages_left) || 0
+    if (keep > 0 && n - del.length < keep) del = del.slice(0, Math.max(0, n - keep))
+    if (!del.length) fail(t('The deck already has {p0} pages.', { p0: n }))
     if (del.length >= n) fail(t('A deck needs at least one page, so I kept it.'))
     // more than one page goes only after the user says yes: a pasted homework task once deleted 9 of 10 pages
     const repeatedWish = args.yes_to_delete_question === true && args.user_asked_to_cut === true && del.every(id => deleteAnswered.includes(id)) // those pages or some of them
@@ -3733,8 +3737,13 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     // pages this message added are what it asked for: after "increase to 16 slides" added 12, the router asked to
     // delete those 12 (e2e, 2026-11-16)
     const dropsNew = (c: any) => c.action === 'delete_pages' && (c.args?.pages || []).some((p: number) => !!ids[p - 1] && !idsAtStart.has(ids[p - 1]))
+    // the count the user gave is the count left: "10 slides it must be" on a 52-page deck asked to delete 49 and leave 3
+    // (2026-11-20). Too long a list is cut in the step itself (the router miscounts long decks); too short is sent back.
+    const leftWrong = (c: any) => c.action === 'delete_pages' && Number(c.args?.pages_left) > 0
+      && slides.value.length - new Set((c.args?.pages || []).filter((p: number) => p >= 1 && p <= slides.value.length)).size > Number(c.args.pages_left)
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find(dropsNew)
+      || work.find(leftWrong)
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
@@ -3789,7 +3798,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       break
     }
     if (extra) {
+      const keep = Number(extra.args?.pages_left), n = slides.value.length
       const why = dropsNew(extra) ? 'those pages were added by this message (see Done so far): they are what the user asked for and they stay; finish'
+        : leftWrong(extra) ? `that would leave ${n - new Set(extra.args.pages.filter((p: number) => p >= 1 && p <= n)).size} pages, but the user wants ${keep} in the end: call delete_pages with exactly ${n - keep} pages, the least essential first`
         : extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
           : adds(extra) && pagesWanted >= 0 && created() >= pagesWanted

@@ -1042,6 +1042,7 @@
   "Animations removed.": "Animations removed.",
   "Animated {p0} page(s).": "Animated {p0} page(s).",
   "A deck needs at least one page, so I kept it.": "A deck needs at least one page, so I kept it.",
+  "The deck already has {p0} pages.": "The deck already has {p0} pages.",
   "Deleted {p0} page(s); {p1} remain.": "Deleted {p0} page(s); {p1} remain.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "There is no attached file \"{p0}\". Attached: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "No file is attached yet: attach it with the 📎 icon in the chat box.",

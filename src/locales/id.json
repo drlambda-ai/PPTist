@@ -1042,6 +1042,7 @@
   "Animations removed.": "Animasi dihapus.",
   "Animated {p0} page(s).": "Menganimasi {p0} halaman.",
   "A deck needs at least one page, so I kept it.": "Presentasi harus memiliki setidaknya satu slide, jadi slide ini dipertahankan.",
+  "The deck already has {p0} pages.": "Presentasi sudah memiliki {p0} slide.",
   "Deleted {p0} page(s); {p1} remain.": "{p0} halaman dihapus; {p1} tersisa.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "Tidak ada file terlampir bernama \"{p0}\". Lampiran: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "Belum ada file terlampir: lampirkan dengan ikon 📎 di kotak chat.",

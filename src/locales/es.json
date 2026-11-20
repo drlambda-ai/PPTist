@@ -1042,6 +1042,7 @@
   "Animations removed.": "Se quitaron las animaciones.",
   "Animated {p0} page(s).": "Se animaron {p0} páginas.",
   "A deck needs at least one page, so I kept it.": "La presentación necesita al menos una diapositiva, así que la conservé.",
+  "The deck already has {p0} pages.": "La presentación ya tiene {p0} diapositivas.",
   "Deleted {p0} page(s); {p1} remain.": "Se eliminaron {p0} páginas; quedan {p1}.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "No hay ningún archivo adjunto llamado \"{p0}\". Archivos adjuntos: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "Aún no hay ningún archivo adjunto. Adjunta uno con el icono 📎 del cuadro de chat.",

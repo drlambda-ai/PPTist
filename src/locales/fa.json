@@ -1042,6 +1042,7 @@
   "Animations removed.": "پویانمایی‌ها حذف شدند.",
   "Animated {p0} page(s).": "{p0} صفحه متحرک شد.",
   "A deck needs at least one page, so I kept it.": "هر ارائه باید دست‌کم یک اسلاید داشته باشد، بنابراین آن را نگه داشتم.",
+  "The deck already has {p0} pages.": "ارائه از قبل {p0} اسلاید دارد.",
   "Deleted {p0} page(s); {p1} remain.": "{p0} صفحه حذف شد؛ {p1} باقی ماند.",
   "There is no attached file \"{p0}\". Attached: {p1}.": "فایلی با نام «{p0}» پیوست نشده است. پیوست‌ها: {p1}.",
   "No file is attached yet: attach it with the 📎 icon in the chat box.": "هنوز فایلی پیوست نشده است؛ با نماد 📎 در کادر گفتگو آن را پیوست کنید.",
