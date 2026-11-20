@@ -751,6 +751,33 @@ const overlapNote = (sl: Slide) => {
   }))
   return pairs.length ? `\n(Measured on this page, these elements overlap: ${pairs.slice(0, 8).join('; ')}. Fix them when the request is about layout, overlap, or text that is covered or cut off.)` : ''
 }
+// words that need more room than their box has, measured in the page as drawn: a shape's words run out over its edges.
+// The page model reads only the boxes, so "make the text visible everywhere" changed a colour or a few pixels on each
+// page and said every page was updated, while the words still ran out of the red banners (a replayed real turn,
+// 2026-11-17 / 2026-11-20)
+const spillNote = (sl: Slide) => withRenderer(async () => {
+  try {
+    await document.fonts?.ready
+    toRender.value = [JSON.parse(JSON.stringify(sl))]
+    await nextTick()
+    await new Promise(r => setTimeout(r, 400))
+    const out: string[] = []
+    for (const e of sl.elements as any[]) {
+      const html = e.type === 'text' ? e.content : e.text?.content
+      if ((e.type !== 'shape' && e.type !== 'text') || e.vertical || !plain(html)) continue
+      const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
+      const box = node?.parentElement
+      if (!node || !box) continue
+      const cs = getComputedStyle(box)
+      const need = Math.round(node.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom))
+      if (need > e.height + 6) out.push(`${e.id}: its words need about ${need}px of height and its box is ${Math.round(e.height)}px, so they run out of it`)
+    }
+    return out.length ? `\n(Measured on this page as drawn: ${out.slice(0, 8).join('; ')}. When the request is about layout, readability, or text that is cut off, hidden or not clearly visible, fix these: make the box tall enough (moving what lies under it), or fewer or smaller words; body text not under 14px.)` : ''
+  }
+  finally {
+    toRender.value = []
+  }
+}).catch(() => '')
 
 // A line break the page model writes as <br> becomes its own paragraph: the editor's text boxes have no line-break
 // node, so "<p>Name<br>University<br>Department</p>" is shown as one line. "Write my name, the university and the
@@ -885,9 +912,10 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}) }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const painted = await paintedNote(slide)
+  const spill = await spillNote(slide)
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${painted}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${spill}${painted}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || t('That edit could not be applied.'))
@@ -2871,7 +2899,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     void earlier
     if (!ok && !failed.length) return t('No page was changed. {p0}', { p0: noChangeWhy })
     if (!ok) fail((t('I could not make that change on any page: "{p0}".', { p0: what })) + why)
-    return (t('Number of pages updated: {p0}.', { p0: ok })) + why
+    // the pages by number: "Обновлены слайды: 10" (a count) was read back by the router as "only slide 10 was updated;
+    // slides 1-9 were not" (2026-11-12), and a count never says which pages were left out
+    const updated = todo.map(id => pos(id) + 1).filter(p => p > 0 && !untouched.includes(p) && !failed.includes(p))
+    return (t('Updated pages {p0}.', { p0: spans(updated) })) + why
   }
   if (action === 'change_image') {
     const id = idOf(args.index)
