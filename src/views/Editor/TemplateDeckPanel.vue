@@ -1610,10 +1610,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'add_page') {
     // "after this one" / no place named: right after the page the user was on (the router once said "after 30")
+    // the page the user was on can be gone: "remove slide 2 and add 3 slides" from page 2 put them after page 0 and
+    // failed (2026-11-20); the router's own place then stands
     if (args.after_named === false && currentAtSend) {
       const made = slides.value.map((x, i) => (createdThisMessage.has(x.id) ? i : -1)).filter(i => i >= 0)
-      args.after = (made.length ? Math.max(...made) : pos(currentAtSend)) + 1 // a 2nd new page follows the 1st
+      const at = made.length ? Math.max(...made) : pos(currentAtSend)
+      if (at >= 0) args.after = at + 1 // a 2nd new page follows the 1st
     }
+    if (!(Number(args.after) >= 1)) args.after = Math.min(Math.max(slideIndex.value + 1, 1), slides.value.length)
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     // up to 30 new pages in one step: "increase to 30 slides" on a 10-page deck stopped at 20 with "ask again for
     // more" (2026-11-15), and the router's next step claimed a wrong total
