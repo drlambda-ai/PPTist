@@ -1265,5 +1265,7 @@
   "Upgrade to the advanced model": "升级到高级模型",
   "Put the earlier picture back on page {p0}.": "已将之前的图片恢复到第 {p0} 页。",
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "我已没有第 {p0} 页之前的那张图片。请把它作为附件发来，我会放回去；或者告诉我图片内容，我来找一张相似的。",
+  "That picture already is the background of page {p0}: it covers the whole page.": "那张图片已经是第 {p0} 页的背景：它覆盖了整页。",
+  "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "第 {p0} 页上的图片现在是该页的背景：它覆盖整页，位于文字后面。",
   "That step failed on our side and was not done. Please ask for it again.": "这一步因我们这边出错而未完成。请再提一次。"
 }

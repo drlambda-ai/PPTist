@@ -1265,5 +1265,7 @@
   "Upgrade to the advanced model": "Перейти на розширену модель",
   "Put the earlier picture back on page {p0}.": "Попереднє зображення повернено на слайд {p0}.",
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Попереднього зображення слайда {p0} у мене більше немає. Прикріпіть його, і я поверну його на місце, або скажіть, що на ньому зображено, і я підберу схоже.",
+  "That picture already is the background of page {p0}: it covers the whole page.": "Це зображення вже є тлом слайда {p0}: воно займає весь слайд.",
+  "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "Зображення на слайді {p0} тепер стало його тлом: воно займає весь слайд і розташоване за текстом.",
   "That step failed on our side and was not done. Please ask for it again.": "Цей крок не виконано через збій на нашому боці. Будь ласка, попросіть ще раз."
 }

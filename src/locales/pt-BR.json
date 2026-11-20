@@ -1265,5 +1265,7 @@
   "Upgrade to the advanced model": "Fazer upgrade para o modelo avançado",
   "Put the earlier picture back on page {p0}.": "A imagem anterior foi recolocada na página {p0}.",
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Não tenho mais a imagem anterior da página {p0}. Anexe-a e eu a recoloco, ou diga o que ela mostra e eu encontro uma parecida.",
+  "That picture already is the background of page {p0}: it covers the whole page.": "Essa imagem já é o fundo do slide {p0}: ela cobre o slide inteiro.",
+  "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "A imagem do slide {p0} agora é o fundo dele: cobre o slide inteiro, atrás do texto.",
   "That step failed on our side and was not done. Please ask for it again.": "Essa etapa falhou do nosso lado e não foi feita. Peça de novo, por favor."
 }

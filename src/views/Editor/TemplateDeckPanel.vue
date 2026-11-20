@@ -2851,12 +2851,40 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return runCall(text, 'copy_page_style', { from: pages[0], page_named: false, pages }, ids)
     }
     // a page that is one flat picture has its background inside that picture: replacing or fading it wipes the page
-    const named = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
+    // a picture of the page as its background is about one page: the one named, else the one the user is on
+    const onePage = Number(args.page_picture) > 0 && !args.pages?.length ? [slides.value.find(x => x.id === currentAtSend)?.id || slides.value[slideIndex.value].id] : null
+    const named = onePage || (args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id))
     const flat = named.filter(id => isFlat(slides.value[pos(id)]))
     const flatNote = flat.length ? ' ' + t('Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.', { p0: flat.map(id => pos(id) + 1).join(', ') }) : ''
     const targets = named.filter(id => !flat.includes(id))
     if (!targets.length) fail(flatNote.trim())
     let background: any = { type: 'solid', color: args.color }
+    // A picture already on the page becomes its background: the same picture, behind everything, covering the page.
+    // "Put this photo as the background of page 1" and "make the photo you put on slide 1 the cover" were asked
+    // "which background colour?" twice, then given another stock photo (a paying user, 2026-11-15)
+    const own = Number(args.page_picture) > 0 ? (() => {
+      const sl = slides.value[pos(targets[0])]
+      const list = pictures(sl)
+      return { sl, pic: (list[Number(args.page_picture) - 1] || (list.length === 1 ? list[0] : undefined)) as any }
+    })() : null
+    if (own) {
+      const { sl, pic } = own
+      if (!pic) fail(t('That page has no picture.'))
+      if (isBackdrop(pic)) fail(t('That picture already is the background of page {p0}: it covers the whole page.', { p0: pos(sl.id) + 1 }))
+      for (const e of sl.elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) keepPic(e, sl)
+      // the page's full-slide pictures (a template draws its background as one) take the picture, or it would lie
+      // under them unseen; the picture itself leaves its place
+      slidesStore.updateSlide({ background: { type: 'image', image: { src: pic.src, size: 'cover' } }, elements: sl.elements.filter(e => e.id !== pic.id) }, sl.id)
+      for (const e of slides.value[pos(sl.id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) {
+        slidesStore.updateElement({ id: e.id, props: { src: pic.src, clip: undefined } as any, slideId: sl.id })
+        if (s.pics?.[pic.id]) s.pics = { ...s.pics, [e.id]: s.pics[pic.id] }
+        showBackdrop(sl.id, e.id)
+      }
+      replacedThisTurn.add(`${sl.id}:${pictureNo(slides.value[pos(sl.id)], 0)}`)
+      touched([sl.id])
+      slidesStore.updateSlideIndex(pos(sl.id))
+      return t('The picture on page {p0} now is its background: it covers the whole page, behind the text.', { p0: pos(sl.id) + 1 })
+    }
     if (args.photo_query) {
       busy.value = t('Finding a picture…')
       // never the photo already there ("change the background", then "again", gave the same one, 2026-11-12)

@@ -1265,5 +1265,7 @@
   "Upgrade to the advanced model": "Upgrade ke model lanjutan",
   "Put the earlier picture back on page {p0}.": "Gambar sebelumnya dikembalikan ke slide {p0}.",
   "I no longer have the earlier picture of page {p0}. Attach it and I will put it back, or tell me what it shows and I will find one like it.": "Saya tidak lagi memiliki gambar sebelumnya untuk slide {p0}. Lampirkan gambarnya dan saya akan mengembalikannya, atau beri tahu apa yang ditampilkannya dan saya akan mencari yang serupa.",
+  "That picture already is the background of page {p0}: it covers the whole page.": "Gambar itu sudah menjadi latar slide {p0}: gambar itu menutupi seluruh slide.",
+  "The picture on page {p0} now is its background: it covers the whole page, behind the text.": "Gambar di slide {p0} sekarang menjadi latarnya: menutupi seluruh slide, di belakang teks.",
   "That step failed on our side and was not done. Please ask for it again.": "Langkah itu gagal di pihak kami dan belum dikerjakan. Silakan minta lagi."
 }

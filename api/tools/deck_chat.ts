@@ -202,7 +202,8 @@ const TOOLS = [
     photo_query: { type: 'string', description: 'Stock photo search words (English) for a background photo, or ""' },
     like_other_pages: { type: 'boolean', description: 'true when the user wants these pages to have the SAME background as the rest of the deck ("как для всей презентации", "giống các trang khác", "like the other slides"); color and photo_query are then ""' },
     said_background: { type: 'string', description: 'The user\'s own words that ask for the background, copied exactly as they wrote them ("фон", "nền", "背景", "background"), never words that describe a photo; "" when they do not ask for the background' },
-  }, ['pages', 'color', 'photo_query', 'like_other_pages', 'said_background']),
+    page_picture: { type: 'integer', description: 'When a picture that is ALREADY on that page is to become the page\'s background, cover or full-page picture ("put this photo as the background", "make the photo you put on slide 1 the cover", "şu fotoğrafı arka plan yap", "use that image as the background", "fill the slide with the picture" on a page that has one): its number on that page as listed (1 when the page has one picture), with pages = that one page and color and photo_query "". Never a new photo search and never change_image for it: the user keeps that same picture. 0 otherwise' },
+  }, ['pages', 'color', 'photo_query', 'like_other_pages', 'said_background', 'page_picture']),
   fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
     pages: { ...pages, description: 'The current page unless the user names pages or says all; empty = every page, only when they say all' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
