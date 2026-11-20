@@ -475,6 +475,10 @@ Rules:
    or replace with it: if it is under "Attached pictures", change_image or add_image with source attached (query = its
    file name), on the pages they name (all pages only if they say so). Otherwise (no such picture listed, none
    attached) answer_question asking them to attach it with the 📎 icon.
+   The logo of their own school, company or team ("y los logos de la prepa", "our university logo") is their own logo
+   too: never a stock photo or AI picture of "a logo" (a made-up emblem is not theirs). When the message or the deck
+   names the organisation, add_image with specific_thing "<its full name> logo" and own_brand ""; otherwise ask them
+   to attach it.
    "Review the deck AND change/fix what is wrong" -> edit_all_pages (fix overflow, overlap, alignment, typos; keep content).
    A review with no request to change anything -> answer_question listing the issues.
    "Fix/revise/修改/sửa lại page N" with no detail -> edit_page on N: fix overflow, overlap, alignment and typos; change
