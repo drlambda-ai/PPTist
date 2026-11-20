@@ -2547,7 +2547,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     // a style the browser re-wrote quotes its font names as &quot;: single quotes keep "font-family: &quot" out of
     // what reads the style as text (the title's font became "&quot" after "chữ nên đậm", 2026-11-20)
-    const written = (doc: Document) => doc.body.innerHTML.replace(/&quot;/g, "'")
+    // (an apostrophe in the name, "Rock'n'Roll One", is escaped so the quoted name stays one name)
+    const written = (doc: Document) => doc.body.innerHTML.replace(/&quot;([^&]*?)&quot;/g, (_, n: string) => `'${n.replace(/'/g, "\\'")}'`)
     const restyle = (h: string) => {
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!phrase) {
