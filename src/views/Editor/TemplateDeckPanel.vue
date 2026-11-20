@@ -2458,19 +2458,30 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         if (!inScope(sl, e)) continue
         const was = String(e.type === 'text' ? e.content : e.text.content), now = restyle(was)
         if (now === was) continue
-        if (color && !phrase && [...letters(e)].every(c => c === tinycolor(color).toHex())) already.push([id, e])
+        // (the box that holds the named words too: recolouring words that already are that colour shows nothing either)
+        if (color && [...letters(e)].every(c => c === tinycolor(color).toHex())) already.push([id, e])
         const whole = color && !phrase ? { defaultColor: color } : {}
         if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
         else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
         n++
       }
     }
-    if (!n && phrase && targets.length === 1) { // not one plain run of text: the page edit restyles those words
+    // The named words are not one run of text (they span boxes: "the part with the title and my name whiter") and the
+    // text there already is that colour: the same band as below, never the page edit's "it is already pure white"
+    // (1 of 4 replays of the user's four messages, 2026-11-20)
+    let spanned = 0
+    if (!n && phrase && targets.length === 1 && color && !Object.values(want).some(v => v === 'on' || v === 'off')) {
+      const sl = slides.value[pos(targets[0])]
+      const same = (sl.elements as any[]).filter(e => inScope(sl, e) && [...letters(e)].every(c => c === tinycolor(color).toHex()))
+      if (same.length) { already.push(...same.map((e): [string, any] => [targets[0], e])); spanned = n = same.length }
+    }
+    const byPageEdit = () => { // not one plain run of text: the page edit restyles those words
       const how = [color && `colour ${color}`, ...Object.entries(want).filter(([, v]) => v !== 'same').map(([k, v]) => (v === 'on' ? k : `not ${k}`))].filter(Boolean).join(', ')
       return runCall(text, 'edit_page', { index: pos(targets[0]) + 1, instruction: `Restyle only the words "${phrase}": ${how}. Change nothing else on the page.`, page_named: true, translate_to: '', hard: false, redesign: false, new_content: false, whole_deck_option: '', user_said_whole_deck: false, source_pages: [], language: '' }, ids)
     }
+    if (!n && phrase && targets.length === 1) return byPageEdit()
     if (!n) fail(phrase ? t('I could not find “{p0}” in the text there.', { p0: phrase.slice(0, 60) }) : t('There is no such text to style there.'))
-    touched(targets)
+    if (!spanned) touched(targets)
     // Text that already is the colour asked for and sits on a picture is hard to read because of the picture: "the
     // cover's text is unreadable, change its colour", "whiter", "white I said" on white letters over a pale photo was
     // answered four times with "it is already pure white" (2026-11-15), and then with "restyled" and no visible change.
@@ -2492,10 +2503,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const light = tinycolor(color).isLight()
         for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: light ? '#00000080' : '#FFFFFFB3' }, slideId: id })
         args.backed = true // not a look to repeat on the other pages
+        touched(targets)
         return light ? t('The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.')
           : t('The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.')
       }
     }
+    if (spanned) return byPageEdit() // not on a picture: nothing was changed here, the page edit looks at the words
     return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
   }
   // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
