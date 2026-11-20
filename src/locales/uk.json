@@ -1270,5 +1270,6 @@
   "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "На телефоні немає панелі налаштувань тексту: скажіть, який потрібен шрифт, розмір або колір, і я його встановлю.",
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "На цьому слайді немає текстового блока, для якого можна відкрити налаштування тексту. Натисніть на текст на будь-якому слайді, і його налаштування відкриються праворуч.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Я виділив текст «{p0}» і відкрив його налаштування праворуч: шрифт, розмір, колір, накреслення та інтервали. Натисніть на інший текст, щоб змінити його.",
-  "That step failed on our side and was not done. Please ask for it again.": "Цей крок не виконано через збій на нашому боці. Будь ласка, попросіть ще раз."
+  "That step failed on our side and was not done. Please ask for it again.": "Цей крок не виконано через збій на нашому боці. Будь ласка, попросіть ще раз.",
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Після такої зміни текст став би того самого кольору, що й тло за ним, і його не можна було б прочитати. Який колір потрібен?"
 }

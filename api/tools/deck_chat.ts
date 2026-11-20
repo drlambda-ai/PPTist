@@ -342,7 +342,10 @@ Rules:
    A size change together with other changes to the same text ("add more words and make the font bigger") -> set_font_size
    for the size AND edit_page for the rest: a page edit keeps the sizes as they were.
    "As big as" another element on the same page ("text as big as the numbers") -> edit_page, which sees the elements;
-   set_font_size only scales.
+   set_font_size only scales. A colour given as that of another element on the page ("its background the same colour
+   as the title", "the box in the colour of the heading") -> edit_page too: it sees each element's colours, and you
+   do not; never ask which colour for it. Only that case: text that is hard to read, or a text colour asked for with
+   no colour named, stays set_text_style with the colour you choose.
    The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
    -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
    back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or

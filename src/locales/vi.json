@@ -1270,5 +1270,6 @@
   "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "Trên điện thoại không có bảng cài đặt chữ: hãy cho tôi biết phông chữ, cỡ chữ hoặc màu bạn muốn, tôi sẽ đặt giúp.",
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Trang này không có ô chữ nào để mở cài đặt chữ. Hãy bấm vào một đoạn chữ ở bất kỳ trang nào, cài đặt của nó sẽ mở ở bên phải.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Tôi đã chọn đoạn chữ “{p0}” và mở cài đặt của nó ở bên phải: phông chữ, cỡ chữ, màu, in đậm và giãn cách. Bấm vào đoạn chữ khác để chỉnh đoạn đó.",
-  "That step failed on our side and was not done. Please ask for it again.": "Bước đó bị lỗi ở phía chúng tôi nên chưa được thực hiện. Vui lòng yêu cầu lại."
+  "That step failed on our side and was not done. Please ask for it again.": "Bước đó bị lỗi ở phía chúng tôi nên chưa được thực hiện. Vui lòng yêu cầu lại.",
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Thay đổi đó sẽ khiến chữ có cùng màu với phần nằm sau nó nên không đọc được. Bạn muốn màu nào?"
 }

@@ -1270,5 +1270,6 @@
   "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "در گوشی پنل تنظیمات متن وجود ندارد: فونت، اندازه یا رنگی را که می‌خواهید بگویید تا تنظیمش کنم.",
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "این اسلاید کادر متنی ندارد که تنظیمات متنش باز شود. روی متنی در هر اسلاید کلیک کنید تا تنظیماتش در سمت راست باز شود.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "متن «{p0}» را انتخاب کردم و تنظیماتش را در سمت راست باز کردم: فونت، اندازه، رنگ، پررنگی و فاصله‌گذاری. برای تغییر متن دیگر، روی آن کلیک کنید.",
-  "That step failed on our side and was not done. Please ask for it again.": "آن مرحله به‌دلیل خطایی در سمت ما انجام نشد. لطفاً دوباره درخواست کنید."
+  "That step failed on our side and was not done. Please ask for it again.": "آن مرحله به‌دلیل خطایی در سمت ما انجام نشد. لطفاً دوباره درخواست کنید.",
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "آن تغییر متن را هم‌رنگ چیزی می‌کرد که پشتش است و دیگر خوانده نمی‌شد. چه رنگی باشد؟"
 }

@@ -1270,5 +1270,6 @@
   "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.",
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "I selected the text “{p0}” and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.",
-  "That step failed on our side and was not done. Please ask for it again.": "That step failed on our side and was not done. Please ask for it again."
+  "That step failed on our side and was not done. Please ask for it again.": "That step failed on our side and was not done. Please ask for it again.",
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?"
 }

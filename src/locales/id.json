@@ -1270,5 +1270,6 @@
   "A phone has no text settings panel: tell me the font, size or colour you want and I will set it.": "Di ponsel tidak ada panel pengaturan teks: beri tahu saya font, ukuran, atau warna yang Anda inginkan dan saya akan mengaturnya.",
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Slide ini tidak memiliki kotak teks untuk dibuka pengaturan teksnya. Klik teks di slide mana pun dan pengaturannya terbuka di sebelah kanan.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Saya memilih teks “{p0}” dan membuka pengaturannya di sebelah kanan: font, ukuran, warna, tebal, dan spasi. Klik teks lain untuk mengubah teks itu.",
-  "That step failed on our side and was not done. Please ask for it again.": "Langkah itu gagal di pihak kami dan belum dikerjakan. Silakan minta lagi."
+  "That step failed on our side and was not done. Please ask for it again.": "Langkah itu gagal di pihak kami dan belum dikerjakan. Silakan minta lagi.",
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Perubahan itu akan membuat teks berwarna sama dengan apa yang ada di belakangnya sehingga tidak terbaca. Warnanya harus apa?"
 }

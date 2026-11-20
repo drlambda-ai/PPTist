@@ -717,6 +717,28 @@ const shrinkOntoText = async (id: string) => {
   slidesStore.updateSlide({ elements: JSON.parse(start) }, id)
   return false
 }
+// Text a page edit left unreadable: every letter in (nearly) the colour of the plain colour right behind it (its own
+// box fill, else the nearest opaque shape under at least 30% of it, else nothing: a picture or the page background is
+// not judged). "Its background the same colour as the title" put a white full-slide panel over the cover photo, under
+// a white title (replay 2026-11-20; the user undid the same request in production, 2026-11-16). Ids of such text
+const unreadableText = (els: any[]) => els.filter((e: any, k: number) => {
+  if (!elText(e) || !(e.type === 'text' || (e.type === 'shape' && e.text))) return false
+  const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html'), w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), ink = new Set<string>()
+  for (let node = w.nextNode(); node; node = w.nextNode()) {
+    if (!(node as Text).data.trim()) continue
+    let x = node.parentElement
+    while (x && !x.style.color) x = x.parentElement
+    ink.add(tinycolor(x?.style.color || (e.type === 'text' ? e.defaultColor : e.text?.defaultColor) || '#333').toHexString())
+  }
+  const opaque = (c: any) => !!c && tinycolor(c).isValid() && tinycolor(c).getAlpha() >= 0.9
+  const under = (x: any) => Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height
+  // what lies right behind the letters: the box's own fill, else the nearest thing under it
+  const behind = opaque(e.fill) && !e.gradient && !e.pattern ? e.fill : (() => {
+    const x = els.slice(0, k).reverse().find((y: any) => under(y) && (y.type === 'image' ? y.filters?.opacity !== '0%' : y.type === 'shape' && (!!y.gradient || !!y.pattern || tinycolor(y.fill || 'transparent').getAlpha() > 0.1)))
+    return x && x.type === 'shape' && !x.gradient && !x.pattern && opaque(x.fill) && (x.opacity ?? 1) >= 0.9 ? x.fill : ''
+  })()
+  return !!behind && ink.size > 0 && [...ink].every(c => tinycolor.readability(c, behind) < 1.25)
+}).map((e: any) => e.id as string)
 // what overlaps on the page, measured: the model reads boxes badly, and a user complaining about it is seeing it
 const overlapNote = (sl: Slide) => {
   const els = readingOrder(sl).filter((e: any) => (e.type === 'image' && !isBackdrop(e)) || elText(e))
@@ -2245,6 +2267,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.hard && !canAdvanced) upgradeLine = offer()
     keepUnaskedSizes(i, was)
     if (JSON.stringify(slides.value[i].elements) === JSON.stringify(was)) throw new NoChange(t('Page {p0} was not changed.', { p0: i + 1 }))
+    // text the edit made unreadable (it was readable before): one pass that keeps the change and the text readable;
+    // still unreadable, the page goes back as it was and the user is asked, never left with invisible text
+    const hadHidden = new Set(unreadableText(was as any[]))
+    const hidden = () => unreadableText(slides.value[i].elements as any[]).filter(id => !hadHidden.has(id))
+    if (hidden().length) {
+      const names = hidden().map(id => `"${elText(slides.value[i].elements.find(e => e.id === id)).slice(0, 60)}"`).join(', ')
+      await editSlide(i, `After the last edit this text cannot be read: ${names} now has (nearly) the same colour as the plain colour right behind it. Keep what the user asked for (${String(args.instruction).slice(0, 400)}), but every text must stay readable: give the box or panel behind that text a colour that contrasts with it (a new full-page panel must never hide the page's picture or sit under text of its own colour), or leave that text on its picture.`).catch(() => undefined)
+      if (hidden().length) {
+        slidesStore.updateSlide({ elements: was }, pageId)
+        throw new NoChange(t('Page {p0} was not changed.', { p0: i + 1 }) + ' ' + t('That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?'))
+      }
+    }
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
