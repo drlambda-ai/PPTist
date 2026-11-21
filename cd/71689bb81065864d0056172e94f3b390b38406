@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: current Codex session
+Scope: cd71689b; production impact, credentials written outside LLM_CACHE_DIR, and wrong-request cache hits in existing call paths.
+Validation: inspected the patch, all vendor fetch call sites at the commit, cache write paths, and deployment entry points. No in-scope defects found.
