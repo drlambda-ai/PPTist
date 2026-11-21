@@ -60,6 +60,7 @@
 
 <script lang="ts" setup>
 import { PRESET_THEMES } from '@/configs/theme'
+import { CLIPPATHS } from '@/configs/imageClip'
 import { t, direction, lang } from '@/i18n'
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
@@ -915,7 +916,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   }
   // a picture says what it shows (the words it was searched or drawn for): "just one arrow" about a stock photo of
   // arrows was answered "there is no arrow on this page" (2026-11-14, replayed 2026-11-20)
-  const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}) }
+  // and whether it is the page's background: "round the corners of the images" rounded the full-page background
+  // instead of the photo on it (2026-11-20 replay)
+  const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}), ...(isBackdrop(e) ? { background: true } : {}) }
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const painted = await paintedNote(slide)
   const spill = await spillNote(slide)
@@ -937,8 +940,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     ...live.elements.filter(e => !removed.has(e.id)).map((e: any) => {
       const c = changes[e.id]
       if (!c) return e
-      const { src: _src, path, layer: _layer, shows: _shows, ...rest } = c // image sources and tokenised paths are never taken from the model
-      void _src; void _layer; void _shows // layer is a stacking instruction, applied below, not an element field; shows is a note for the model
+      const { src: _src, path, layer: _layer, shows: _shows, background: _bg, ...rest } = c // image sources and tokenised paths are never taken from the model
+      void _src; void _layer; void _shows; void _bg // layer is a stacking instruction, applied below, not an element field; shows and background are notes for the model
       // a position or size that is not a number is dropped: top ":" from the model threw a heading into the corner
       // of the slide (2026-11-11, a user's "improve the design")
       for (const k of GEOMETRY) {
@@ -946,6 +949,21 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
         const v = toNum(rest[k])
         if (Number.isFinite(v)) rest[k] = v
         else delete rest[k]
+      }
+      if (e.type === 'image') {
+        // the editor draws `${radius}px`: a radius of "16px" from the model drew square corners and the reply said the
+        // page was updated (2026-11-20, "page 5 does not have a rounder corner image")
+        if ('radius' in rest) {
+          const v = parseFloat(String(rest.radius))
+          if (Number.isFinite(v) && v >= 0) rest.radius = v
+          else delete rest.radius
+        }
+        // a picture shape ("make it round"): the editor's own clip shapes, the visible part of the picture kept
+        if ('clip' in rest) {
+          const shape = typeof rest.clip === 'string' ? rest.clip : rest.clip?.shape
+          if (typeof shape === 'string' && shape in CLIPPATHS) rest.clip = { range: e.clip?.range || [[0, 0], [100, 100]], shape }
+          else delete rest.clip
+        }
       }
       if (e.type === 'shape' && e.text) {
         const { content, defaultColor, defaultFontName, text, ...shape } = rest
