@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: current Codex session
+Scope: bb986995 on c7124c52; re-review of two reported defects.
+Closed: attached documents no longer disable as_written when pasted text is the source; from_users_file still selects file material.
+Closed: as-written outline explicitly retains source links and site names in place.
+No new in-scope defect found. vue-tsc passed; inspected existing real-turn replay artifacts (automatic grader returned no answer, not a measured pass).
