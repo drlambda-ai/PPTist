@@ -165,7 +165,7 @@ const { addHistorySnapshot } = useHistorySnapshot()
 
 const s = reactive<Session>(loadSession())
 // eval hook (scripts/deck-eval): a replayed real conversation's earlier messages go straight into the chat history
-;(window as any).__deckPanel = { s, fitOverflow: () => fitOverflow(), resetUndo: async () => {
+;(window as any).__deckPanel = { s, fitOverflow: (...a: Parameters<typeof fitOverflow>) => fitOverflow(...a), resetUndo: async () => {
   await db.snapshots.clear(); await snapshotStore.initSnapshotDatabase()
 } }
 const input = ref('')
@@ -2475,7 +2475,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const spaced = slides.value[i].elements.filter((e: any) => { const o = was.find(w => w.id === e.id); return o && elText(e) && gap(e).some((v, k) => v > gap(o)[k]) }).map(e => e.id)
     // where it still has no room its letters go smaller, never under 14px (body text the user reads)
     const floor14 = Object.fromEntries(spaced.map((id) => { const e: any = slides.value[i].elements.find(x => x.id === id); return [id, [...String(e?.content ?? e?.text?.content ?? '').matchAll(/font-size:\s*([\d.]+)px/g)].map(m => Math.min(14, Number(m[1])))] }))
-    if (spaced.length) await fitOverflow([pageId], floor14, new Set(spaced), true).catch(() => undefined)
+    const spacedFrom = Object.fromEntries(spaced.map(id => [id, gap(was.find(w => w.id === id))]))
+    if (spaced.length) await fitOverflow([pageId], floor14, new Set(spaced), spacedFrom).catch(() => undefined)
     // longer text that now runs behind a picture ("the letters are behind the picture", 2026-11-10): one layout pass.
     // Measured after the page renders, since text boxes grow to fit their text then.
     await nextTick(); await new Promise(r => setTimeout(r, 300))
@@ -4311,14 +4312,18 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
 // the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages; floor: per
 // box, sizes its type never shrinks under (in order of the box's sizes); only: those boxes, the rest stay as they are
-// widen: a box first takes the free width right of it, up to the next element beside it (fewer lines, same type size)
-const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>, widen = false) => withRenderer(async () => {
+// spacedFrom (boxes an edit gave more line/paragraph spacing, with the spacing they had): such a box first takes the
+// free width right of it, up to the next element beside it (fewer lines, same type size); still over its room, its
+// spacing steps back toward what it was, then its type shrinks, measured each round, to the floor and if need be under
+// it: less spacing or smaller letters, never text over the element below or off the slide (Codex review, 2026-11-21)
+const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>, spacedFrom?: Record<string, number[]>) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
-  const widened = new Set<string>(), shrunk = new Set<string>()
+  const widen = !!spacedFrom
+  const widened = new Set<string>()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
     let again = new Set(ids || slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
-    for (let round = 0; round < 3 && again.size; round++) {
+    for (let round = 0; round < (widen ? 8 : 3) && again.size; round++) {
       const pages = slides.value.filter(x => again.has(x.id))
       toRender.value = JSON.parse(JSON.stringify(pages))
       await nextTick()
@@ -4339,7 +4344,9 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
             && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2) && !(o.type === 'image' && isBackdrop(o)))
           const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
           // a text box on the page shown has already grown to its text (the editor stores it): checked against the room
-          if (need <= e.height + 2 && (e.type !== 'text' || need <= room + 2)) continue
+          const was = spacedFrom?.[e.id]
+          // a spaced box is judged by its room, not its box: the page model leaves boxes reaching into the next one
+          if (need <= e.height + 2 && (e.type !== 'text' || need <= room + 2) && (!was || need <= room + 2)) continue
           if (widen && !widened.has(e.id)) {
             widened.add(e.id)
             const bottom = e.top + Math.max(e.height, need)
@@ -4352,15 +4359,24 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
               continue
             }
           }
-          // (a widened box spent its first round on the width: its shrink still comes)
-          if (room <= 8 || (room <= e.height + 2 && (widened.has(e.id) ? shrunk.has(e.id) : round))) continue // off the slide, or nowhere to grow and already shrunk once
+          if (was && need > room && room > 8) {
+            const x = e.type === 'text' ? e : e.text || {}
+            const lh = x.lineHeight ?? 1.5, ps = x.paragraphSpace ?? 5
+            if (lh > was[0] + 0.01 || ps > was[1] + 0.5) { // halfway back, then all the way
+              const back = { lineHeight: lh - was[0] > 0.15 ? Math.round((lh + was[0]) * 50) / 100 : was[0], paragraphSpace: ps - was[1] > 3 ? Math.round((ps + was[1]) / 2) : was[1] }
+              slidesStore.updateElement({ id: e.id, props: e.type === 'text' ? back : { text: { ...e.text, ...back } }, slideId: sl.id })
+              again.add(sl.id)
+              continue
+            }
+          }
+          if (room <= 8 || (room <= e.height + 2 && round && !was)) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
-            shrunk.add(e.id)
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            let i = 0
-            const min = floor[e.id] || []
-            const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, min[i++] || 0, Math.round(Number(v) * k * 10) / 10)}px`)
+            const shrink = (min: number[]) => { let i = 0; return String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, min[i++] || 0, Math.round(Number(v) * k * 10) / 10)}px`) }
+            let content = shrink(floor[e.id] || [])
+            if (was && content === html) content = shrink([]) // at the floor and still over: smaller still, never over the next element
+            if (was && content === html) continue // 9px: nothing smaller to do
             if (e.type === 'text') props.content = content
             else props.text = { ...e.text, content }
           }
