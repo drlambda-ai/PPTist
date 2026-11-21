@@ -4320,6 +4320,7 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
   const { width: W, height: H } = slideSize()
   const widen = !!spacedFrom
   const widened = new Set<string>()
+  const released = new Set<string>() // boxes already let below their size floor: the floor never comes back for them
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
     let again = new Set(ids || slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
@@ -4374,8 +4375,8 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
           if (need > room) {
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
             const shrink = (min: number[]) => { let i = 0; return String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, min[i++] || 0, Math.round(Number(v) * k * 10) / 10)}px`) }
-            let content = shrink(floor[e.id] || [])
-            if (was && content === html) content = shrink([]) // at the floor and still over: smaller still, never over the next element
+            let content = shrink(released.has(e.id) ? [] : floor[e.id] || [])
+            if (was && content === html && !released.has(e.id)) { released.add(e.id); content = shrink([]) } // at the floor and still over: smaller still, never over the next element
             if (was && content === html) continue // 9px: nothing smaller to do
             if (e.type === 'text') props.content = content
             else props.text = { ...e.text, content }
