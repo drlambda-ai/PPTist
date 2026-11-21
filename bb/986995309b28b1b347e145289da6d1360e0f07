@@ -1,6 +1,4 @@
 Codex-Review: passed
-Reviewer: current Codex session
-Scope: bb986995 on c7124c52; re-review of two reported defects.
-Closed: attached documents no longer disable as_written when pasted text is the source; from_users_file still selects file material.
-Closed: as-written outline explicitly retains source links and site names in place.
-No new in-scope defect found. vue-tsc passed; inspected existing real-turn replay artifacts (automatic grader returned no answer, not a measured pass).
+Reviewer: gpt-6-astra high. c7124c52 findings (as_written switched off by any attached file; source lines dropped) fixed by bb986995, re-review closed both.
+Tests, real turn only, Codex mode, $0: the pasted essay becomes a new deck with all 46 lines word for word and its source lines kept; a text labelling its slides is still placed by label.
+Not yet pushed: waits for the pre-push regression on real accepted turns.
