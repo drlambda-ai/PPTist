@@ -1454,7 +1454,9 @@ const roomFor = async (id: string, wanted: { left: number, top: number, width: n
       box = free(room)
     }
   }
-  if (corner && (!box || box.width * box.height < corner.width * corner.height)) box = corner
+  // the corner is measured again on the page as it is now: the moved text may have gone into it
+  const now = corner && free(wanted)
+  if (now && (!box || box.width * box.height < now.width * now.height)) box = now
   if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: at() + 1 }))
   return box
 }
