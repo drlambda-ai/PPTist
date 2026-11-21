@@ -857,13 +857,14 @@ const groundOf = (src: string, lines: { x: number, y: number, w: number, h: numb
           const fx = x0 + ((x1 - x0) * i) / 40, fy = y0 + ((y1 - y0) * i) / 40
           for (const [px0, py0] of [[fx, y0], [fx, y1], [x0, fy], [x1, fy]]) {
             const X = Math.round(px0), Y = Math.round(py0)
-            if (X >= 0 && Y >= 0 && X < c.width && Y < c.height) at.push([px0, ...px.slice((Y * c.width + X) * 4, (Y * c.width + X) * 4 + 3)])
+            if (X >= 0 && Y >= 0 && X < c.width && Y < c.height) at.push([px0, ...px.slice((Y * c.width + X) * 4, (Y * c.width + X) * 4 + 4)])
           }
         }
         if (at.length < 60) return undefined // the line runs off the picture
-        // left, middle and right thirds of the ring: a flat patch on a left-to-right gradient showed as a box, so an
-        // even ground may run from one colour to another across the line (ponytail: left to right only; a top-to-bottom
-        // gradient reads as uneven and the line is not removed)
+        if (at.some(p => p[4] < 250)) return undefined // see-through pixels read as black: what shows there is not in the picture
+        // left, middle and right thirds of the ring, each colour standing at its third's centre (17/50/83%): a flat patch
+        // on a left-to-right gradient showed as a box, so an even ground may run from one colour to another across the
+        // line (ponytail: left to right only; a top-to-bottom gradient reads as uneven and the line is not removed)
         const thirds = [0, 1, 2].map(b => at.filter(p => Math.min(2, Math.floor(((p[0] - x0) / (x1 - x0)) * 3)) === b))
         if (thirds.some(t => t.length < 8)) return undefined
         const stat = thirds.map((t) => {
@@ -871,10 +872,12 @@ const groundOf = (src: string, lines: { x: number, y: number, w: number, h: numb
           return { mean, sd: Math.max(...[1, 2, 3].map((ch, i) => Math.sqrt(t.reduce((s, p) => s + (p[ch] - mean[i]) ** 2, 0) / t.length))) }
         })
         if (stat.some(t => t.sd > 10)) return undefined
+        // flat bands of different colours are not a gradient: a smooth ground moves little from one third to the next
+        if ([0, 1, 2].some(ch => Math.abs(stat[0].mean[ch] - stat[1].mean[ch]) > 40 || Math.abs(stat[1].mean[ch] - stat[2].mean[ch]) > 40)) return undefined
         const hex = stat.map(t => tinycolor({ r: t.mean[0], g: t.mean[1], b: t.mean[2] }).toHexString())
         const spread = Math.max(...[0, 1, 2].map(ch => Math.max(...stat.map(t => t.mean[ch])) - Math.min(...stat.map(t => t.mean[ch]))))
         const cover = [x0 / c.width, y0 / c.height, (x1 - x0) / c.width, (y1 - y0) / c.height].map(v => v * 100)
-        return { cover, ground: spread <= 6 ? hex[1] : `"fill": "${hex[1]}", "gradient": {"type": "linear", "rotate": 0, "colors": [{"pos": 0, "color": "${hex[0]}"}, {"pos": 50, "color": "${hex[1]}"}, {"pos": 100, "color": "${hex[2]}"}]}` }
+        return { cover, ground: spread <= 6 ? hex[1] : `"fill": "${hex[1]}", "gradient": {"type": "linear", "rotate": 0, "colors": [{"pos": 17, "color": "${hex[0]}"}, {"pos": 50, "color": "${hex[1]}"}, {"pos": 83, "color": "${hex[2]}"}]}` }
       }))
     }
     catch {
