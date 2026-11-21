@@ -1,0 +1,5 @@
+Codex-Review: failed
+Reviewer: OpenAI Codex CLI and current Codex session
+Reviewed-At: 2026-11-21
+Closed: Stock results all excluded stop before paid AI generation (TemplateDeckPanel.vue:1537).
+Open: Helper picture pages infer their source from current adjacency (TemplateDeckPanel.vue:2084-2085). Moving a helper after another page excludes that unrelated page pictures and loses the original source exclusion. Store the source page ID.
