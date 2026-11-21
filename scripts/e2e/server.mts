@@ -20,6 +20,8 @@ globalThis.fetch = (async (u: any, init?: any) => {
     }
   }
 }) as typeof fetch
+// eval replays at $0 of API credit: OpenAI requests answered by Codex on the ChatGPT plan (scripts/e2e/codex-llm.mts)
+if (process.env.LLM_VIA_CODEX === '1') (await import('./codex-llm.mts')).install()
 http.createServer(async (req, res0) => {
   const url = new URL(req.url || '/', 'http://x')
   const path = url.pathname.replace(/^\/api\/pptist/, '')
