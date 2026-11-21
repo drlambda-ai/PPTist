@@ -494,10 +494,13 @@ const materialBrief = () => `${s.docs.every(d => d.project) ? 'Material from the
 const requestLanguage = (text: string) => `the language of this request: "${text.slice(0, 120)}"`
 const deckLanguage = (text: string) => `the language of the existing deck (sample: "${deckLines().join(' ').slice(0, 160)}"), unless this request names another language: "${text.slice(0, 120)}"`
 
-const generateNative = async (text: string) => {
+// asWritten: the message is the user's own text for the slides (the router's as_written), laid out section by section
+// word for word. Outlined freely, a pasted essay came back regrouped and retold, with claims it never made (Ukrainian
+// student, 2026-11-19)
+const generateNative = async (text: string, asWritten = false) => {
   const brief = s.docs.length ? `${text}\n\n${materialBrief()}` : text
   let outline = ''
-  await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '' }), t => {
+  await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '', asWritten }), t => {
     outline += t 
   })
   outline = getMdContent(outline).replace(/<!--[\s\S]*?-->/g, '')
@@ -512,7 +515,10 @@ const generateNative = async (text: string) => {
     }
     catch { /* a partial line; the stream completes it */ }
   }
-  await readStream(await api.AIPPT({ content: `User request: ${text}\n\n${outline}`, language: requestLanguage(text), style: '通用', model: '' }), (chunk) => {
+  // their sections whole: left to its 2-4 items a slide, the converter split them under titles of its own and added
+  // transition pages with retold lines (replay, 2026-11-21); the editor splits a long slide itself, under the same title
+  const keep = asWritten ? '\n\nEvery "##" section is ONE content slide titled with its heading, holding every bullet of it as an item, in order, wording unchanged, however many. No transition slides.' : ''
+  await readStream(await api.AIPPT({ content: `User request: ${text}${keep}\n\n${outline}`, language: requestLanguage(text), style: '通用', model: '' }), (chunk) => {
     const lines = (pending + chunk).split(/\n+/)
     pending = lines.pop() || ''
     lines.forEach(flush)
@@ -1122,15 +1128,19 @@ const namesSubject = async (message: string, topic: string) => {
 // of any changed box that grew past its old height (translations run longer), so it never spills onto other elements.
 let fitQueue: Promise<void> = Promise.resolve() // one page shown at a time, even when pages are edited in parallel
 // The numbered slides of a text the user wrote ("Slide 1 ... Slide 2 ..."), each copied word for word by a small model;
-// [] when it is not text for numbered slides or cannot be read
+// [] when its text does not label slides itself or cannot be read
 const numberedParts = async (src: string, request = ''): Promise<{ page: number, text: string }[]> => {
   const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
     `A user wrote this for a slide editor:\n<message>\n${fence(src.slice(0, 20000))}\n</message>\n`
     + (request === src ? 'Only when this message asks for its text to go on the slides, or is just the text for the slides with nothing else asked, go on, and return only the slides it asks to place (all of them unless it names some); when it asks to review, check, explain or keep the slides as they are, return {"slides": []}. '
       : request ? `Their latest message is: ${JSON.stringify(request.slice(0, 600))}. Only when that message asks to put this text of theirs on the slides (insert it, use it, "the text I wrote"), go on, and return only the slides it asks for (all of them unless it names some); otherwise return {"slides": []}. ` : '')
     + 'If it gives the text of several slides, each marked with its number ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), copy each slide\'s text exactly as written, every word, its title first, without the "Slide N" label itself. '
-    + 'Return JSON {"slides": [{"number": <the number they wrote>, "text": "..."}]}, or {"slides": []} when it is not text for numbered slides.' }) }).catch(() => null)
-  const got = r?.ok ? ((await r.json().catch(() => ({})))?.slides || []) : []
+    + 'labels_slides is true only when their text itself says which part goes on which slide ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), or their latest message says its numbers are the slide numbers ("put each numbered part on that slide"); false for an essay, report or article whose own sections are numbered or headed ("1. Introduction", "Вступ", "2. ..."): those numbers are its sections, not slides. '
+    + 'Return JSON {"labels_slides": true|false, "slides": [{"number": <the number they wrote>, "text": "..."}]}, or {"labels_slides": false, "slides": []} when it is not text for numbered slides.' }) }).catch(() => null)
+  // a pasted essay with "1. ... 2. ..." sections had its sections placed as slides 1-4, reworded, over a 14-page deck on
+  // another topic (Ukrainian student, 2026-11-19): only slides their text labels are placed; the rest is the router's
+  const json = r?.ok ? await r.json().catch(() => ({})) : {}
+  const got = json?.labels_slides === true ? (json.slides || []) : []
   return (Array.isArray(got) ? got : []).map((x: any) => ({ page: Number(x?.number), text: String(x?.text || '').trim() }))
     .filter((x: { page: number, text: string }) => Number.isInteger(x.page) && x.page >= 1 && x.text)
 }
@@ -3779,11 +3789,13 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       break
     }
     if (newDeck && onlyRead) {
-      const brief = done.length ? String(newDeck.args?.instruction || text) : text
+      // their own pasted text is the deck: their message, never the router's retelling of it
+      const asWritten = newDeck.args?.as_written === true && !s.docs.length
+      const brief = done.length && !asWritten ? String(newDeck.args?.instruction || text) : text
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
       openedSlides = {} // "the original" of a new deck is the new deck (taken at the next message)
       busy.value = s.template ? t('Building the deck (about a minute)…') : t('Writing the deck…')
-      await (s.template ? templateTurn(brief) : generateNative(brief))
+      await (s.template ? templateTurn(brief) : generateNative(brief, asWritten))
       addHistorySnapshot() // the new deck is a history step of its own
       return
     }

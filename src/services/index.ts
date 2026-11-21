@@ -20,6 +20,7 @@ interface AIPPTOutlinePayload {
   language: string
   provider?: string
   model: string
+  asWritten?: boolean // the content is the user's own text, laid out word for word
 }
 
 interface AIPPTPayload {
@@ -49,6 +50,7 @@ export default {
     language,
     provider,
     model,
+    asWritten,
   }: AIPPTOutlinePayload): Promise<any> {
     return fetchRequest(`${SERVER_URL}/tools/aippt_outline`, {
       method: 'POST',
@@ -57,6 +59,7 @@ export default {
         language,
         provider,
         model,
+        as_written: asWritten || undefined,
         stream: true,
       }),
     })

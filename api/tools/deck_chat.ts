@@ -30,7 +30,8 @@ const TOOLS = [
     instruction: { type: 'string', description: 'The user\'s request for the new deck, complete' },
     topic_in_this_message: { type: 'string', description: 'The new deck\'s topic, in the words of the user\'s LATEST message, or of the request it answers when that request asked for slides ("make slides from my paper" -> "attach it" -> "here it is"); "" otherwise. An audience, purpose or style is not a topic ("a presentation for a scientific congress with experts", "for kids", "more professional"): "" (it is edit_all_pages on this deck, which keeps the user\'s own content)' },
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
-  }, ['instruction', 'topic_in_this_message', 'from_users_file']),
+    as_written: { type: 'boolean', description: 'true when the latest message itself holds the user\'s own text for the slides (an essay, report or notes pasted into it, "... створи нову презентацію за цією інформацією") and does not ask to summarise, shorten or rewrite it: the deck then keeps its sections in their order and its sentences word for word. false for a topic, a file, or "summarise this into 5 slides"' },
+  }, ['instruction', 'topic_in_this_message', 'from_users_file', 'as_written']),
   fn('add_page', 'Add one or more new pages with new content after a given page ("add 3 slides on X", "expand into more slides").', {
     instruction: { type: 'string', description: 'What the new page(s) must say, specific and complete' },
     count: { type: 'integer', description: 'How many new pages, usually 1' },
