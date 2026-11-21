@@ -59,7 +59,9 @@ const TOOLS = [
   fn('add_table_page', 'Add a table: on a new page, or ON an existing page when the user says where ("on this slide", "here", "on slide 4").', {
     instruction: { type: 'string', description: 'What the table shows (rows, columns, values) as the user or deck gives it' },
     after: page,
-    on_page: { type: 'integer', description: 'The page the table goes ON when the user puts it on a page ("on this slide"/"here" = the current page, "on slide 4" = 4); 0 for a new page' },
+    // "add more examples in tables" from the cover page put the table on the cover; the user: "the tables only where the
+    // examples are" (2026-11-20)
+    on_page: { type: 'integer', description: 'The page the table goes ON when the user puts it on a page ("on this slide"/"here" = the current page, "on slide 4" = 4); 0 for a new page. With no page named, a table of examples or facts goes ON the page whose content it shows (or on a new page right after that page), one call per topic when they ask for tables: never on the title page, the contents page or a page about something else, wherever the user is looking' },
   }, ['instruction', 'after', 'on_page']),
   fn('delete_pages', 'Delete one or more pages.', {
     pages, user_asked_to_cut: { type: 'boolean', description: 'true ONLY if the user\'s words ask to delete, remove or cut pages, or to reduce the deck' },
