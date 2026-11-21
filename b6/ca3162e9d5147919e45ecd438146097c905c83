@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high on b6ca3162; 3 MEDIUM. Fixed by the next commit: see-through pixels as black, flat bands as gradient, gradient stop positions.
+Declined: a decoration lying wholly inside the cover box (half a line's height around the words) is hidden with the line. The ring is a few px from the letters, the cover shows in the editor and one undo restores it.
+Declined-By: Claude (unattended pptist-editor-sessions run, 2026-11-22)
+Tests, real turn only, Codex mode, $0: "移除講者名稱" on the paying user's saved deck, old build 0/3 (white box 1, refused 2), new build 3/3 name hidden with no visible edge, 1/1 after the review fix.
+Regression: 4 real turns (3 accepted, 1 flat-picture deck) old vs new, 1 run each; no rewritten path and no ground note reached them.
