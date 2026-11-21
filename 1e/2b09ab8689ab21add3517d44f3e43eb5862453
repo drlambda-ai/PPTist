@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high on a4876839..1e2b09ab; one P1 (stale fallback corner could cover moved text) fixed by 4646ad56, re-review closed it.
+Tests, real turns only, Codex mode, $0: rounded pictures 2/2 visible; picture on the named slide 6/6; table off the cover 2/2; questions+detail already 3/3 on master.
+Regression: 170 real accepted turns via API ($2.02), 102 pass / 41 partial / 27 fail (previous build 100/44/25); 14 pass->fail flips: 6 ungraded, 2 checked by screenshot and correct (arrow drawn, photo added), rest not in the changed paths.
