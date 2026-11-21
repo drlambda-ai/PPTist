@@ -23,6 +23,10 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
    the real turns users rejected (did the fix help, and why does each one still fail) and real
    turns users accepted (a fix that breaks one is not done). Read why each failing turn fails;
    a grade alone is not a reason.
+   Replays spend the OpenAI key; run them with `LLM_VIA_CODEX=1` and the keys unset (`env -u OPENAI_API_KEY
+   -u ANTHROPIC_API_KEY`, see `scripts/e2e/codex-llm.mts`) whenever the question is which tools a fix runs: $0, about
+   4x slower, first tool as faithful as the API, multi-step sequences less so. API replays, for pass rates only,
+   share one $5 a day for this work (Quanlai, 2026-11-21).
 4. Success is what real users do, on their real decks (Quanlai, 2026-11-19: "Why don't you just
    use whatever the user actually uses?", then "focus on all of the new prompts recently, real
    prompts. Don't use fabricated content"). Only recent real prompts on the user's saved deck: no
