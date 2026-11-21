@@ -27,6 +27,10 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
    -u ANTHROPIC_API_KEY`, see `scripts/e2e/codex-llm.mts`) whenever the question is which tools a fix runs: $0, about
    4x slower, first tool as faithful as the API, multi-step sequences less so. API replays, for pass rates only,
    share one $5 a day for this work (Quanlai, 2026-11-21).
+   Which tool the router picks is a backend question: post the real turn's request straight to
+   `/api/tools/deck_chat` (Codex mode), no browser. The browser harness only for the full turn or a screenshot, one
+   run at a time, `-j 2` at most: parallel runs once held 124 headless browsers, 7.4 GB (2026-11-21, "please kill
+   all of them").
 4. Success is what real users do, on their real decks (Quanlai, 2026-11-19: "Why don't you just
    use whatever the user actually uses?", then "focus on all of the new prompts recently, real
    prompts. Don't use fabricated content"). Only recent real prompts on the user's saved deck: no
