@@ -1391,6 +1391,16 @@ const freeBox = (sl: Slide, want: { left: number, top: number, width: number, he
   const C = 24, R = 14, cw = W / C, rh = H / R
   const busyCell = Array.from({ length: R }, () => new Array(C).fill(false))
   for (let r = Math.floor(R * 0.86); r < R; r++) busyCell[r].fill(true) // the footer band
+  // past the page's background picture is not the page: a ChatSlide deck is drawn 960 wide on the 1000-wide canvas, and
+  // a picture asked for page 5 went into the white strip beyond it, half off the design (replay 2026-11-21)
+  const bd = firstBackdrop(sl)
+  if (bd) {
+    for (let r = 0; r < R; r++) {
+      for (let c = 0; c < C; c++) {
+        if ((c + 1) * cw > bd.left + bd.width + 1 || c * cw < bd.left - 1 || (r + 1) * rh > bd.top + bd.height + 1 || r * rh < bd.top - 1) busyCell[r][c] = true
+      }
+    }
+  }
   // on a page that is one flat picture the text is painted in it: its lines are taken too (two pictures asked for
   // "the space above the page number" covered the page's text, replay 2026-11-20)
   for (const e of [...sl.elements, ...(paintedKnown.get(paintedPicture(sl).src) || [])] as any[]) {
@@ -1427,7 +1437,11 @@ const roomFor = async (id: string, wanted: { left: number, top: number, width: n
     return b && b.width >= min.width && b.height >= min.height ? b : null
   }
   let box = free(wanted)
-  if (!box && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: at() + 1 })) // made room once: never shrink it again
+  // a corner a fraction of the size asked is no room yet: a picture asked for page 5 came out 121x80 px in its top-right
+  // corner, too small to see (replay 2026-11-21). The text is moved aside once; that corner stays the fallback
+  const corner = box && box.width * box.height < 0.3 * wanted.width * wanted.height && !roomMadeThisTurn.has(id) ? box : null
+  if (corner) box = null
+  if (!box && !corner && roomMadeThisTurn.has(id)) fail(t('Page {p0} has no free space any more.', { p0: at() + 1 })) // made room once: never shrink it again
   // painted text cannot move aside: no room is no room
   if (!box && !(paintedPicture(slides.value[at()]).src && !slides.value[at()].elements.some((e: any) => elText(e)))) { // a full page: make room rather than refuse
     roomMadeThisTurn.add(id)
@@ -1440,6 +1454,7 @@ const roomFor = async (id: string, wanted: { left: number, top: number, width: n
       box = free(room)
     }
   }
+  if (corner && (!box || box.width * box.height < corner.width * corner.height)) box = corner
   if (!box) fail(t('Page {p0} is full; there is no free space for a picture. Remove or shrink something first, or put the picture on a new page.', { p0: at() + 1 }))
   return box
 }
