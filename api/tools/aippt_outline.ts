@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
   // the user's own pasted text (an essay, a report) laid out as it is: told only "take every number from it", a pasted
   // essay came back regrouped and retold, with claims it never made (2026-11-19)
   const asWritten = `You lay out the user's own text as a presentation, as a Markdown outline: "#" deck title (the text's own title, or its subject in its own words), "##" one per section of the text, in its order, with the section's own heading, "-" one bullet per paragraph or list item of that section, in order, every one.
-Copy every word as written: never reword, summarise, merge, shorten or add. Each bullet is a bold heading of the paragraph's first few words, a colon, then the whole paragraph. A section with many paragraphs simply has many bullets. Leave out only source lines that are a bare link or site name, and the user's request to the editor ("make a presentation from this").
+Copy every word as written: never reword, summarise, merge, shorten or add. Each bullet is a bold heading of the paragraph's first few words, a colon, then the whole paragraph. A section with many paragraphs simply has many bullets. Its source lines (a link, a site name such as "dcz.gov.ua") stay too, as written, as a bullet where they stand. Leave out only the user's request to the editor ("make a presentation from this").
 The second line after the deck title is one sentence copied from the text. Output only the outline, no preface, no code fences.`
   const messages = [
     {

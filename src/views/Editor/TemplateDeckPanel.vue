@@ -498,7 +498,7 @@ const deckLanguage = (text: string) => `the language of the existing deck (sampl
 // word for word. Outlined freely, a pasted essay came back regrouped and retold, with claims it never made (Ukrainian
 // student, 2026-11-19)
 const generateNative = async (text: string, asWritten = false) => {
-  const brief = s.docs.length ? `${text}\n\n${materialBrief()}` : text
+  const brief = s.docs.length && !asWritten ? `${text}\n\n${materialBrief()}` : text // their pasted text is the whole source
   let outline = ''
   await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '', asWritten }), t => {
     outline += t 
@@ -3790,7 +3790,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     }
     if (newDeck && onlyRead) {
       // their own pasted text is the deck: their message, never the router's retelling of it
-      const asWritten = newDeck.args?.as_written === true && !s.docs.length
+      // the router says which is the source: a file still attached to the chat does not turn a pasted text into a summary
+      const asWritten = newDeck.args?.as_written === true && newDeck.args?.from_users_file !== true
       const brief = done.length && !asWritten ? String(newDeck.args?.instruction || text) : text
       deckBeforeCreate = JSON.parse(JSON.stringify(slides.value)) // one Undo click brings this deck back
       openedSlides = {} // "the original" of a new deck is the new deck (taken at the next message)
