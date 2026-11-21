@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "Không thể tạo ảnh ({p0}).",
   "That page has no picture.": "Trang chiếu đó không có ảnh.",
   "Could not get a picture.": "Không thể lấy ảnh.",
+  "Every stock photo found for “{p0}” is already on this page.": "Mọi ảnh có sẵn tìm được cho “{p0}” đều đã có trên trang này.",
   "Writing notes {p0} of {p1}…": "Đang viết ghi chú {p0}/{p1}…",
   "page {p0}": "trang chiếu {p0}",
   "There is no page {p0} (the deck has {p1}).": "Không có trang chiếu {p0} (bộ trình chiếu có {p1} trang).",

@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "Не вдалося згенерувати зображення ({p0}).",
   "That page has no picture.": "На цьому слайді немає зображень.",
   "Could not get a picture.": "Не вдалося отримати зображення.",
+  "Every stock photo found for “{p0}” is already on this page.": "Усі стокові фото, знайдені за запитом «{p0}», уже є на цій сторінці.",
   "Writing notes {p0} of {p1}…": "Створюємо нотатки {p0} з {p1}…",
   "page {p0}": "слайд {p0}",
   "There is no page {p0} (the deck has {p1}).": "У презентації немає слайда {p0} (у ній {p1} слайдів).",

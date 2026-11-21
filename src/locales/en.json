@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "The picture could not be generated ({p0}).",
   "That page has no picture.": "That page has no picture.",
   "Could not get a picture.": "Could not get a picture.",
+  "Every stock photo found for “{p0}” is already on this page.": "Every stock photo found for “{p0}” is already on this page.",
   "Writing notes {p0} of {p1}…": "Writing notes {p0} of {p1}…",
   "page {p0}": "page {p0}",
   "There is no page {p0} (the deck has {p1}).": "There is no page {p0} (the deck has {p1}).",

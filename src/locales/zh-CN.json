@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "无法生成图片（{p0}）。",
   "That page has no picture.": "该页面没有图片。",
   "Could not get a picture.": "无法获取图片。",
+  "Every stock photo found for “{p0}” is already on this page.": "为“{p0}”找到的图库照片都已在本页上。",
   "Writing notes {p0} of {p1}…": "正在编写备注：第 {p0}/{p1} 页…",
   "page {p0}": "第 {p0} 页",
   "There is no page {p0} (the deck has {p1}).": "没有第 {p0} 页（演示文稿共 {p1} 页）。",

@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "Impossible de générer l’image ({p0}).",
   "That page has no picture.": "Cette page ne contient aucune image.",
   "Could not get a picture.": "Impossible de récupérer une image.",
+  "Every stock photo found for “{p0}” is already on this page.": "Toutes les photos de banque d’images trouvées pour « {p0} » sont déjà sur cette page.",
   "Writing notes {p0} of {p1}…": "Rédaction des notes {p0} sur {p1}…",
   "page {p0}": "diapositive {p0}",
   "There is no page {p0} (the deck has {p1}).": "La diapositive {p0} n’existe pas (la présentation en compte {p1}).",

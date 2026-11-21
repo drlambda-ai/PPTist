@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "تعذّر إنشاء الصورة ({p0}).",
   "That page has no picture.": "لا تحتوي تلك الصفحة على صورة.",
   "Could not get a picture.": "تعذّر الحصول على صورة.",
+  "Every stock photo found for “{p0}” is already on this page.": "كل الصور الجاهزة التي وُجدت لـ «{p0}» موجودة بالفعل في هذه الصفحة.",
   "Writing notes {p0} of {p1}…": "جارٍ كتابة ملاحظات {p0} من {p1}…",
   "page {p0}": "الصفحة {p0}",
   "There is no page {p0} (the deck has {p1}).": "لا توجد صفحة {p0} (يحتوي العرض على {p1} صفحة).",

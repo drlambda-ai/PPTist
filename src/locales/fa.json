@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "ساخت تصویر ممکن نشد ({p0}).",
   "That page has no picture.": "این اسلاید تصویری ندارد.",
   "Could not get a picture.": "دریافت تصویر ممکن نشد.",
+  "Every stock photo found for “{p0}” is already on this page.": "همهٔ عکس‌های آماده‌ای که برای «{p0}» پیدا شد، از قبل در این صفحه هستند.",
   "Writing notes {p0} of {p1}…": "در حال نوشتن یادداشت‌های {p0} از {p1}…",
   "page {p0}": "اسلاید {p0}",
   "There is no page {p0} (the deck has {p1}).": "اسلاید {p0} وجود ندارد (این ارائه {p1} اسلاید دارد).",

@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "無法產生圖片（{p0}）。",
   "That page has no picture.": "該頁沒有圖片。",
   "Could not get a picture.": "無法取得圖片。",
+  "Every stock photo found for “{p0}” is already on this page.": "為「{p0}」找到的圖庫照片都已在本頁上。",
   "Writing notes {p0} of {p1}…": "正在撰寫講稿備註，第 {p0}/{p1} 頁…",
   "page {p0}": "第 {p0} 頁",
   "There is no page {p0} (the deck has {p1}).": "沒有第 {p0} 頁（簡報共有 {p1} 頁）。",

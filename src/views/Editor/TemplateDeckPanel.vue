@@ -645,7 +645,6 @@ const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
 // page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
-const picturesAddedThisTurn = new Set<string>() // the src of each new picture in the current message: the next one is another
 const readThisTurn = new Set<string>() // names of the user's files a read_file step read in the current message
 const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
 let sitePaywalledPage = '' // the page a free user was just told the brand's own pictures are a paid feature for
@@ -1612,6 +1611,8 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     if (src) return src as string
     // every result already used: the first again, rather than an AI picture nobody asked for (10 credits)
     if (reuse && r.data?.[0]?.src) return r.data[0].src as string
+    // photos were found, all already on the page: said so, never a paid AI picture in their place
+    if (found.some(Boolean)) fail(t('Every stock photo found for “{p0}” is already on this page.', { p0: query.slice(0, 60) }))
     pictureNote = t('No stock photo matched, so I generated one with AI.')
     pictureSource = 'ai'
   }
@@ -2158,9 +2159,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // adding near-duplicates)
     if ([...picturedThisTurn].filter(k => k.startsWith(`${id}|`)).length >= 6) fail(t('Page {p0} already got 6 new pictures in this message.', { p0: pos(id) + 1 }))
     // a specific thing may have no free picture: looked up before a full page is rearranged for it (2026-11-15)
-    // never a picture already on the page or added earlier in this message: "insert related pictures" put the same
-    // Wikimedia file of the named place three times, the specific-thing search being sent no pictures to avoid (2026-11-21)
-    const avoid = [...sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src), ...picturesAddedThisTurn]
+    // never a picture already on this page, or on the page a picture page was added for: "insert related pictures" put
+    // the same Wikimedia file of the named place on page 6 and twice on its new picture page, the specific-thing search
+    // being sent no pictures to avoid (2026-11-21). Other pages may repeat one (a logo on every page).
+    const twin = helperPages.has(id) ? slides.value[pos(id) - 1] : undefined
+    const avoid = [sl, twin].flatMap(x => (x?.elements || []).filter((e: any) => e.type === 'image').map((e: any) => e.src))
     if (args.source === 'specific') busy.value = t('Finding a picture…')
     const early = args.source === 'specific' ? await findPicture(args.query, args.source, wanted.width >= wanted.height, avoid) : ''
     const box = await roomFor(id, wanted, 'a picture')
@@ -2180,7 +2183,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     s.pics = { ...s.pics, [picId]: String(args.query || '') }
     touched([id])
     picturedThisTurn.add(picKey(id, args.query))
-    picturesAddedThisTurn.add(src)
     slidesStore.updateSlideIndex(pos(id))
     const how = pictureSource === 'attached' ? (t('your attached')) : pictureSource === 'ai' ? (t('AI-generated')) : pictureSource === 'wikimedia' ? (t('Wikimedia')) : (t('stock photo'))
     const cx = (now.left + now.width / 2) / W, cy = (now.top + now.height / 2) / H
@@ -3648,7 +3650,6 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   userText = text
   editedThisTurn.clear()
   picturedThisTurn.clear()
-  picturesAddedThisTurn.clear()
   readThisTurn.clear()
   roomMadeThisTurn.clear()
   sitePaywalledPage = ''

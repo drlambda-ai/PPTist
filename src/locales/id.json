@@ -997,6 +997,7 @@
   "The picture could not be generated ({p0}).": "Gambar tidak dapat dibuat ({p0}).",
   "That page has no picture.": "Slide itu tidak memiliki gambar.",
   "Could not get a picture.": "Tidak dapat memperoleh gambar.",
+  "Every stock photo found for “{p0}” is already on this page.": "Semua foto stok yang ditemukan untuk “{p0}” sudah ada di halaman ini.",
   "Writing notes {p0} of {p1}…": "Menulis catatan {p0} dari {p1}…",
   "page {p0}": "slide {p0}",
   "There is no page {p0} (the deck has {p1}).": "Tidak ada slide {p0} (presentasi ini memiliki {p1} slide).",
