@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "Đã đổi chỗ trang chiếu {p0} và {p1}.",
   "Requests like this work better on our advanced model, on paid plans.": "Các yêu cầu như thế này được xử lý tốt hơn bằng mô hình nâng cao trong các gói trả phí.",
   "Translated page {p0} into {p1} (only this page).": "Đã dịch trang chiếu {p0} sang {p1} (chỉ trang này).",
+  "Page {p0} was already in {p1}.": "Trang chiếu {p0} vốn đã bằng {p1}.",
   "Which font?": "Phông chữ nào?",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "Đã áp dụng {p0} cho {p1} hộp văn bản trên {p2} trang.",
   "Working on the pages: {p0} of {p1}…": "Đang xử lý các trang chiếu: {p0}/{p1}…",

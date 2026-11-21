@@ -1942,7 +1942,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (['add_page', 'edit_page', 'edit_all_pages'].includes(action) && slideLang && !String(args.instruction || '').includes('Write all slide text in')) {
     // first, and above the instruction's own language: the router wrote Spanish instructions for English requests
     // and the new slides came out in Spanish under a trailing note (2026-11-15)
-    args = { ...args, instruction: `Write all slide text in ${slideLang}, whatever language the instruction below is in.\n${args.instruction}` }
+    // on a page that already has text, only the text the edit writes: "the text is too cramped" sent in Spanish about an
+    // English page came with the language Spanish, and the whole page was translated unasked; the user saw it and wrote
+    // "it has to be in English" (2026-11-20). A translation names its language in translate_to, and says so
+    args = { ...args, instruction: action !== 'add_page' && !args.translate_to
+      ? `Write all slide text in ${slideLang}, whatever language the instruction below is in. This is for the text you write: text already on the page stays in the language it is in unless the instruction below asks to translate it.\n${args.instruction}`
+      : `Write all slide text in ${slideLang}, whatever language the instruction below is in.\n${args.instruction}` }
   }
   // a medical picture is a real one (Wikimedia, which falls back to a labelled stock photo): asked in prose, the router
   // still chose stock photos 6 of 6 times for "a picture for each variant of pulmonary hypertension" (2026-11-11)
@@ -2453,7 +2458,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.translate_to) {
       const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
       if (left.length) await editSlide(i, `Translate these remaining lines into ${args.translate_to}, keeping their style: ${left.map(t => `"${t.slice(0, 160)}"`).join('; ')}`).catch(() => undefined)
-      lastEditTerse = t('Translated page {p0} into {p1} (only this page).', { p0: i + 1, p1: args.translate_to })
+      // every line still as it was: the page was in that language already ("it has to be in English" about an English
+      // page was answered "translated page 7 into English", 2026-11-20)
+      const now = slides.value[i].elements.map(elText).filter(Boolean)
+      lastEditTerse = before.length && before.every(x => now.includes(x))
+        ? t('Page {p0} was already in {p1}.', { p0: i + 1, p1: args.translate_to })
+        : t('Translated page {p0} into {p1} (only this page).', { p0: i + 1, p1: args.translate_to })
       slidesStore.updateSlideIndex(i)
       return lastEditTerse
     }

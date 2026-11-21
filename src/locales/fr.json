@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "Pages {p0} et {p1} permutées.",
   "Requests like this work better on our advanced model, on paid plans.": "Ce type de demande fonctionne mieux avec notre modèle avancé, disponible dans les offres payantes.",
   "Translated page {p0} into {p1} (only this page).": "Diapositive {p0} traduite en {p1} (cette diapositive uniquement).",
+  "Page {p0} was already in {p1}.": "La diapositive {p0} était déjà en {p1}.",
   "Which font?": "Quelle police ?",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "{p0} appliqué à {p1} zones de texte sur {p2} page(s).",
   "Working on the pages: {p0} of {p1}…": "Modification des diapositives : {p0} sur {p1}…",

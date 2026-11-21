@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "Swapped pages {p0} and {p1}.",
   "Requests like this work better on our advanced model, on paid plans.": "Requests like this work better on our advanced model, on paid plans.",
   "Translated page {p0} into {p1} (only this page).": "Translated page {p0} into {p1} (only this page).",
+  "Page {p0} was already in {p1}.": "Page {p0} was already in {p1}.",
   "Which font?": "Which font?",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "Set {p0} on {p1} text boxes across {p2} page(s).",
   "Working on the pages: {p0} of {p1}…": "Working on the pages: {p0} of {p1}…",

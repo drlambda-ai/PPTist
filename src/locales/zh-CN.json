@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "已交换第 {p0} 页和第 {p1} 页。",
   "Requests like this work better on our advanced model, on paid plans.": "此类请求使用付费套餐中的高级模型效果更好。",
   "Translated page {p0} into {p1} (only this page).": "已将第 {p0} 页翻译成{p1}（仅此页）。",
+  "Page {p0} was already in {p1}.": "第 {p0} 页本来就是{p1}。",
   "Which font?": "要使用哪种字体？",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "已将 {p0} 应用于 {p2} 页中的 {p1} 个文本框。",
   "Working on the pages: {p0} of {p1}…": "正在处理页面：{p0}/{p1}…",

@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "تبادلت الصفحتان {p0} و{p1} موضعيهما.",
   "Requests like this work better on our advanced model, on paid plans.": "تنجح طلبات كهذا على نحو أفضل باستخدام نموذجنا المتقدم، المتاح في الخطط المدفوعة.",
   "Translated page {p0} into {p1} (only this page).": "تُرجمت الصفحة {p0} إلى {p1} (هذه الصفحة فقط).",
+  "Page {p0} was already in {p1}.": "الصفحة {p0} كانت بالفعل بلغة {p1}.",
   "Which font?": "أي خط؟",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "تم تطبيق {p0} على {p1} من مربعات النص عبر {p2} من الصفحات.",
   "Working on the pages: {p0} of {p1}…": "جارٍ العمل على الصفحات: {p0} من {p1}…",

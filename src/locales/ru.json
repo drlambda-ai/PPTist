@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "Слайды {p0} и {p1} поменяны местами.",
   "Requests like this work better on our advanced model, on paid plans.": "Такие запросы лучше обрабатывает наша продвинутая модель, доступная на платных планах.",
   "Translated page {p0} into {p1} (only this page).": "Слайд {p0} переведён на язык {p1} (только этот слайд).",
+  "Page {p0} was already in {p1}.": "Слайд {p0} уже был на языке {p1}.",
   "Which font?": "Какой шрифт?",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "Установлено {p0} в {p1} текстовых полях на {p2} слайдах.",
   "Working on the pages: {p0} of {p1}…": "Обрабатываем слайды: {p0} из {p1}…",

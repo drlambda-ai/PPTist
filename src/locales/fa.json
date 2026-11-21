@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "جای اسلایدهای {p0} و {p1} عوض شد.",
   "Requests like this work better on our advanced model, on paid plans.": "این درخواست‌ها با مدل پیشرفته ما که در طرح‌های پولی ارائه می‌شود بهتر انجام می‌شوند.",
   "Translated page {p0} into {p1} (only this page).": "اسلاید {p0} به {p1} ترجمه شد (فقط همین اسلاید).",
+  "Page {p0} was already in {p1}.": "اسلاید {p0} از قبل به زبان {p1} بود.",
   "Which font?": "کدام قلم؟",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "{p0} روی {p1} کادر متن در {p2} صفحه اعمال شد.",
   "Working on the pages: {p0} of {p1}…": "در حال کار روی اسلایدها: {p0} از {p1}…",

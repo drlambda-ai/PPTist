@@ -1071,6 +1071,7 @@
   "Swapped pages {p0} and {p1}.": "Menukar slide {p0} dan {p1}.",
   "Requests like this work better on our advanced model, on paid plans.": "Permintaan seperti ini lebih baik ditangani model lanjutan kami, yang tersedia di paket berbayar.",
   "Translated page {p0} into {p1} (only this page).": "Menerjemahkan slide {p0} ke {p1} (hanya slide ini).",
+  "Page {p0} was already in {p1}.": "Slide {p0} sudah dalam bahasa {p1}.",
   "Which font?": "Font yang mana?",
   "Set {p0} on {p1} text boxes across {p2} page(s).": "Menerapkan {p0} pada {p1} kotak teks di {p2} halaman.",
   "Working on the pages: {p0} of {p1}…": "Mengerjakan slide: {p0} dari {p1}…",
