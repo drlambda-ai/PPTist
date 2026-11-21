@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra), current Codex session
+Scope: /tmp/backtest/review-post3c.patch; floor oscillation and new overlap, off-slide, or loop defects.
+Fixed: Released boxes retain their released state across fitOverflow rounds and skip the old floor.
+Validation: Static review of patch, fitOverflow, and spacing caller; no new defects within the requested scope.
