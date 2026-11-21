@@ -3665,7 +3665,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
     }
     // after steps that only read material (the attached paper, the web): the deck is built from it, with the router's
     // full instruction ("here is my paper" read the file and stopped, 2026-11-12)
-    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d) || d.startsWith('not sent: ')) // the sent-back answer is no step
+    // nor is the note a second attempt starts with, or a create_deck skipped in an earlier round: with either in done the
+    // deck the router asked for again was dropped, nothing ran, and a pasted 6,000-character text got "Готово." (2026-11-19)
+    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d) || d.startsWith('not sent: ') || d.startsWith('note: ') || d.startsWith('create_deck -> skipped')) // the sent-back answer is no step
     if (newDeck?.args?.from_users_file && !s.docs.length && !(s.images || []).length) { // no file to build it from: ask for it
       const ask = await runCall(text, 'create_deck', newDeck.args, slides.value.map(x => x.id))
       replies.push(ask)
