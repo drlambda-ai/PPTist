@@ -1,0 +1,6 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high. d88e3349 findings (skip list fell back to a paid AI picture; logo refused on a second page) fixed by e86b169e; re-review closed the first.
+Declined: a helper picture page moved after another page infers its source page from adjacency (2084); cost if wrong: one picture refused with an honest message, no charge, only after a user moves a page the editor added.
+Declined-By: Claude (session cd46e05e).
+Not yet pushed: waits for the pre-push regression on real accepted turns (API budget for 2026-11-21 used).
+Cherry-picked unchanged onto bb986995 as 7d2d273c.
