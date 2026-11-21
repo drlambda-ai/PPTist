@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: current Codex session
+Scope: Focused re-review of 4646ad56 roomFor fallback; picture-over-text and off-page regressions.
+Fixed: Fallback is recomputed with free(wanted) against the current slide after text rearrangement. No new in-scope defect found.
