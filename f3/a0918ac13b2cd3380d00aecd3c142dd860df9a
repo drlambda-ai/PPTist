@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high; eval-only scripts/e2e switch, checked for API leaks with the switch on, production impact with it off, and credentials in prompts: none found.
+Verified: 2 replays of 20 real turns with OPENAI_API_KEY and ANTHROPIC_API_KEY removed, 0 connections to either API.
