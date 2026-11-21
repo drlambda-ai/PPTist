@@ -2473,7 +2473,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // widens into the free room beside it, then grows down to the next element
     const gap = (e: any) => { const x = e.type === 'text' ? e : e.text || {}; return [x.lineHeight ?? 1.5, x.paragraphSpace ?? 5] }
     const spaced = slides.value[i].elements.filter((e: any) => { const o = was.find(w => w.id === e.id); return o && elText(e) && gap(e).some((v, k) => v > gap(o)[k]) }).map(e => e.id)
-    if (spaced.length) await fitOverflow([pageId], {}, new Set(spaced), true).catch(() => undefined)
+    // where it still has no room its letters go smaller, never under 14px (body text the user reads)
+    const floor14 = Object.fromEntries(spaced.map((id) => { const e: any = slides.value[i].elements.find(x => x.id === id); return [id, [...String(e?.content ?? e?.text?.content ?? '').matchAll(/font-size:\s*([\d.]+)px/g)].map(m => Math.min(14, Number(m[1])))] }))
+    if (spaced.length) await fitOverflow([pageId], floor14, new Set(spaced), true).catch(() => undefined)
     // longer text that now runs behind a picture ("the letters are behind the picture", 2026-11-10): one layout pass.
     // Measured after the page renders, since text boxes grow to fit their text then.
     await nextTick(); await new Promise(r => setTimeout(r, 300))
@@ -4148,7 +4150,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
       const o = old.get(x.id)
       if (!o) lines.push(`page ${k + 1} NEW: ${shown(x, room)}`)
       else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x, room), 120)}`)
-      else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
+      else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${texts(o.sl, 100000) === texts(x, 100000) ? '\n  (the same words: what changed is what you are not shown, such as positions, sizes, line spacing or colours)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
     })
     was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x, room)}`) })
     return lines
@@ -4312,7 +4314,7 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 // widen: a box first takes the free width right of it, up to the next element beside it (fewer lines, same type size)
 const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>, widen = false) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
-  const widened = new Set<string>()
+  const widened = new Set<string>(), shrunk = new Set<string>()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
     let again = new Set(ids || slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
@@ -4350,9 +4352,11 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
               continue
             }
           }
-          if (room <= 8 || (room <= e.height + 2 && round)) continue // off the slide, or nowhere to grow and already shrunk once
+          // (a widened box spent its first round on the width: its shrink still comes)
+          if (room <= 8 || (room <= e.height + 2 && (widened.has(e.id) ? shrunk.has(e.id) : round))) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
+            shrunk.add(e.id)
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
             let i = 0
             const min = floor[e.id] || []
