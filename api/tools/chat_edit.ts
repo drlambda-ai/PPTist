@@ -17,6 +17,15 @@ Text styling lives in two places: "defaultFontName"/"defaultColor" on the elemen
 (e.g. <span style="font-family: Microsoft YaHei; font-size: 24px; color: #1a2b8c;"><strong>...</strong></span>).
 To change a font, size, colour, bold/italic/underline or alignment (<p style="text-align: center;">), change BOTH
 the element default and any inline style that would override it. Font sizes are px.
+Spacing of the words: "lineHeight" (space between lines, a multiple of the font size, 1.5 when not given) and
+"paragraphSpace" (px between paragraphs, 5 when not given), on a text element and on a shape that holds words. When the
+user finds the text crowded, cramped, stuck together or hard to read, or asks for more space, give its lines and
+paragraphs room (lineHeight about 1.4-1.6, paragraphSpace 10-16) and give each block of text its own space. Taller
+lines need a taller box: a box of N lines needs about N x font size x lineHeight + 10px. Widen a narrow box into free
+room beside it first (fewer lines), then grow it, and move everything under it in that column (the next heading, its
+text, the number or icon beside it) down by as much, so no box touches or overlaps another; shrink or move a picture,
+or use a slightly smaller font, when the page has no more room. Moving boxes alone, with the lines still touching, is
+not done.
 "Move left/right/up/down" means change left/top by a visible amount (about 5-15% of the canvas) unless a size is given;
 "bigger/smaller" scales width and height together around the element's centre.
 - type "shape": has "fill", "path", "viewBox" ("path" may be a placeholder token: keep it exactly as given). A shape

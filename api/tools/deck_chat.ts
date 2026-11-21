@@ -429,6 +429,9 @@ Rules:
    A complaint that the deck is (still) in English / in the wrong language ("continuam em inglês", "all in English")
    -> edit_all_pages translating into the language the user wrote in.
    Overflowing or overlapping text -> edit_page ("shorten or resize so nothing overflows or overlaps"), overlap true when text is on other text.
+   Text that looks crowded, cramped or stuck together, hard to read for lack of space ("el texto se ve muy pegado")
+   -> edit_page whose instruction asks for more space between the lines and paragraphs (line spacing and paragraph
+   spacing) AND between the blocks of text, every word kept: moving the boxes apart alone leaves the lines touching.
    "Limit to N / at most N / 不超过N页" when the deck already has N or fewer pages -> answer_question saying it already
    has that many; NEVER duplicate or add pages to reach a limit.
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain

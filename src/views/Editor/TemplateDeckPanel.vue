@@ -890,7 +890,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   // reading order so "the first point" means the top-left one; the merge below keeps the slide's own stacking order
   // a shape's words (every text box of an imported ChatSlide/PowerPoint deck) are shown like a text box's: the model
   // edits "content" the same way on both, and the merge puts it back inside the shape's text
-  const flat = (e: any) => (e.type === 'shape' && e.text ? (({ text, ...r }) => ({ ...r, content: text.content, defaultColor: text.defaultColor, defaultFontName: text.defaultFontName }))(e) : e)
+  // its line and paragraph spacing too: hidden, "the text is too cramped" moved the boxes and left the lines touching
+  // (a user asked twice, 2026-11-20)
+  const flat = (e: any) => (e.type === 'shape' && e.text ? (({ text, ...r }) => ({ ...r, content: text.content, defaultColor: text.defaultColor, defaultFontName: text.defaultFontName, ...spacing(text) }))(e) : e)
   // the model copies what it sees, so a new box often comes back as a "shape" with "content": put the words where
   // the editor draws them (a shape's text, or a plain text box when it has no outline)
   const unflat = (e0: any) => {
@@ -910,9 +912,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
       if (!plain(String(e.content ?? '')) && !e.gradient && !e.pattern && !paints(e.fill) && !outlined) e.outline = { style: 'solid', width: 3, color: '#222222' }
     }
     if (e.type !== 'shape' || e.content === undefined) return e
-    const { content, defaultColor, defaultFontName, ...rest } = e
-    if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0 }
-    return { ...rest, text: { content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', align: 'middle' } }
+    const { content, defaultColor, defaultFontName, lineHeight, paragraphSpace, ...rest } = e
+    if (!rest.path) return { ...rest, type: 'text', content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', rotate: rest.rotate || 0, ...spacing({ lineHeight, paragraphSpace }) }
+    return { ...rest, text: { content, defaultColor: defaultColor || '#333', defaultFontName: defaultFontName || '', align: 'middle', ...spacing({ lineHeight, paragraphSpace }) } }
   }
   // a picture says what it shows (the words it was searched or drawn for): "just one arrow" about a stock photo of
   // arrows was answered "there is no arrow on this page" (2026-11-14, replayed 2026-11-20)
@@ -966,13 +968,14 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
         }
       }
       if (e.type === 'shape' && e.text) {
-        const { content, defaultColor, defaultFontName, text, ...shape } = rest
-        const t = { ...e.text, ...(text || {}), ...(content !== undefined ? { content } : {}), ...(defaultColor ? { defaultColor } : {}), ...(defaultFontName ? { defaultFontName } : {}) }
+        const { content, defaultColor, defaultFontName, text, lineHeight, paragraphSpace, ...shape } = rest
+        const t = { ...e.text, ...(text || {}), ...(content !== undefined ? { content } : {}), ...(defaultColor ? { defaultColor } : {}), ...(defaultFontName ? { defaultFontName } : {}), ...spacing({ lineHeight, paragraphSpace }) }
         return { ...e, ...shape, text: t, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
       }
       // a text box is as tall as its lines, measured when shown: a height from the model stays in the deck only while
       // the lines do not change, and then says a wrapped heading no longer reaches the text under it
       if (e.type === 'text' && !e.fixedHeight && !e.vertical) delete rest.height
+      if (e.type === 'text') { delete rest.lineHeight; delete rest.paragraphSpace; Object.assign(rest, spacing(c)) }
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
     // an added element without a real position and size is dropped rather than drawn at 0,0
@@ -2455,6 +2458,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return lastEditTerse
     }
     slidesStore.updateSlideIndex(i)
+    // more line or paragraph spacing makes the text taller than the box the page model gave it: the lines ran over the
+    // next heading ("el texto se ve muy pegado", replayed 3 of 3, 2026-11-21). Measured: a box whose text runs over
+    // widens into the free room beside it, then grows down to the next element
+    const gap = (e: any) => { const x = e.type === 'text' ? e : e.text || {}; return [x.lineHeight ?? 1.5, x.paragraphSpace ?? 5] }
+    const spaced = slides.value[i].elements.filter((e: any) => { const o = was.find(w => w.id === e.id); return o && elText(e) && gap(e).some((v, k) => v > gap(o)[k]) }).map(e => e.id)
+    if (spaced.length) await fitOverflow([pageId], {}, new Set(spaced), true).catch(() => undefined)
     // longer text that now runs behind a picture ("the letters are behind the picture", 2026-11-10): one layout pass.
     // Measured after the page renders, since text boxes grow to fit their text then.
     await nextTick(); await new Promise(r => setTimeout(r, 300))
@@ -3487,6 +3496,12 @@ const rememberOriginal = () => {
 const GEOMETRY = ['left', 'top', 'width', 'height', 'rotate'] // numbers only, whatever the model writes
 // a number, or a non-blank string that is one ("190"); anything else (":", "", null, false) is NaN
 const toNum = (v: any) => (typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN)
+// line spacing (a multiple) and paragraph spacing (px) of a text, as numbers the editor draws, or left out: "8px" from
+// the page model would draw as "8pxpx"
+const spacing = (o: any) => {
+  const lh = toNum(o?.lineHeight), ps = toNum(o?.paragraphSpace)
+  return { ...(Number.isFinite(lh) && lh >= 0.8 && lh <= 3 ? { lineHeight: lh } : {}), ...(Number.isFinite(ps) && ps >= 0 && ps <= 80 ? { paragraphSpace: ps } : {}) }
+}
 // the deck after the last step that finished: a crash in a later step keeps the finished steps (a user lost a whole
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
@@ -4284,8 +4299,10 @@ const withRenderer = <T>(job: () => Promise<T>): Promise<T> => {
 // over the picture under it (6 of a surgeon's 26 pages, 2026-11-13). A box whose text is taller than it grows down to
 // the next element; when that is not room enough its type shrinks (never under 60%). ids: only those pages; floor: per
 // box, sizes its type never shrinks under (in order of the box's sizes); only: those boxes, the rest stay as they are
-const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>) => withRenderer(async () => {
+// widen: a box first takes the free width right of it, up to the next element beside it (fewer lines, same type size)
+const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?: Set<string>, widen = false) => withRenderer(async () => {
   const { width: W, height: H } = slideSize()
+  const widened = new Set<string>()
   try {
     await document.fonts?.ready // measured in the deck's fonts, not a fallback's
     let again = new Set(ids || slides.value.map(x => x.id)) // later rounds draw only the pages a round changed
@@ -4311,6 +4328,18 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
           const room = Math.min(H - 8, ...under.map(o => o.top - 6)) - e.top
           // a text box on the page shown has already grown to its text (the editor stores it): checked against the room
           if (need <= e.height + 2 && (e.type !== 'text' || need <= room + 2)) continue
+          if (widen && !widened.has(e.id)) {
+            widened.add(e.id)
+            const bottom = e.top + Math.max(e.height, need)
+            const beside = (sl.elements as any[]).filter(o => o.id !== e.id && o.left >= e.left + e.width - 2 && o.top < bottom && o.top + o.height > e.top
+              && !(o.type === 'image' && isBackdrop(o)) && !(o.type === 'shape' && !plain(o.text?.content) && o.width * o.height > W * H * 0.2))
+            const width = Math.min(W - 24, ...beside.map(o => o.left - 12)) - e.left
+            if (width > e.width + 20) {
+              slidesStore.updateElement({ id: e.id, props: { width }, slideId: sl.id })
+              again.add(sl.id)
+              continue
+            }
+          }
           if (room <= 8 || (room <= e.height + 2 && round)) continue // off the slide, or nowhere to grow and already shrunk once
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
