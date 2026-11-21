@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high on 37caec70..2d99c8be; P1 (spacing fit could leave overflow) fixed by bcba716a, its P1 (below-floor oscillation) fixed by ca31b6cd; final re-review closed both, no new defect.
+Tests, real turns only, Codex mode, $0: pasted Ukrainian text built/placed 2/2; spacing clean 6/10 across builds, fit check 12/12 boxes on the real slide; unasked translation 0/2 (old wording 2/2).
+Regression: 170 real accepted turns via API ($2.16), 99 pass / 46 partial / 25 fail (previous build 102/41/27); 7 pass->fail flips read, none attributable to the changed paths.
