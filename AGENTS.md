@@ -25,7 +25,9 @@ genuinely cannot do (a picture no source holds), with the reason in one line.
    a grade alone is not a reason.
    Replays spend the OpenAI key; run them with `LLM_VIA_CODEX=1` and the keys unset (`env -u OPENAI_API_KEY
    -u ANTHROPIC_API_KEY`, see `scripts/e2e/codex-llm.mts`) whenever the question is which tools a fix runs: $0, about
-   4x slower, first tool as faithful as the API, multi-step sequences less so. API replays, for pass rates only,
+   4x slower, first tool as faithful as the API, multi-step sequences less so. `LLM_CACHE_DIR=<dir>` on the server answers a request
+   it has seen before from disk (`scripts/e2e/llm-cache.mts`): an unchanged path replays exactly at $0; use a fresh dir
+   per run when runs must be independent. API replays, for pass rates only,
    share one $5 a day for this work (Quanlai, 2026-11-21).
    Which tool the router picks is a backend question: post the real turn's request straight to
    `/api/tools/deck_chat` (Codex mode), no browser. The browser harness only for the full turn or a screenshot, one

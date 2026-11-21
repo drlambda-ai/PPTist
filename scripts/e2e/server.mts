@@ -22,6 +22,8 @@ globalThis.fetch = (async (u: any, init?: any) => {
 }) as typeof fetch
 // eval replays at $0 of API credit: OpenAI requests answered by Codex on the ChatGPT plan (scripts/e2e/codex-llm.mts)
 if (process.env.LLM_VIA_CODEX === '1') (await import('./codex-llm.mts')).install()
+// same request, same answer, $0 (scripts/e2e/llm-cache.mts); outermost, so it also holds the Codex answers. Off by default
+if (process.env.LLM_CACHE_DIR) (await import('./llm-cache.mts')).install(process.env.LLM_CACHE_DIR)
 http.createServer(async (req, res0) => {
   const url = new URL(req.url || '/', 'http://x')
   const path = url.pathname.replace(/^\/api\/pptist/, '')
