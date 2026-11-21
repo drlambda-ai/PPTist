@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: review fixes for b6ca3162's findings; mechanical guards (alpha check, adjacent-third step, stop positions). Phase 3 re-run skipped: not client-money or data-loss path, replay pins the result.
+Tests: replay of the user's turn after the fix, Codex mode, $0: name hidden, gradient 17/50/83 copied, no visible edge.
