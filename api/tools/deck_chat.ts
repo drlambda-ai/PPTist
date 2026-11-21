@@ -786,6 +786,9 @@ async function handler(req: any, res: any) {
         })
       }
       else reply = ''
+      // a marker with no line of its own is no reply: "Updated page 2.", with no router line, came back as "⟦1⟧" and the
+      // user would have read just that (replay of a real Vietnamese turn, 2026-11-21)
+      if (/⟦\d+⟧/.test(reply)) reply = ''
       const options = buttons.length ? (labels.length && labels.every(Boolean) ? labels : buttons) : undefined
       // the user writes in the editor's own language: the reply is already in it, kept as written. Asked to
       // "copy it unchanged", the model still turned a Vietnamese reply into English about 1 time in 30 (2026-11-11)
