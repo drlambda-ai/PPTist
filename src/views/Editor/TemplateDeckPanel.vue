@@ -829,7 +829,61 @@ const FLAT_NOTE = '\n(This page is ONE flat picture: its title, text, pictures a
 // picture, so "underline the last sentence", "a check icon before Application" and "an arrow" were answered "this page
 // has no elements" three times, and a drawn arrow landed on a heading (a paying user, 2026-11-14). A vision model reads
 // the picture once (a fraction of a cent; boxes within a few px on the user's page), and marks go by those boxes.
-type PaintedLine = { text: string, left: number, top: number, width: number, height: number }
+type PaintedLine = { text: string, left: number, top: number, width: number, height: number, ground?: string, cover?: number[] }
+// The colour around a painted line, read from the picture's pixels in a ring just outside its box (x, y, w, h in percent
+// of the picture), when that ring is one even colour or one smooth left-to-right gradient. "移除講者名稱" on an imported cover was refused because the page
+// model could not see the colour behind the name, and a replay covered it with a guessed white box on a blue cover
+// (a paying user, 2026-11-21). Only an even ground can hide words: on a photo or a pattern there is none.
+// With it, the box (in percent of the picture) where that ground was read: the cover goes exactly there, since a box
+// the model grew by itself ran past the sampled ground and showed (replay 2026-11-22).
+const groundOf = (src: string, lines: { x: number, y: number, w: number, h: number }[]) => new Promise<({ ground: string, cover: number[] } | undefined)[]>((ok) => {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => {
+    try {
+      const k = Math.min(1, 1280 / img.naturalWidth)
+      const c = document.createElement('canvas')
+      c.width = Math.round(img.naturalWidth * k)
+      c.height = Math.round(img.naturalHeight * k)
+      const g = c.getContext('2d', { willReadFrequently: true })!
+      g.drawImage(img, 0, 0, c.width, c.height)
+      const px = g.getImageData(0, 0, c.width, c.height).data
+      ok(lines.map(({ x, y, w, h }) => {
+        const [l, t, W, H] = [x, y, w, h].map((v, i) => (v / 100) * (i % 2 ? c.height : c.width))
+        const pad = Math.max(3, H * 0.5) // the edge of the box that covers the line: an even ring there means nothing painted shows past it
+        const [x0, y0, x1, y1] = [l - pad, t - pad, l + W + pad, t + H + pad]
+        const at: number[][] = [] // [x, r, g, b]
+        for (let i = 0; i <= 40; i++) {
+          const fx = x0 + ((x1 - x0) * i) / 40, fy = y0 + ((y1 - y0) * i) / 40
+          for (const [px0, py0] of [[fx, y0], [fx, y1], [x0, fy], [x1, fy]]) {
+            const X = Math.round(px0), Y = Math.round(py0)
+            if (X >= 0 && Y >= 0 && X < c.width && Y < c.height) at.push([px0, ...px.slice((Y * c.width + X) * 4, (Y * c.width + X) * 4 + 3)])
+          }
+        }
+        if (at.length < 60) return undefined // the line runs off the picture
+        // left, middle and right thirds of the ring: a flat patch on a left-to-right gradient showed as a box, so an
+        // even ground may run from one colour to another across the line (ponytail: left to right only; a top-to-bottom
+        // gradient reads as uneven and the line is not removed)
+        const thirds = [0, 1, 2].map(b => at.filter(p => Math.min(2, Math.floor(((p[0] - x0) / (x1 - x0)) * 3)) === b))
+        if (thirds.some(t => t.length < 8)) return undefined
+        const stat = thirds.map((t) => {
+          const mean = [1, 2, 3].map(ch => t.reduce((s, p) => s + p[ch], 0) / t.length)
+          return { mean, sd: Math.max(...[1, 2, 3].map((ch, i) => Math.sqrt(t.reduce((s, p) => s + (p[ch] - mean[i]) ** 2, 0) / t.length))) }
+        })
+        if (stat.some(t => t.sd > 10)) return undefined
+        const hex = stat.map(t => tinycolor({ r: t.mean[0], g: t.mean[1], b: t.mean[2] }).toHexString())
+        const spread = Math.max(...[0, 1, 2].map(ch => Math.max(...stat.map(t => t.mean[ch])) - Math.min(...stat.map(t => t.mean[ch]))))
+        const cover = [x0 / c.width, y0 / c.height, (x1 - x0) / c.width, (y1 - y0) / c.height].map(v => v * 100)
+        return { cover, ground: spread <= 6 ? hex[1] : `"fill": "${hex[1]}", "gradient": {"type": "linear", "rotate": 0, "colors": [{"pos": 0, "color": "${hex[0]}"}, {"pos": 50, "color": "${hex[1]}"}, {"pos": 100, "color": "${hex[2]}"}]}` }
+      }))
+    }
+    catch {
+      ok([]) // a picture whose host does not allow reading its pixels
+    }
+  }
+  img.onerror = () => ok([])
+  img.src = src
+})
 const paintedRead = new Map<string, Promise<PaintedLine[]>>() // by picture, for this session
 const paintedKnown = new Map<string, PaintedLine[]>() // the lines already read, by slide picture: where a new picture must not go
 const paintedPicture = (sl: Slide): { src: string, box?: { left: number, top: number, width: number, height: number } } => {
@@ -867,11 +921,15 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
       : { left: (W - size.w * k) / 2, top: (H - size.h * k) / 2, width: size.w * k, height: size.h * k }
     const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: src,
       instruction: 'This picture is one presentation slide. List every line of text painted in it, top to bottom, each with the box its letters fill, in percent of the picture (x = left edge, y = top edge, w = width, h = height, each 0-100). JSON {"lines": [{"text": "...", "x": 0, "y": 0, "w": 0, "h": 0}]}' }) })
-    const lines = r.ok ? (await r.json().catch(() => ({})))?.lines : null
-    return (Array.isArray(lines) ? lines : []).map((l: any) => ({ text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160),
-      left: Math.round(at.left + (toNum(l?.x) / 100) * at.width), top: Math.round(at.top + (toNum(l?.y) / 100) * at.height),
-      width: Math.round((toNum(l?.w) / 100) * at.width), height: Math.round((toNum(l?.h) / 100) * at.height) }))
-      .filter(l => l.text && [l.left, l.top, l.width, l.height].every(Number.isFinite) && l.width > 0 && l.height > 0).slice(0, 60)
+    const got = r.ok ? (await r.json().catch(() => ({})))?.lines : null
+    const lines = (Array.isArray(got) ? got : []).map((l: any) => ({ x: toNum(l?.x), y: toNum(l?.y), w: toNum(l?.w), h: toNum(l?.h), text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160) }))
+      .filter(l => l.text && [l.x, l.y, l.w, l.h].every(Number.isFinite) && l.w > 0 && l.h > 0).slice(0, 60)
+    const grounds = lines.length ? await groundOf(src, lines) : []
+    return lines.map((l, i) => ({ text: l.text,
+      left: Math.round(at.left + (l.x / 100) * at.width), top: Math.round(at.top + (l.y / 100) * at.height),
+      width: Math.round((l.w / 100) * at.width), height: Math.round((l.h / 100) * at.height),
+      ...(grounds[i] ? { ground: grounds[i]!.ground, cover: (([x, y, w, h]) => [at.left + x * at.width, at.top + y * at.height, w * at.width, h * at.height].map(Math.round))(grounds[i]!.cover.map(v => v / 100)) } : {}) }))
+      .filter(l => l.width > 0 && l.height > 0)
   })().catch(() => [] as PaintedLine[])
   paintedRead.set(key, read)
   known(read)
@@ -881,9 +939,10 @@ const paintedNote = async (sl: Slide) => {
   const lines = await paintedLines(sl)
   if (!lines.length) return isFlat(sl) ? FLAT_NOTE : ''
   return '\n(The page itself is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized, moved or deleted. What CAN be done is to put NEW elements on top of it (any element listed above was put there this way and is edited as usual).'
-    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px:\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}`).join('\n')}\n`
-    + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape.'
-    + ' When the request needs the painted text itself changed (its wording, colour, size or font, or deleting it), change nothing and say in "reply" that the page is one flat picture whose text cannot be edited here, and that marks or new text can be put on top.)'
+    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
+    + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape, except to remove them as below.'
+    + ' To remove or hide a painted line ("remove the speaker name", "delete the date") that lists a ground: a new plain rectangle shape filled with exactly that ground (a ground written as "fill" and "gradient" is copied into the shape as written), no outline, its box exactly the line\'s cover box (the area where that ground was read), so the words vanish into the page. A painted line with no ground (it sits on a photo or a pattern) cannot be removed: change nothing and say so in "reply".'
+    + ' When the request needs the painted text itself changed (its wording, colour, size or font), change nothing and say in "reply" that the page is one flat picture whose text cannot be edited here, and that marks or new text can be put on top.)'
 }
 const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
@@ -904,6 +963,12 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     if (e.type === 'shape') {
       const vb = typeof e.viewBox === 'string' ? e.viewBox.trim().split(/[\s,]+/).map(Number).slice(-2) : e.viewBox
       e.viewBox = Array.isArray(vb) && vb.length === 2 && vb.every((v: any) => Number.isFinite(Number(v)) && Number(v) > 0) ? vb.map(Number) : [e.width || 1, e.height || 1]
+      // a shape name for a path ("rect") draws nothing: a box covering a painted name stayed invisible (replay
+      // 2026-11-22). It becomes the shape it names, an oval or else a rectangle
+      if (e.path !== undefined && !/^\s*[Mm]/.test(String(e.path))) {
+        const [w, h] = e.viewBox
+        e.path = /circle|ellipse|oval/i.test(String(e.path)) ? `M 0 ${h / 2} A ${w / 2} ${h / 2} 0 1 0 ${w} ${h / 2} A ${w / 2} ${h / 2} 0 1 0 0 ${h / 2} Z` : `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+      }
       // a drawing that paints nothing: "fill": "none" and no outline drew "an outline of a black cat sitting" as nothing
       // at all, and the reply said the page was updated (a paying user's page, replayed 2026-11-20). It gets a dark
       // outline, so what was drawn shows
