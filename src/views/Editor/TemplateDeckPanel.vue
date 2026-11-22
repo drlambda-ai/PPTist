@@ -3291,7 +3291,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const targets = having.length ? having : asked
     const written = await writeNotes(targets, args.instruction || '')
     if (!written) fail(t('The speaker notes could not be written.'))
-    return (t('Wrote speaker notes for {p0} page(s).', { p0: written })) + (written < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written })) : '')
+    // notes live in a one-line bar under the slide, for the page on screen: notes for pages 4-5 written while on page 1
+    // were never seen, and the user asked "Mana?" ("where?", 2026-11-22). Show the first page and open the bar.
+    if (!targets.includes(slides.value[slideIndex.value].id)) slidesStore.updateSlideIndex(pos(targets[0]))
+    mainStore.remarkHeight = Math.max(mainStore.remarkHeight, 200)
+    const where = targets.length <= 5 ? targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', ') : ''
+    return (where ? t('Wrote speaker notes for page(s) {p0}: they are in the notes bar under the slide.', { p0: where }) : t('Wrote speaker notes for {p0} page(s): they are in the notes bar under each slide.', { p0: written })) + (written < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written })) : '')
   }
   if (action === 'download_deck') {
     if (chatslide && !chatslide.canExport()) return t('Downloading needs a paid plan; I opened the plans for you.')

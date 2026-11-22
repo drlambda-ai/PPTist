@@ -50,7 +50,6 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore } from '@/store'
 import useGlobalHotkey from '@/hooks/useGlobalHotkey'
@@ -91,12 +90,11 @@ const {
   showAIPPTDialog,
   showChatPanel,
   showTemplateDeckPanel,
+  remarkHeight,
 } = storeToRefs(mainStore)
 
 const closeExportDialog = () => mainStore.setDialogForExport('')
 const closeAIPPTDialog = () => mainStore.setAIPPTDialogState(false)
-
-const remarkHeight = ref(40)
 
 useGlobalHotkey()
 usePasteEvent()

@@ -43,6 +43,7 @@ export interface MainState {
   showAIPPTDialog: boolean | 'running'
   showChatPanel: boolean
   showTemplateDeckPanel: boolean
+  remarkHeight: number
 }
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')
@@ -84,6 +85,7 @@ export const useMainStore = defineStore('main', {
     showAIPPTDialog: false, // 打开AIPPT创建窗口
     showChatPanel: false, // 打开AI对话编辑面板
     showTemplateDeckPanel: true, // 打开模板填充面板（AI 是入口，默认打开）
+    remarkHeight: 40, // 演讲者备注栏高度（AI 写好备注后展开）
   }),
 
   getters: {
