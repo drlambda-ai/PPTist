@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: Claude Code (fix round of the Codex review of da3bde16..040914c3)
+Reviewed-At: 2026-11-22T19:16:09Z
+Verify-Pass: skipped. Reason: two mechanical fixes, each verified in the real editor (notes shown on page 4, typing intact); cheap, visible failure mode.
