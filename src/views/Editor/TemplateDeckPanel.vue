@@ -1701,9 +1701,12 @@ const writeNotes = async (ids: string[], instruction: string) => {
   for (const id of ids) {
     const sl = slides.value.find(x => x.id === id)!
     busy.value = t('Writing notes {p0} of {p1}…', { p0: ids.indexOf(id) + 1, p1: ids.length })
+    // a page that is one flat picture (an imported PDF) has its text painted in it: notes from "no separate text"
+    // talked about "this picture" instead of the slide's points (replay 2026-11-23)
+    const painted = paintedPicture(sl).src ? (await paintedLines(sl)).map(l => l.text).join('\n') : ''
     const r = await fetch('/api/tools/ask_json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
+      body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}${painted ? `\nThe text painted in the slide's picture, top to bottom:\n${painted}` : ''}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
     })
     const notes = String((await r.json()).notes || '').trim()
     if (notes) {
