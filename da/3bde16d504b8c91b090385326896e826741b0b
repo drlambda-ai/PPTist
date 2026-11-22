@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-22T19:16:09Z
+Fixed: notes bar stale when notes are written for the page on screen (226f589e)
+Fixed: reply named pages whose notes came back empty (226f589e)
