@@ -1697,7 +1697,7 @@ const showBackdrop = (slideId: string, picId: string) => {
 }
 
 const writeNotes = async (ids: string[], instruction: string) => {
-  let written = 0
+  const written: string[] = [] // the pages whose notes came back
   for (const id of ids) {
     const sl = slides.value.find(x => x.id === id)!
     busy.value = t('Writing notes {p0} of {p1}…', { p0: ids.indexOf(id) + 1, p1: ids.length })
@@ -1711,7 +1711,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
     const notes = String((await r.json()).notes || '').trim()
     if (notes) {
       slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
-      written++
+      written.push(id)
     }
   }
   return written
@@ -3293,13 +3293,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const having = args.existing_only ? asked.filter(hasNotes) : asked
     const targets = having.length ? having : asked
     const written = await writeNotes(targets, args.instruction || '')
-    if (!written) fail(t('The speaker notes could not be written.'))
+    if (!written.length) fail(t('The speaker notes could not be written.'))
     // notes live in a one-line bar under the slide, for the page on screen: notes for pages 4-5 written while on page 1
     // were never seen, and the user asked "Mana?" ("where?", 2026-11-22). Show the first page and open the bar.
-    if (!targets.includes(slides.value[slideIndex.value].id)) slidesStore.updateSlideIndex(pos(targets[0]))
+    if (!written.includes(slides.value[slideIndex.value].id)) slidesStore.updateSlideIndex(pos(written[0]))
     mainStore.remarkHeight = Math.max(mainStore.remarkHeight, 200)
-    const where = targets.length <= 5 ? targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', ') : ''
-    return (where ? t('Wrote speaker notes for page(s) {p0}: they are in the notes bar under the slide.', { p0: where }) : t('Wrote speaker notes for {p0} page(s): they are in the notes bar under each slide.', { p0: written })) + (written < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written })) : '')
+    const where = written.length <= 5 ? written.map(id => pos(id) + 1).sort((a, b) => a - b).join(', ') : ''
+    return (where ? t('Wrote speaker notes for page(s) {p0}: they are in the notes bar under the slide.', { p0: where }) : t('Wrote speaker notes for {p0} page(s): they are in the notes bar under each slide.', { p0: written.length })) + (written.length < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written.length })) : '')
   }
   if (action === 'download_deck') {
     if (chatslide && !chatslide.canExport()) return t('Downloading needs a paid plan; I opened the plans for you.')
@@ -3338,8 +3338,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!hostSteps()?.goto && args.step === 'scripts') { // no Scripts step outside ChatSlide: the notes here ARE the script
       const targets = slides.value.map(x => x.id)
       const written = await writeNotes(targets, text)
-      if (!written) fail(t('The speaker notes could not be written.'))
-      return t('Wrote the speaker notes (the script) for {p0} page(s).', { p0: written })
+      if (!written.length) fail(t('The speaker notes could not be written.'))
+      return t('Wrote the speaker notes (the script) for {p0} page(s).', { p0: written.length })
     }
     if (!hostSteps()?.goto) fail(t('That step is not available here: open this project in ChatSlide.'))
     await hostSteps()!.goto!(args.step)

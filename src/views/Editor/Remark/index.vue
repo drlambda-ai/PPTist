@@ -41,7 +41,14 @@ watch(() => currentSlide.value.id, () => {
 
 const remark = computed(() => currentSlide.value?.remark || '')
 
+// notes changed elsewhere (the AI chat wrote them for the page on screen) are shown; the bar's own typing is not re-set
+let typed = ''
+watch(remark, value => {
+  if (value !== typed) nextTick(() => editorRef.value?.updateTextContent())
+})
+
 const handleInput = (content: string) => {
+  typed = content
   slidesStore.updateSlide({ remark: content })
 }
 
