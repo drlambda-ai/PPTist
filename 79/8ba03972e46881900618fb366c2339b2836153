@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-23T09:40:20Z
+Fixed: label fit shrank correctly wrapped CJK/Thai text (no-space scripts skipped)
+Fixed: reference-picture rule overrode a named page (named page first)
+Fixed: retry carried failed read_file lines that forbid a retry (only successful reads carried)
+Re-review skipped: three one-line changes, each a guard or wording
