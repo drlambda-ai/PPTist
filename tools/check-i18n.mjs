@@ -9,12 +9,16 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const read = file => JSON.parse(readFileSync(path.join(root, file), 'utf8'))
 const locales = read('src/locales.json')
 const english = read('src/locales/en.json')
-const parameters = text => [...text.matchAll(/\{p\d+\}/g)].map(m => m[0]).sort().join(',')
+const parameters = text => [...new Set([...text.matchAll(/\{p\d+\}/g)].map(m => m[0]))].sort().join(',')
+// a plural message ("a | b | c", picked by the count the call passes): 1 form, 2 (one | other) or one per CLDR category
+const categories = locale => new Intl.PluralRules(locale).resolvedOptions().pluralCategories.length
+const plural = text => text.split(' | ').length
 const errors = []
+const catalogs = {}
 for (const locale of locales) {
   let messages
   try {
-    messages = read(`src/locales/${locale}.json`)
+    messages = catalogs[locale] = read(`src/locales/${locale}.json`)
   }
   catch {
     errors.push(`${locale}: missing or unreadable catalog`); continue
@@ -23,6 +27,7 @@ for (const locale of locales) {
     const value = messages[key]
     if (typeof value !== 'string' || !value.trim()) errors.push(`${locale}: missing ${key}`)
     else if (parameters(value) !== parameters(source)) errors.push(`${locale}: parameters differ for ${key}`)
+    else if (![1, 2, categories(locale)].includes(plural(value))) errors.push(`${locale}: ${plural(value)} plural forms for ${key}`)
   }
   for (const key of Object.keys(messages)) if (!(key in english)) errors.push(`${locale}: extra ${key}`)
 }
@@ -33,6 +38,10 @@ function inspectCode(file, source, template = false) {
     if (ts.isCallExpression(node) && node.expression.getText(ast) === 't') {
       const key = node.arguments[0]
       if (key && ts.isStringLiteral(key) && !(key.text in english)) errors.push(`${file}: unknown key ${key.text}`)
+      // a plural message in any locale needs the count: without it every count gets the plural form
+      else if (key && ts.isStringLiteral(key) && node.arguments.length < 3 && locales.some(l => plural(catalogs[l]?.[key.text] || '') > 1)) {
+        errors.push(`${file}: plural key ${key.text} called without a count`)
+      }
       for (const argument of node.arguments.slice(1)) visit(argument)
       return
     }

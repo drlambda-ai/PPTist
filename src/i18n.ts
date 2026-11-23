@@ -15,7 +15,7 @@ export async function translatorIn(code: string): Promise<typeof t | null> {
   const load = catalogs[`./locales/${locale}.json`]
   if (!load) return null
   try {
-    return createTranslator(EN, (await load()).default)
+    return createTranslator(EN, (await load()).default, locale)
   }
   catch {
     return null
@@ -28,7 +28,7 @@ export async function initLocale() {
     if (load) {
       try {
         const messages = await load()
-        translate = createTranslator(EN, messages.default)
+        translate = createTranslator(EN, messages.default, lang)
       }
       catch {
         lang = 'en'
@@ -39,6 +39,7 @@ export async function initLocale() {
   document.documentElement.lang = lang
 }
 
-export function t(key: string, parameters?: Record<string, string | number>): string {
-  return translate(key, parameters)
+// n: the count a plural message ("a | b | c") picks its form by
+export function t(key: string, parameters?: Record<string, string | number>, n?: number): string {
+  return translate(key, parameters, n)
 }
