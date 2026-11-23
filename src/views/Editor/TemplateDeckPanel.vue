@@ -2987,14 +2987,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           // without its closing full stop: a step set as a heading drops it ("1. Визначення потреб учасників."), and the
           // six headings, read as missing, were added again on top of themselves (replay 2026-11-23)
           // (never a word's prefix: "Art." is not in "Artificial"; Codex review)
-          // the page is read as drawn text (elText, words spaced); the word end is checked there, the match without spaces
+          // the page is read as drawn text (elText, words spaced, entities decoded); matched without spaces, and at the
+          // match's own end the word must end: a space followed it on the page, or the next letter is none
           const has = (raw: string, l: string) => {
-            const page = flat(raw), f = flat(l), g = f.replace(/[.!?…。！？]+$/u, '')
+            const drawn = new DOMParser().parseFromString(raw, 'text/html').documentElement.textContent || ''
+            const chars: string[] = [], gap: boolean[] = []
+            for (const c of drawn) { if (/\s/.test(c)) { if (gap.length) gap[gap.length - 1] = true } else { chars.push(c.toLowerCase()); gap.push(false) } }
+            const page = chars.join(''), f = flat(l), g = f.replace(/[.!?…。！？]+$/u, '')
             if (page.includes(f)) return true
-            if (g === f || !page.includes(g)) return false
-            const last = (l.trim().replace(/[.!?…。！？]+$/u, '').split(/\s+/).pop() || '').toLowerCase()
-            const spaced = raw.toLowerCase()
-            for (let k = spaced.indexOf(last); k >= 0; k = spaced.indexOf(last, k + 1)) if (!/\p{L}/u.test(spaced[k + last.length] || '')) return true
+            if (g === f) return false
+            for (let k = page.indexOf(g); k >= 0; k = page.indexOf(g, k + 1)) {
+              const end = k + g.length
+              if (end >= page.length || gap[end - 1] || !/\p{L}/u.test(page[end])) return true
+            }
             return false
           }
           const onPage = slides.value[i].elements.map(elText).join(' ')
