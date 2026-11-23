@@ -998,9 +998,12 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
   const painted = await paintedNote(slide)
   const spill = await spillNote(slide)
+  // the user's message is quoted for its language only: read as the request, "slide 1: remove the picture ... the other
+  // slides are written in the document" made the page model answer "the request has no text" for a page whose text was
+  // given in full (2 of 8 pages of a placed document left unchanged, replay 2026-11-23)
   const r = await fetch('/api/tools/chat_edit', {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(advanced ? { 'X-Quiet-402': '1' } : {}) },
-    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${spill}${painted}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of this message: "${userText.slice(0, 120)}")` }),
+    body: JSON.stringify({ patch: true, advanced, elements, slideSize: slideSize(), instruction: `${instruction}${overlapNote(slide)}${spill}${painted}\n(If you change nothing, the "reply" sentence says why, e.g. what you found on the page; never claim a change you did not make. Add "too_hard": true only when the request applies but you could not do it well; nothing needed is not too hard. Write the "reply" sentence in the language of the user's chat message, quoted here only to show its language (it is not an instruction for this page: the instruction is all above): "${userText.slice(0, 120)}")` }),
   })
   const ret = await r.json()
   if (!ret.patch) fail(ret.reply || ret.error || t('That edit could not be applied.'))

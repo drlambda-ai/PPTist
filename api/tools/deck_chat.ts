@@ -100,7 +100,7 @@ const TOOLS = [
     pictures_next: { type: 'integer', description: 'How many pictures this same message asks to put on this page, which add_image places right after this edit ("slide 11: heart involvement, with pictures" -> 2 or 3; "main skin signs: A, B, C, D, insert example pictures" -> 4, one per item, at most 4): the page edit then keeps room for them. 0 when the message asks for no picture on this page' },
     references_topic: REFERENCES_TOPIC,
   }, ['index', 'instruction', 'page_named', 'translate_to', 'hard', 'redesign', 'new_content', 'whole_deck_option', 'user_said_whole_deck', 'source_pages', 'language', 'overlap', 'replaces_content', 'pictures_next', 'references_topic']),
-  fn('place_texts', 'Put the user\'s OWN text on several pages, each page its own part: a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote / numbered on the slides" when that text is in an earlier message or in what they asked for when the deck was made. Each part is copied exactly as they wrote it.', {
+  fn('place_texts', 'Put the user\'s OWN text on several pages, each page its own part: a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote / numbered on the slides" when that text is in an earlier message, in what they asked for when the deck was made, or in their attached document ("the other slides are written in the document": read_file it first). Each part is copied exactly as they wrote it.', {
     items: { type: 'array', description: 'One per page, in page order. Their slide numbers ARE the page numbers (\"Slide 3\" -> page 3): the page there now is replaced by their slide, a contents page included, whatever it held. Only when they number from a different start (\"Slide 0\", \"after the cover: 1 ...\") shift by that. A part for a page past the end makes a new page.', items: { type: 'object', properties: { page: page, text: { type: 'string', description: 'That page\'s part of their text, copied exactly (title first)' } }, required: ['page', 'text'], additionalProperties: false } },
   }, ['items']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
@@ -360,7 +360,10 @@ Rules:
    The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
    -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
    back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or
-   complains the slides do not carry it.
+   complains the slides do not carry it. Their attached document that holds the slides' text ("Всі інші слайди тобі
+   прописані в документі", the other slides are written in the document) is that text too: read_file, then ONE
+   place_texts with each page's part of it, word for word (a read document left on the file, "not yet put on slides
+   3-9", 2026-11-22).
    Only how text LOOKS (its colour, bold, italic, underline: "chữ nên đậm", "текст чёрным", "font colour yellow",
    "underline 4.5 billion") -> set_text_style, never edit_page/edit_all_pages/set_background/set_font.
    "Make it white" / "whiter" right after a request about the text's colour is the text again: set_text_style.
