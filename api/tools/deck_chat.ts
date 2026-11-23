@@ -106,7 +106,7 @@ const TOOLS = [
   }, ['items']),
   fn('set_font', 'Change the font family of text, on some or all pages (done directly, keeps every layout).', {
     pages: { ...pages, description: 'Pages; empty = every page' },
-    font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page' },
+    font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page. No font named ("change the font", "đổi font chữ") -> one you choose that fits the deck and its language, never "" (an empty font asked "Which font?" and ended the message before the restyle it also asked for, 2026-11-23)' },
     same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
   }, ['pages', 'font', 'same_as_page', 'scope']),
