@@ -2640,7 +2640,6 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
-    touched(targets)
     const sample: any = args.same_as_page > 0 ? readingOrder(slides.value[args.same_as_page - 1]).find((e: any) => elText(e)) : null
     const sampleHtml = String(sample?.content || sample?.text?.content || '')
     // a name in quotes is written &quot;Helvetica Neue&quot; once the browser has re-written the style: it read as "quot"
@@ -2657,6 +2656,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         if (args.scope === 'titles' ? !title(e) : args.scope === 'body' ? title(e) : false) continue
         if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { defaultFontName: font, content: setIn(e.content) }, slideId: id })
         else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, defaultFontName: font, content: setIn(e.text.content) } }, slideId: id })
+        touched([id]) // only a page whose text got the font counts as changed (a flat-picture page has none)
         n++
       }
     }
@@ -2986,13 +2986,23 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           const sentences = String(x.text).split('\n').flatMap((l: string) => l.split(/(?<=[.!?…。！？])\s+/)).map((l: string) => l.trim()).filter((l: string) => flat(l).length >= 2)
           // without its closing full stop: a step set as a heading drops it ("1. Визначення потреб учасників."), and the
           // six headings, read as missing, were added again on top of themselves (replay 2026-11-23)
-          const has = (page: string, l: string) => page.includes(flat(l).replace(/[.!?…。！？]+$/u, ''))
-          const onPage = flat(slides.value[i].elements.map(elText).join(' '))
+          // (never a word's prefix: "Art." is not in "Artificial"; Codex review)
+          // the page is read as drawn text (elText, words spaced); the word end is checked there, the match without spaces
+          const has = (raw: string, l: string) => {
+            const page = flat(raw), f = flat(l), g = f.replace(/[.!?…。！？]+$/u, '')
+            if (page.includes(f)) return true
+            if (g === f || !page.includes(g)) return false
+            const last = (l.trim().replace(/[.!?…。！？]+$/u, '').split(/\s+/).pop() || '').toLowerCase()
+            const spaced = raw.toLowerCase()
+            for (let k = spaced.indexOf(last); k >= 0; k = spaced.indexOf(last, k + 1)) if (!/\p{L}/u.test(spaced[k + last.length] || '')) return true
+            return false
+          }
+          const onPage = slides.value[i].elements.map(elText).join(' ')
           const missing = sentences.filter((l: string) => !has(onPage, l))
           if (missing.length) await editSlide(i, `These lines of the user's text are missing from this page. Add each one, word for word, where it belongs (add or resize text boxes when needed); change nothing else:\n${fence(missing.join('\n'))}`).catch(() => undefined)
           // still not there (a list layout keeps dropping an opening paragraph, 2026-11-19): their words go at the top
           // of the page's main text box, in its own style, and the box is fitted
-          const now = flat(slides.value[i].elements.map(elText).join(' '))
+          const now = slides.value[i].elements.map(elText).join(' ')
           const still = missing.filter((l: string) => !has(now, l))
           const sl = slides.value[i]
           // a text box or a shape holding text (list layouts keep their body in shapes)
@@ -3013,7 +3023,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           const { width: W, height: H } = slideSize()
           const els = slides.value[i].elements as any[]
           if ([...textOnPictures(els)].some(k => !hadBefore.has(k)) || els.some(e => elText(e) && (e.top + e.height > H + 4 || e.left + e.width > W + 4))) {
+            const kept = slides.value[i].elements
+            const had = kept.map(elText).join(' ')
             await editSlide(i, 'Fix the layout only: no text may overlap other text, sit behind a picture or run past the edge of the page. Move the text boxes clear of the pictures and make them fit (smaller font, narrower, or side by side). Keep every word, and every picture at its size.').catch(() => undefined)
+            // a layout pass that dropped one of their sentences is undone: their words matter more than the layout (Codex review)
+            const after = slides.value[i].elements.map(elText).join(' ')
+            if (sentences.some((l: string) => has(had, l) && !has(after, l))) slidesStore.updateSlide({ elements: kept }, slides.value[i].id)
           }
         }
         catch (e) {
