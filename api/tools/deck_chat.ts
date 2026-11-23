@@ -357,6 +357,11 @@ Rules:
    as the title", "the box in the colour of the heading") -> edit_page too: it sees each element's colours, and you
    do not; never ask which colour for it. Only that case: text that is hard to read, or a text colour asked for with
    no colour named, stays set_text_style with the colour you choose.
+   Text "on a transparent background / canvas" ("на прозорому тлі", "на прозорому полотні", "fondo transparente") is
+   text on a see-through panel, a half-transparent box behind it, never a text box with no fill; "like the title / the
+   middle text" -> edit_page saying: put it on a panel like the one behind that text (its fill, see-through as it is).
+   Never write "transparent" or "no fill" for it yourself ("transparent like the centred text panel, with no fill"
+   answered "it already is", 2026-11-22).
    The user's own text for several pages (a pasted "Slide 1 ... Slide 2 ...", or "insert the text I wrote on slides 1-10")
    -> ONE place_texts with every page's part, never edit_page or edit_all_pages for it. Also when the message only points
    back to that text ("just insert the text into the slides I numbered", "it says clearly which text goes where") or

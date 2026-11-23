@@ -34,6 +34,11 @@ not done.
   for a line drawing (an outline) "fill": "transparent" with "outline": {"style": "solid", "width": 3, "color": "#000000"}.
   A symbol, shape or text box asked for with no place named goes in a free spot of the page; asked to replace a picture
   that is not on the page, add it there anyway. A missing place is never a reason to change nothing.
+  A shape with "panel_behind": [ids] is the box drawn behind those text elements (a note, never a field to change): it
+  is their background. "On a (see-through) background like the title" for other text means a copy of THAT panel (its
+  "fill" exactly as given, alpha included, never another box's), sized to the other text with a little padding and
+  added behind it ("layer": "back"). The text itself stays where it is, never added a second time (the signature came
+  out twice, replay 2026-11-23).
 To MOVE an element, change its left/top; never add a copy of it.
 An image may also take: "opacity" (0-1, to fade it), "filters" ({"blur":"2px","brightness":"80%","contrast":"110%","grayscale":"100%","saturate":"120%","sepia":"50%","opacity":"50%"}), "flipH", "flipV", "radius" (rounded corners, a number of px: 24), "clip": {"shape": "<shape>"} to cut it to a shape
 (ellipse: round, a circle when the picture is square; roundRect, triangle, diamond, pentagon, hexagon, octagon, chevron,

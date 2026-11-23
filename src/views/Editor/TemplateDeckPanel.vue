@@ -970,6 +970,7 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   const unflat = (e0: any) => {
     const e = { ...e0, ...Object.fromEntries(GEOMETRY.filter(k => k in e0).map(k => [k, Number.isFinite(toNum(e0[k])) ? toNum(e0[k]) : 0])) }
     delete e.layer // a stacking instruction, applied by the merge
+    delete e.panel_behind // a note copied from a panel the model saw
     // a shape is drawn scaled from its viewBox [w, h]: the model often writes an SVG viewBox string ("0 0 1000 563"),
     // which drew a 2px underline as a black block over half the page (replay 2026-11-20). The string's size is kept,
     // anything else unreadable becomes the shape's own size
@@ -998,8 +999,17 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   // arrows was answered "there is no arrow on this page" (2026-11-14, replayed 2026-11-20)
   // and whether it is the page's background: "round the corners of the images" rounded the full-page background
   // instead of the photo on it (2026-11-20 replay)
+  // a filled box with no words, drawn under the text boxes it holds, is their panel: "put my signature on a see-through
+  // background like the title" was answered "it already has one", the title's see-through panel being this separate box
+  // (2026-11-22). Full-slide boxes are the page's ground, not a panel
+  const panels = Object.fromEntries(slide.elements.flatMap((p: any, k) => {
+    if (p.type !== 'shape' || elText(p) || !p.fill || p.width * p.height >= 0.8 * slideSize().width * slideSize().height) return []
+    const inside = (e: any) => e.left >= p.left - 2 && e.top >= p.top - 2 && e.left + e.width <= p.left + p.width + 2 && e.top + e.height <= p.top + p.height + 2
+    const held = slide.elements.slice(k + 1).filter((e: any) => elText(e) && inside(e)).map(e => e.id)
+    return held.length ? [[p.id, held]] : []
+  }))
   const elements = readingOrder(slide).map((e: any) => (e.type === 'image' ? { ...e, src: `image:${e.id}`, ...(s.pics?.[e.id] ? { shows: s.pics[e.id].slice(0, 120) } : {}), ...(isBackdrop(e) ? { background: true } : {}) }
-    : e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e))) // long SVG paths: token, restored below
+    : { ...(e.type === 'shape' && e.path?.length > 80 ? { ...flat(e), path: `path:${e.id}` } : flat(e)), ...(panels[e.id] ? { panel_behind: panels[e.id] } : {}) })) // long SVG paths: token, restored below
   const painted = await paintedNote(slide)
   const spill = await spillNote(slide)
   // the user's message is quoted for its language only: read as the request, "slide 1: remove the picture ... the other
@@ -1023,8 +1033,8 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     ...live.elements.filter(e => !removed.has(e.id)).map((e: any) => {
       const c = changes[e.id]
       if (!c) return e
-      const { src: _src, path, layer: _layer, shows: _shows, background: _bg, ...rest } = c // image sources and tokenised paths are never taken from the model
-      void _src; void _layer; void _shows; void _bg // layer is a stacking instruction, applied below, not an element field; shows and background are notes for the model
+      const { src: _src, path, layer: _layer, shows: _shows, background: _bg, panel_behind: _panel, ...rest } = c // image sources and tokenised paths are never taken from the model
+      void _src; void _layer; void _shows; void _bg; void _panel // layer is a stacking instruction, applied below, not an element field; shows, background and panel_behind are notes for the model
       // a position or size that is not a number is dropped: top ":" from the model threw a heading into the corner
       // of the slide (2026-11-11, a user's "improve the design")
       for (const k of GEOMETRY) {
