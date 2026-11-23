@@ -235,7 +235,7 @@ const TOOLS = [
   fn('rebuild_from_template', 'Regenerate the whole deck from the company template with new or changed material/data (only when a company template is in use).', {
     instruction: { type: 'string' },
   }, ['instruction']),
-  fn('read_file', 'Read an attached file (or some of its pages/sheets), or the TEXT in an attached picture ("write what is in my image into the slides"), before using it. Use it whenever the user refers to their file, PDF, article, document, data, "page N of the PDF", or a table/figure in it. The text is returned under "Done so far"; then use it in the next step (edit_page, add_page, add_table_page...).', {
+  fn('read_file', 'Read an attached file (or some of its pages/sheets), or an attached picture (its text, or a diagram\'s parts and layout: "write what is in my image into the slides", "a diagram like this"), before using it. Use it whenever the user refers to their file, PDF, article, document, data, "page N of the PDF", or a table/figure in it. The text is returned under "Done so far"; then use it in the next step (edit_page, add_page, add_table_page...).', {
     file: { type: 'string', description: 'The attached file or picture name exactly as listed' },
     pages: { type: 'array', items: { type: 'integer' }, description: 'PDF page numbers to read; empty = the whole file' },
     about: { type: 'string', description: 'What the user wants from the file, as a question ("the table comparing dosing schedules", "what the paper says about sleep in newborns", "the authors and journal"), when they want one thing in it rather than the whole file; "" to read it' },
@@ -401,6 +401,10 @@ Rules:
    (source_pages []). Otherwise "slide N" is a page of this deck (source_pages).
    "What is in my picture / the image / the photo" with ONE attached picture -> read_file on that picture (it reads
    its text), then write it onto the slides; never ask which picture or whether to read it.
+   An attached picture given as the model for what to make ("a diagram like this", "something like this:", "make it
+   look like my picture") -> read_file on that picture first (it describes its parts, their order and layout), then
+   edit_page on the page they are looking at (add_page only when they ask for a new slide), whose instruction draws that
+   structure: each part in its order and place, and the arrows between them. The picture itself goes on no slide.
    The user mentions a file but none is attached -> ask_user (options []): ask them to attach it with the 📎 icon, so
    their next message ("here it is", "đây", "ini") carries this request and it is done with the file. Except
    "this PDF / my document / the slides from my PDF" about improving the slides: the deck was made from that file, so

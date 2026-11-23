@@ -2378,8 +2378,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (pic) {
       busy.value = t('Reading {p0}…', { p0: pic.name })
       const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instruction: 'Copy all the text in this picture exactly, in its own language, keeping line breaks and numbering. If it has no text, describe what it shows in one sentence. JSON {"text": "..."}', image: pic.url }) })
-      const got = String((await r.json().catch(() => ({})))?.text || '').trim()
+        body: JSON.stringify({ instruction: 'In "text", copy all the text in this picture exactly, in its own language, keeping line breaks and numbering ("" when it has none). In "shows", say what it shows: for a diagram, flow, cycle, chart or slide layout, every part in order, what each one shows, where it sits and what the arrows connect; otherwise one sentence. JSON {"text": "...", "shows": "..."}', image: pic.url }) })
+      // a diagram given as the model ("something like this:"): its parts and layout, which a text-only read left blank
+      // and the page got a generic diagram (2026-11-23)
+      const j = await r.json().catch(() => ({}))
+      const got = [j?.text, j?.shows].map(x => String(x || '').trim()).filter(Boolean).join('\n\n')
       if (!r.ok || !got) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: pic.name, p1: '' }))
       memo = `<file-content name="${pic.name.replace(/["<>]/g, '')}">\n${fence(got.slice(0, 12000))}\n</file-content>`
       return t('Read {p0}{p1}.', { p0: pic.name, p1: '' })
