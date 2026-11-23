@@ -646,6 +646,9 @@ let userText = '' // the message being handled: replies are written in its langu
 let lastEditTerse = '' // what code knows about the last slide edit; shown instead of the model's sentence in multi-step turns
 const editedThisTurn = new Set<string>() // slide ids changed by an earlier step of the current turn
 const touched = (ids: string[]) => ids.forEach(id => editedThisTurn.add(id))
+// a "page N was not changed" line and the pages it names, not yet changed this turn when it was said: a later step
+// that changes them makes it untrue ("page 3 was not changed ... updated page 3" in one reply, replay 2026-11-23)
+const unchangedSaid = new Map<string, string[]>()
 // page|query of each NEW picture in the current message: the same picture is not added twice, but "examples of A, B, C"
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
@@ -3046,6 +3049,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (fresh.length) await fitOverflow(placed, {}, new Set(fresh.map(e => e.id)), Object.fromEntries(fresh.map(e => [e.id, gap(e)]))).catch(() => undefined)
     const lines = [t('Placed your text on {p0} page(s).', { p0: onPages.length - same.length - failed.length })]
     if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') })} ${why}`.trim())
+    if (same.length) unchangedSaid.set(lines[lines.length - 1], same.map(p => ids0[p - 1]).filter(id => !editedThisTurn.has(id)))
     if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
     // the deck grows with each new page: its page numbers are read from it now
     for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written, every sentence, nothing added:\n${x.text}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
@@ -3731,6 +3735,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   askedThisTurn = false
   userText = text
   editedThisTurn.clear()
+  unchangedSaid.clear()
   picturedThisTurn.clear()
   readThisTurn.clear()
   roomMadeThisTurn.clear()
@@ -4162,6 +4167,8 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
         memo = '' // what a failed step read never rides along with a later step
         replies.push(e.message)
         terse.push(e.message)
+        const page = c.action === 'edit_page' && e instanceof NoChange ? ids[Number(c.args?.index) - 1] : ''
+        if (page && !editedThisTurn.has(page)) unchangedSaid.set(e.message, [page])
         if (repeating && e instanceof NoChange) continue // one page already as asked: the other pages still get it
         // A failure used to end the message: "change the photo on slide 1 to a plainer one, and the photo on slide 3"
         // stopped at "there is no picture to remove" with slide 3 untouched (2026-11-12). Now the user is told at
@@ -4254,7 +4261,15 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       like: shapedBefore && ran.every(c => allAtOnce.includes(c.action)) ? here : undefined }
     save()
   }
-  const lines = terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies // one step: the model's sentence is fine
+  // each page's final outcome only: a "not changed" line goes when a later step changed its pages, and names only
+  // the pages still unchanged when it named others too
+  const finalOnly = (r: string) => r.split('\n').map((l) => {
+    const left = (unchangedSaid.get(l) || []).filter(id => !editedThisTurn.has(id))
+    if (!unchangedSaid.get(l)?.length || left.length === unchangedSaid.get(l)!.length) return l
+    const nums = left.map(id => slides.value.findIndex(x => x.id === id) + 1).filter(n => n > 0)
+    return nums.length ? t('Page(s) {p0} were not changed.', { p0: nums.join(', ') }) : ''
+  }).filter(Boolean).join('\n')
+  const lines = (terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies).map(finalOnly) // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn
   if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
   if (followUp) lines.push(followUp)
