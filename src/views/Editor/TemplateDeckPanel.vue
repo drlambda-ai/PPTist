@@ -63,12 +63,13 @@ import { PRESET_THEMES } from '@/configs/theme'
 import { CLIPPATHS } from '@/configs/imageClip'
 import { t as tApp, direction, lang, translatorIn } from '@/i18n'
 
-// Each line the app writes (in the app language), by its text: its string and parameters, so the reply can say it again
-// in the language of the user's message from the same strings in that locale (see finalize)
-const ownText = new Map<string, [string, Record<string, string | number> | undefined]>()
-const t = (key: string, parameters?: Record<string, string | number>) => {
-  const out = tApp(key, parameters)
-  if (out.trim()) ownText.set(out, [key, parameters]).set(out.trim(), [key, parameters])
+// Each line the app writes (in the app language), by its text: its string, parameters and count, so the reply can say it
+// again in the language of the user's message from the same strings in that locale (see finalize). The count picks the
+// plural form there: a Ukrainian replay said "Видалено 1 слайдів" from one "page(s)" form for every count (2026-11-23)
+const ownText = new Map<string, [string, Record<string, string | number> | undefined, number | undefined]>()
+const t = (key: string, parameters?: Record<string, string | number>, n?: number) => {
+  const out = tApp(key, parameters, n)
+  if (out.trim()) ownText.set(out, [key, parameters, n]).set(out.trim(), [key, parameters, n])
   return out
 }
 // a text made of the app's own lines, said with another locale's strings; null when any part of it was written by a
@@ -84,7 +85,7 @@ const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v =
   }
   if (own) {
     return tr(own[0], own[1] && Object.fromEntries(Object.entries(own[1]).map(([k, v]) => [k, typeof v !== 'string' ? v
-      : ownText.has(v) ? sayIn(v, tr, words) ?? v : /\p{L}/u.test(v) ? words(v) : v])))
+      : ownText.has(v) ? sayIn(v, tr, words) ?? v : /\p{L}/u.test(v) ? words(v) : v])), own[2])
   }
   for (let i = text.length - 1; i > 0; i--) { // one line joined from several ("Added 2 page(s)…" + " Only 2 fit.")
     if (!ownText.has(text.slice(0, i))) continue
@@ -93,6 +94,10 @@ const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v =
   }
   return /\p{L}/u.test(text) ? null : text // spaces, digits and punctuation between them
 }
+
+// the count a list of page numbers ("Pages 3, 5 were not changed") picks its plural form by: one page or several. Its
+// length would not do: 21 takes the singular in uk and ru ("21 слайд"), a list of 21 pages does not
+const listed = (xs: unknown[]) => Math.min(xs.length, 2)
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
 // The chat opens at the right edge, over the Design sidebar: in the middle it covered half the slide on a laptop and
@@ -1934,7 +1939,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
       const added = slides.value.length - n0
       if (filled.length && added >= count) filledThisTurn = true
-      return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: added, p1: after, p2: newTitles(after, added) })) + capped
+      return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: added, p1: after, p2: newTitles(after, added) }, added)) + capped
     }
     // text the user pasted for the pages (in this message or the request this message answers) goes to each page as
     // written: the router's instruction for 21 pasted slides said only "add them after the presentation" (2026-11-15)
@@ -1990,7 +1995,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
     }
     if (filled.length && k >= count) filledThisTurn = true // set only when every open part got its page: one failed page left the rest refused
-    return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: k, p1: after, p2: newTitles(after, k) })) + capped
+    return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: k, p1: after, p2: newTitles(after, k) }, k)) + capped
   }
   if (action === 'expand_page') {
     // several pages in one step, the last first: each new page moves only the pages after it, so the numbers the router
@@ -2125,7 +2130,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const swap = slides.value.filter(sl => has(sl).length)
       for (const sl of swap) for (const e of has(sl)) slidesStore.updateElement({ id: e.id, props: { src, height: e.width / shape }, slideId: sl.id })
       if (!swap.length) for (const sl of at.pages) slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...at.c, width, height } as any] }, sl.id)
-      said.push(t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: swap.length || at.pages.length }))
+      said.push(((n: number) => t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: n }, n))(swap.length || at.pages.length))
     }
     touched(ids)
     return said.join(' ')
@@ -2151,7 +2156,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const chosen = (want.length ? figs.filter(m => m.page && want.includes(m.page)) : figs).slice(0, Math.min(Math.max(args.count || 1, 1), 6))
     if (!chosen.length) {
       fail(figs.length
-        ? (t('There are no pictures on page(s) {p0} of {p1} (it has {p2}, on pages {p3}).', { p0: want.join(', '), p1: file.name, p2: figs.length, p3: [...new Set(figs.map(m => m.page))].filter(Boolean).join(', ') }))
+        ? (t('There are no pictures on page(s) {p0} of {p1} (it has {p2}, on pages {p3}).', { p0: want.join(', '), p1: file.name, p2: figs.length, p3: [...new Set(figs.map(m => m.page))].filter(Boolean).join(', ') }, listed(want)))
         : (t('{p0} has no pictures I can use.', { p0: file.name })))
     }
     const id = idOf(args.index)
@@ -2166,7 +2171,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     touched([id])
     slidesStore.updateSlideIndex(pos(id))
     if (!placed) fail(t('Page {p0} has no free space for the pictures.', { p0: pos(id) + 1 }))
-    return (t('Placed {p0} picture(s) from {p1} on page {p2}.', { p0: placed, p1: file.name, p2: pos(id) + 1 })) + (placed < chosen.length ? (t(' (no room for the other {p0})', { p0: chosen.length - placed })) : '')
+    return (t('Placed {p0} picture(s) from {p1} on page {p2}.', { p0: placed, p1: file.name, p2: pos(id) + 1 }, placed)) + (placed < chosen.length ? (t(' (no room for the other {p0})', { p0: chosen.length - placed })) : '')
   }
   if (action === 'add_image' && args.replaces_existing) { // "change the image" on a page that has one replaces it
     const sl = slides.value[pos(idOf(args.index))]
@@ -2231,7 +2236,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     directAllowed = true
     try { await runCall(text, 'add_image', { index: pg, page_named: true, query: srcs[0], items: srcs.length > 1 ? srcs : [], source: 'direct', box: { x: 55, y: 20, w: 40, h: 60 }, replaces_existing: false }, ids) }
     finally { directAllowed = false }
-    return t('Added {p0} picture(s) from {p1}.', { p0: pictures() - before, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') })
+    const added = pictures() - before
+    return t('Added {p0} picture(s) from {p1}.', { p0: added, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') }, added)
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     // the router names the specific thing each picture must show, so each one goes to Wikimedia on its own ("Einstein,
@@ -2374,7 +2380,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (!moved.length) fail(t('There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.'))
     touched(moved)
-    return t('Moved the logo on {p0} page(s).', { p0: moved.length })
+    return t('Moved the logo on {p0} page(s).', { p0: moved.length }, moved.length)
   }
   if (action === 'remove_images') {
     const targets = args.only?.length ? nums(args.only) : args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2388,7 +2394,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const withPictures = targets.filter(id => pictures(slides.value[pos(id)]).some(e => !logos.has(imgSpot(e))))
       if (!withPictures.length) fail(t('There is no picture to remove.'))
       const count = withPictures.reduce((k, id) => k + (args.images?.length || pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length), 0)
-      const q = t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: withPictures.length })
+      // one page by its number: "from 1 page(s)" had no plural to pick for two counts (2026-11-23)
+      const q = withPictures.length === 1
+        ? t('Remove {p0} picture(s) from page {p1}? Nothing is removed yet.', { p0: count, p1: pos(withPictures[0]) + 1 }, count)
+        : t('Remove {p0} picture(s) from {p1} page(s)? Nothing is removed yet.', { p0: count, p1: withPictures.length }, count)
       s.pending = { request: userText, question: q, options: [t('Yes, remove them'), t('No, keep them')], offer: true,
         // the yes removes them in one step: page by page, the reply read "Removed 1 picture(s). Removed 3 picture(s)."
         // for 10 pictures on 6 pages (2026-11-16)
@@ -2423,18 +2432,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const flat = targets.filter(id => isFlat(slides.value[pos(id)]))
       const photo = targets.filter(id => slides.value[pos(id)].background?.type === 'image' && !flat.includes(id))
       for (const id of photo) slidesStore.updateSlide({ background: { type: 'solid', color: '#ffffff' } }, id)
-      if (photo.length) { touched(photo); return t('Removed {p0} picture(s).', { p0: photo.length }) }
+      if (photo.length) { touched(photo); return t('Removed {p0} picture(s).', { p0: photo.length }, photo.length) }
       if (flat.length) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: flat.map(id => pos(id) + 1).join(', ') }))
     }
     const pasted = targets.filter(id => onlyFullPicture(slides.value[pos(id)]))
     if (!n && pasted.length) fail(t('Page {p0} is one flat picture: its text and pictures are all inside that single image, so I can\'t change a picture in it. Nothing was changed. I can add a new picture on top of it.', { p0: pasted.map(id => pos(id) + 1).join(', ') }))
     if (!n) fail(t('There is no picture to remove.'))
-    return t('Removed {p0} picture(s).', { p0: n })
+    return t('Removed {p0} picture(s).', { p0: n }, n)
   }
   if (action === 'set_transition') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     for (const id of targets) slidesStore.updateSlide({ turningMode: args.effect }, id)
-    return t('Transition set on {p0} page(s).', { p0: targets.length })
+    return t('Transition set on {p0} page(s).', { p0: targets.length }, targets.length)
   }
   if (action === 'animate_pages') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2446,7 +2455,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }))
       slidesStore.updateSlide({ animations }, id)
     }
-    return (args.effect === 'none' ? t('Animations removed.') : t('Animated {p0} page(s).', { p0: targets.length }))
+    return (args.effect === 'none' ? t('Animations removed.') : t('Animated {p0} page(s).', { p0: targets.length }, targets.length))
   }
   if (action === 'delete_pages') {
     let del = nums(args.pages)
@@ -2471,7 +2480,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // the router is told which pages went: after "slide 4 hapus" on 4 pages it saw 3 and added "there is no slide 4,
     // nothing deleted" to a reply that had just deleted it (5 of 6 runs, 2026-11-18)
     memo = `(Page(s) ${gone.join(', ')}, numbered as the deck was just before this step, are deleted: done, never "missing" or "not there". The deck now has ${slides.value.length} pages.)`
-    return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length })
+    return t('Deleted {p0} page(s); {p1} remain.', { p0: del.length, p1: slides.value.length }, del.length)
   }
   if (action === 'read_file') {
     // what the user asked for when the deck was made, read on request ("put back what I sent at the start"); a short one
@@ -2537,10 +2546,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (want.length && total && missing.length === want.length) fail(t('{p0} has only {p1} pages.', { p0: doc.name, p1: total }))
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(p.n)).map(p => p.text).join('\n') : doc.text
-    if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }) : '' }))
+    if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }, listed(want)) : '' }))
     memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? (chunked && !want.length ? `\n[…cut: this is part 1 of ${total}; the rest of the file is not shown here. Before anything that needs the whole file, read_file with pages [2]${total > 2 ? `, then [3] and so on to [${total}]` : ''}]` : '\n[…cut; read fewer pages for the rest]') : ''}\n</file-content>`
     const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
-    return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }) : '' })) + skipped
+    return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }, listed(got)) : '' })) + skipped
   }
   if (action === 'find_papers') {
     busy.value = t('Finding papers…')
@@ -2550,7 +2559,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       return t('No academic papers on that, so I used web sources. {p0}', { p0: found })
     }
     memo = `<web-results>\n${fence(r.papers.map((p: any, i: number) => `[${i + 1}] ${p.authors} (${p.year}). ${p.title}. ${p.venue}. ${p.url} (cited ${p.cited}x)`).join('\n'))}\n</web-results>`
-    return t('Found {p0} relevant paper(s).', { p0: r.papers.length })
+    return t('Found {p0} relevant paper(s).', { p0: r.papers.length }, r.papers.length)
   }
   if (action === 'read_link') {
     busy.value = t('Reading the link…')
@@ -2775,7 +2784,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         n++
       }
     }
-    return t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length })
+    return t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length }, targets.length)
   }
   if (action === 'set_font_size') { // direct, like set_font: "title bigger", "more" got barely-changed model rewrites (2026-11-10)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2838,7 +2847,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (restore) {
       if (!n) fail(t('I have not resized any text here, so there is no earlier size to go back to.'))
       touched([...pagesDone])
-      return t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size })
+      return t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size }, pagesDone.size)
     }
     if (!n) fail(t('There is no such text to resize there.'))
     // bigger text takes only the room its box has: x2.5 ran over the next text and off every slide, and the user then
@@ -2849,9 +2858,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a box with no room to grow kept its size: said, never counted as resized
     const stuck = [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
       .filter(e => grew[e.id] && !sizes(html(e)).some((v, i) => v >= (grew[e.id][i] || 16) + 1)).length // under 1px is not a change anyone sees
-    if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }))
-    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size })
-      + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck })}` : '')
+    if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck))
+    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size }, pagesDone.size)
+      + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck)}` : '')
   }
   if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -3007,7 +3016,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
     }
     if (spanned) return byPageEdit() // not on a picture: nothing was changed here, the page edit looks at the words
-    return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length })
+    return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length }, targets.length)
   }
   // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
   // messages: the other pages take that page's text look as it is now, not the last step again. A user centred,
@@ -3058,7 +3067,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!n) fail(t('There is no such text to style there.'))
     await fitOverflow().catch(() => undefined) // a box whose text still runs over grows into the free space or shrinks
     touched(targets)
-    return t("Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.", { p0: pos(src.id) + 1, p1: targets.length })
+    return t("Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
   }
   // The user's own text, page by page: each page gets only its part. Given the whole text, each page picked a part
   // itself and slide 3 took slide 2's (replayed 2026-11-18, 4 decks); one page edit at a time stopped after slide 1
@@ -3182,10 +3191,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (right - left >= 0.3 * slideSize().width) slidesStore.updateElement({ id: e.id, props: { left, width: right - left }, slideId: sl.id })
     }
     if (fresh.length) await fitOverflow(placed, {}, new Set(fresh.map(e => e.id)), Object.fromEntries(fresh.map(e => [e.id, gap(e)]))).catch(() => undefined)
-    const lines = [t('Placed your text on {p0} page(s).', { p0: onPages.length - same.length - failed.length })]
-    if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') })} ${why}`.trim())
+    const placedOn = onPages.length - same.length - failed.length
+    const lines = [t('Placed your text on {p0} page(s).', { p0: placedOn }, placedOn)]
+    if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') }, listed(same))} ${why}`.trim())
     if (same.length) unchangedSaid.set(lines[lines.length - 1], same.map(p => ids0[p - 1]).filter(id => !editedThisTurn.has(id)))
-    if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
+    if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }, listed(failed)).trim())
     // the deck grows with each new page: its page numbers are read from it now
     for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written, every sentence, nothing added:\n${x.text}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
     await fitQueue
@@ -3277,8 +3287,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const ok = changedNow + earlier.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(', ')
     const what = String(args.instruction || '').replace(/^Write all slide text in [^\n]*\n/, '').slice(0, 60) // the user's words, not our language note
-    const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) })) : '')
-      + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) })) : '')
+    const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) }, listed(failed))) : '')
+      + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) }, listed(untouched))) : '')
     void earlier
     if (!ok && !failed.length) return t('No page was changed. {p0}', { p0: noChangeWhy })
     if (!ok) fail((t('I could not make that change on any page: "{p0}".', { p0: what })) + why)
@@ -3431,7 +3441,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const onePage = Number(args.page_picture) > 0 && !args.pages?.length ? [slides.value.find(x => x.id === currentAtSend)?.id || slides.value[slideIndex.value].id] : null
     const named = onePage || (args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id))
     const flat = named.filter(id => isFlat(slides.value[pos(id)]))
-    const flatNote = flat.length ? ' ' + t('Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.', { p0: flat.map(id => pos(id) + 1).join(', ') }) : ''
+    const flatNote = flat.length ? ' ' + t('Page(s) {p0} are one flat picture each: their background is part of that picture, so they were not changed.', { p0: flat.map(id => pos(id) + 1).join(', ') }, listed(flat)) : ''
     const targets = named.filter(id => !flat.includes(id))
     if (!targets.length) fail(flatNote.trim())
     let background: any = { type: 'solid', color: args.color }
@@ -3518,12 +3528,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           })))
       }
     }
-    const note = missed.length ? (t(' (the large shapes on page(s) {p0} could not be recoloured and may still cover it)', { p0: missed.join(', ') })) : ''
+    const note = missed.length ? (t(' (the large shapes on page(s) {p0} could not be recoloured and may still cover it)', { p0: missed.join(', ') }, listed(missed))) : ''
     const bgHow = args.photo_query
       ? (pictureSource === 'ai' ? (t('an AI-generated picture for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })) : (t('a stock photo for "{p0}"', { p0: String(args.photo_query).slice(0, 60) })))
       : (t('colour {p0}', { p0: args.color }))
     // a count read as a page number: "Фон 1 слайдів" ("background of 1 slide(s)") was taken for page 1 (replay 2026-11-18)
-    const where = targets.length <= 3 ? t('Background of page(s) {p0} set to {p1}.', { p0: targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', '), p1: bgHow }) : t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow })
+    const where = targets.length <= 3 ? t('Background of page(s) {p0} set to {p1}.', { p0: targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', '), p1: bgHow }, listed(targets)) : t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow }, targets.length)
     return where + note + flatNote + (args.photo_query && pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'write_notes') {
@@ -3532,7 +3542,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.clear) {
       for (const id of asked) slidesStore.updateSlide({ remark: '' }, id)
       touched(asked)
-      return t('Cleared the speaker notes on {p0} page(s).', { p0: asked.length })
+      return t('Cleared the speaker notes on {p0} page(s).', { p0: asked.length }, asked.length)
     }
     // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
     const having = args.existing_only ? asked.filter(hasNotes) : asked
@@ -3544,7 +3554,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!written.includes(slides.value[slideIndex.value].id)) slidesStore.updateSlideIndex(pos(written[0]))
     mainStore.remarkHeight = Math.max(mainStore.remarkHeight, 200)
     const where = written.length <= 5 ? written.map(id => pos(id) + 1).sort((a, b) => a - b).join(', ') : ''
-    return (where ? t('Wrote speaker notes for page(s) {p0}: they are in the notes bar under the slide.', { p0: where }) : t('Wrote speaker notes for {p0} page(s): they are in the notes bar under each slide.', { p0: written.length })) + (written.length < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written.length })) : '')
+    return (where ? t('Wrote speaker notes for page(s) {p0}: they are in the notes bar under the slide.', { p0: where }, listed(written)) : t('Wrote speaker notes for {p0} page(s): they are in the notes bar under each slide.', { p0: written.length }, written.length)) + (written.length < targets.length ? (t(' ({p0} page(s) failed)', { p0: targets.length - written.length }, targets.length - written.length)) : '')
   }
   if (action === 'download_deck') {
     if (chatslide && !chatslide.canExport()) return t('Downloading needs a paid plan; I opened the plans for you.')
@@ -3584,7 +3594,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const targets = slides.value.map(x => x.id)
       const written = await writeNotes(targets, text)
       if (!written.length) fail(t('The speaker notes could not be written.'))
-      return t('Wrote the speaker notes (the script) for {p0} page(s).', { p0: written.length })
+      return t('Wrote the speaker notes (the script) for {p0} page(s).', { p0: written.length }, written.length)
     }
     if (!hostSteps()?.goto) fail(t('That step is not available here: open this project in ChatSlide.'))
     await hostSteps()!.goto!(args.step)
@@ -3604,7 +3614,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const id of ids) fadeBackdrop(id) // a full-slide picture would hide it
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true, ids.length < slides.value.length ? ids : undefined)
     touched(ids)
-    return ids.length < slides.value.length ? t('Applied a new theme to {p0} page(s).', { p0: ids.length }) : t('Applied a new theme to the whole deck.')
+    return ids.length < slides.value.length ? t('Applied a new theme to {p0} page(s).', { p0: ids.length }, ids.length) : t('Applied a new theme to the whole deck.')
   }
   if (action === 'say_unable') {
     // only says "recorded" when it was: outside ChatSlide nothing records it
@@ -3642,7 +3652,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlide({ background: copiedBackground(src), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
     }
     touched(targets)
-    return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length })
+    return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
   }
   if (action === 'open_design') {
     // "open the text settings for me" (after five "whiter" messages changed nothing, 2026-11-15) opened the Design
@@ -3710,7 +3720,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       ids.splice(0, ids.length, ...slides.value.map(x => x.id))
       touched(slides.value.map(x => x.id))
       slidesStore.updateSlideIndex(0)
-      return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: slides.value.length })
+      return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: slides.value.length }, slides.value.length)
     }
     const targets = (args.pages?.length ? nums(args.pages) : [slides.value[slideIndex.value]?.id]).filter(Boolean)
     const back = targets.filter((id: string) => openedSlides[id])
@@ -3724,7 +3734,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const id of back) { const { id: _id, ...page } = JSON.parse(JSON.stringify(openedSlides[id])); void _id; slidesStore.updateSlide(page, id) } // notes, animations and transition too
     touched(back)
     slidesStore.updateSlideIndex(pos(back[0]))
-    return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: back.length })
+    return t('Restored {p0} page(s) to how they were when you opened the deck.', { p0: back.length }, back.length)
   }
   if (action === 'undo' || action === 'redo') {
     if (action === 'undo') {
@@ -4421,7 +4431,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     const left = (unchangedSaid.get(l) || []).filter(id => !editedThisTurn.has(id))
     if (!unchangedSaid.get(l)?.length || left.length === unchangedSaid.get(l)!.length) return l
     const nums = left.map(id => slides.value.findIndex(x => x.id === id) + 1).filter(n => n > 0)
-    return nums.length ? t('Page(s) {p0} were not changed.', { p0: nums.join(', ') }) : ''
+    return nums.length ? t('Page(s) {p0} were not changed.', { p0: nums.join(', ') }, listed(nums)) : ''
   }).filter(Boolean).join('\n')
   const lines = (terse.length > 1 ? replies.map((r, i) => terse[i] ?? r) : replies).map(finalOnly) // one step: the model's sentence is fine
   // counts quoted by earlier steps go stale when a later step adds or removes pages: the final size closes the turn

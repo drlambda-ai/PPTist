@@ -10,7 +10,8 @@ const read = file => JSON.parse(readFileSync(path.join(root, file), 'utf8'))
 const locales = read('src/locales.json')
 const english = read('src/locales/en.json')
 const parameters = text => [...new Set([...text.matchAll(/\{p\d+\}/g)].map(m => m[0]))].sort().join(',')
-// a plural message ("a | b | c", picked by the count the call passes): 1 form, 2 (one | other) or one per CLDR category
+// a plural message ("a | b | c", picked by the count the call passes): 1 form, 2 (one | other) or up to one per CLDR
+// category (uk, ru: one | few | many; their 'other' is for fractions and takes the last form)
 const categories = locale => new Intl.PluralRules(locale).resolvedOptions().pluralCategories.length
 const plural = text => text.split(' | ').length
 const errors = []
@@ -27,7 +28,7 @@ for (const locale of locales) {
     const value = messages[key]
     if (typeof value !== 'string' || !value.trim()) errors.push(`${locale}: missing ${key}`)
     else if (parameters(value) !== parameters(source)) errors.push(`${locale}: parameters differ for ${key}`)
-    else if (![1, 2, categories(locale)].includes(plural(value))) errors.push(`${locale}: ${plural(value)} plural forms for ${key}`)
+    else if (plural(value) > Math.max(2, categories(locale))) errors.push(`${locale}: ${plural(value)} plural forms for ${key}`)
   }
   for (const key of Object.keys(messages)) if (!(key in english)) errors.push(`${locale}: extra ${key}`)
 }
