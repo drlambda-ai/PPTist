@@ -793,6 +793,54 @@ const spillNote = (sl: Slide) => withRenderer(async () => {
   }
 }).catch(() => '')
 
+// Labels a page edit drew in a diagram, measured as drawn: a word wider than its shape broke in the middle
+// ("Autophagosom e", "Lysosom e") and text taller than its shape ran out of it (replays of a real turn, 2026-11-23).
+// Such a label's type gets smaller, step by step, never under 10px; its box stays where the diagram put it
+const fitLabels = (pageId: string, ids: Set<string>) => withRenderer(async () => {
+  try {
+    await document.fonts?.ready
+    for (let round = 0; round < 6; round++) {
+      const sl = slides.value.find(x => x.id === pageId)
+      if (!sl) return
+      toRender.value = [JSON.parse(JSON.stringify(sl))]
+      await nextTick()
+      await new Promise(r => setTimeout(r, 400))
+      let shrunk = false
+      for (const e of sl.elements as any[]) {
+        const html = e.type === 'text' ? e.content : e.text?.content
+        if (!ids.has(e.id) || (e.type !== 'shape' && e.type !== 'text') || e.vertical || e.rotate || !plain(html)) continue
+        const node = renderRef.value?.querySelector(`.base-element-${CSS.escape(e.id)} .ProseMirror-static`) as HTMLElement | null
+        const box = node?.parentElement
+        if (!node || !box) continue
+        const cs = getComputedStyle(box)
+        const tall = e.type === 'shape' && node.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) > e.height + 2
+        // a word drawn on two lines (a hyphen or slash is a fine place to wrap); a long run with no spaces (a sentence in
+        // Chinese) wraps by design
+        const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+        let broken = false
+        for (let t = walk.nextNode(); t && !broken; t = walk.nextNode()) {
+          for (const m of (t.textContent || '').matchAll(/[^\s/\-–—]+/g)) {
+            if (m[0].length > 24) continue
+            const r = document.createRange()
+            r.setStart(t, m.index!)
+            r.setEnd(t, m.index! + m[0].length)
+            if (new Set([...r.getClientRects()].map(x => Math.round(x.top))).size > 1) { broken = true; break }
+          }
+        }
+        if (!tall && !broken) continue
+        const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(10, Math.round(Number(v) * 8.8) / 10)}px`)
+        if (content === html) continue
+        slidesStore.updateElement({ id: e.id, props: e.type === 'text' ? { content } : { text: { ...e.text, content } }, slideId: sl.id })
+        shrunk = true
+      }
+      if (!shrunk) return
+    }
+  }
+  finally {
+    toRender.value = []
+  }
+})
+
 // A line break the page model writes as <br> becomes its own paragraph: the editor's text boxes have no line-break
 // node, so "<p>Name<br>University<br>Department</p>" is shown as one line. "Write my name, the university and the
 // department one under another" was answered "updated" three times with the three still on one line (a paying user,
@@ -2619,6 +2667,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const floor14 = Object.fromEntries(spaced.map((id) => { const e: any = slides.value[i].elements.find(x => x.id === id); return [id, [...String(e?.content ?? e?.text?.content ?? '').matchAll(/font-size:\s*([\d.]+)px/g)].map(m => Math.min(14, Number(m[1])))] }))
     const spacedFrom = Object.fromEntries(spaced.map(id => [id, gap(was.find(w => w.id === id))]))
     if (spaced.length) await fitOverflow([pageId], floor14, new Set(spaced), spacedFrom).catch(() => undefined)
+    const drawnNow = new Set(slides.value[i].elements.filter(e => !was.some(w => w.id === e.id)).map(e => e.id))
+    if (drawnNow.size) await fitLabels(pageId, drawnNow).catch(() => undefined)
     // longer text that now runs behind a picture ("the letters are behind the picture", 2026-11-10): one layout pass.
     // Measured after the page renders, since text boxes grow to fit their text then.
     await nextTick(); await new Promise(r => setTimeout(r, 300))
