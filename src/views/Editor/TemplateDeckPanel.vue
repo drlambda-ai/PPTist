@@ -746,11 +746,11 @@ const onPicture = (sl: Slide, e: any) => {
 // letter colour makes words readable on a busy photo by itself: a Tamil teacher's stock-photo backgrounds were followed
 // by "words are not visible" five times, through black and then white letters (2026-11-23)
 // (the light one at 85%: grey template letters on 70% white over a dark photo measured 2.5:1). The tone is the one
-// whose worst case reads best for every letter colour in the box: the dark band over a white photo is #808080, the
-// light one over a black photo #D9D9D9 (a lightness test put #888888 letters on the dark band at 1.1:1)
+// whose worst case reads best for every letter colour in the box: the dark band shows #000000 to #808080 over a black
+// to a white photo, the light one #D9D9D9 to #FFFFFF (a lightness test put #888888 letters on the dark band at 1.1:1)
 const bandFill = (colours: string[]) => {
-  const worst = (under: string) => Math.min(...colours.map(c => tinycolor.readability(c, under)))
-  return worst('#808080') >= worst('#D9D9D9') ? '#00000080' : '#FFFFFFD9'
+  const worst = (...under: string[]) => Math.min(...colours.flatMap(c => under.map(u => tinycolor.readability(c, u))))
+  return worst('#000000', '#808080') >= worst('#D9D9D9', '#FFFFFF') ? '#00000080' : '#FFFFFFD9'
 }
 const isBand = (e: any) => ['#00000080', '#FFFFFFD9', '#FFFFFFB3'].includes(String(e.fill || '').toUpperCase())
 const bandText = (id: string) => {
@@ -3063,7 +3063,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     for (const [id, e] of phrased) {
       const now = slides.value[pos(id)].elements.find(x => x.id === e.id) as any
-      if (now && isBand(now)) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([...letters(now)]) }, slideId: id })
+      // the words just named decide: the rest of the box cannot read well on both tones when it is the opposite colour
+      if (now && isBand(now)) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([color]) }, slideId: id })
     }
     const bandNote = banded || panelled ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : ''
     // one changed page is said by its number, two or more by their count: "Оформление текста изменено в текстовых блоках (3)
