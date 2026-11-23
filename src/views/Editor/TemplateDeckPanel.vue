@@ -3720,7 +3720,7 @@ const spacing = (o: any) => {
 // the deck after the last step that finished: a crash in a later step keeps the finished steps (a user lost a whole
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
-const deckTurn = async (text: string, again = ''): Promise<void> => {
+const deckTurn = async (text: string, again = '', reads: string[] = []): Promise<void> => {
   // for a second attempt: the deck, its theme and page size, and the chat state
   const startSlides = JSON.parse(JSON.stringify(slides.value)), startS = JSON.parse(JSON.stringify(s))
   const startTheme = JSON.parse(JSON.stringify(slidesStore.theme)), startRatio = slidesStore.viewportRatio
@@ -3769,7 +3769,9 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
-  const done: string[] = again ? [`note: a first attempt at this message was undone because: ${again} Do the message right this time.`] : []
+  // what the first attempt read stays read: a retry that dropped the attached picture's description drew a generic
+  // diagram instead of the one the user showed (replay 2026-11-23)
+  const done: string[] = again ? [`note: a first attempt at this message was undone because: ${again} Do the message right this time.`, ...reads] : []
   const replies: string[] = []
   // what each find_papers / web_search of this message found, by its query: a page writing references is given the
   // results of ITS topic only, never those of another search of the same message
@@ -4317,7 +4319,7 @@ const deckTurn = async (text: string, again = ''): Promise<void> => {
       for (const k of Object.keys(s)) if (!(k in startS)) delete (s as any)[k]
       Object.assign(s, startS)
       slidesStore.updateSlideIndex(Math.max(0, startSlides.findIndex((x: Slide) => x.id === startPageId)))
-      return deckTurn(text, problem)
+      return deckTurn(text, problem, done.filter(d => d.startsWith('read_file ')))
     }
   }
   if (changed) {
