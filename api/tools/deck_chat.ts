@@ -353,6 +353,8 @@ Rules:
    A font change together with other wishes ("thay đổi font chữ và làm nó đẹp hơn", change the font and make it
    prettier) -> set_font for the font AND its own step for the rest: a restyle (edit_all_pages, apply_theme) is never
    the font change asked for (the restyle ran, no set_font, and the reply never said the font was changed, 2026-11-23).
+   With a restyle of the whole deck, the font goes on every page too (pages []): set_font on only the page on screen
+   left the other 11 restyled pages in their old font (replay, 2026-11-23).
    Only a text SIZE change ("bigger", "to hơn", "більше", "size like slide 1") -> set_font_size, never edit_page/
    edit_all_pages; "more"/"nữa"/"ще" right after one -> set_font_size again on the same pages and scope.
    A size change together with other changes to the same text ("add more words and make the font bigger") -> set_font_size
