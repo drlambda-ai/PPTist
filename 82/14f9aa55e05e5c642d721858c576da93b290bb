@@ -1,0 +1,2 @@
+Codex-Review: passed
+Reviewer: codex gpt-6-astra (high) on the uncommitted diff; 2 P2 findings (phrase band flip, ru/uk plural sentences) fixed in this commit; re-review skipped (one fix round)
