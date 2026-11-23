@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": "（每次最多 {p0} 頁；如需更多，請再次提出）",
   "Extending…": "正在延伸內容…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "已將第 {p0} 頁延伸內容新增為第 {p1} 頁；第 {p2} 頁未變更。",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "已在第 {p0} 頁後新增延續頁，現在是第 {p1} 頁。",
   "Added a chart page \"{p0}\".": "已新增圖表頁「{p0}」。",
   "Added a table page \"{p0}\".": "已新增表格頁「{p0}」。",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "請重新附加 {p0}，我才能擷取其中的圖片（該檔案是在先前的工作階段附加的）。",

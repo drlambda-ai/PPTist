@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (máximo {p0} por solicitud; vuelve a pedir más)",
   "Extending…": "Ampliando…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "Se añadió una ampliación de la diapositiva {p0} como diapositiva {p1}; la diapositiva {p2} no cambió.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "Se añadió una diapositiva de continuación tras la diapositiva {p0}; ahora es la diapositiva {p1}.",
   "Added a chart page \"{p0}\".": "Se añadió una diapositiva con el gráfico \"{p0}\".",
   "Added a table page \"{p0}\".": "Se añadió una diapositiva con la tabla \"{p0}\".",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "Vuelve a adjuntar {p0} para que pueda extraer sus imágenes (se adjuntó en una sesión anterior).",

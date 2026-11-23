@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": "（每次请求最多 {p0} 页；如需更多，请再次请求）",
   "Extending…": "正在扩展…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "已将第 {p0} 页扩展为第 {p1} 页；第 {p2} 页保持不变。",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "已在第 {p0} 页后添加延续页，现在是第 {p1} 页。",
   "Added a chart page \"{p0}\".": "已添加图表页“{p0}”。",
   "Added a table page \"{p0}\".": "已添加表格页“{p0}”。",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "请重新附加 {p0}，我才能提取其中的图片（它是在之前的会话中附加的）。",

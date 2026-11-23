@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (حداکثر {p0} مورد در هر درخواست؛ برای موارد بیشتر دوباره درخواست دهید)",
   "Extending…": "در حال گسترش…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "ادامه‌ای برای اسلاید {p0} به‌عنوان اسلاید {p1} افزوده شد؛ اسلاید {p2} بدون تغییر ماند.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "یک اسلاید ادامه پس از اسلاید {p0} افزوده شد؛ اکنون اسلاید {p1} است.",
   "Added a chart page \"{p0}\".": "اسلاید نمودار «{p0}» افزوده شد.",
   "Added a table page \"{p0}\".": "اسلاید جدول «{p0}» افزوده شد.",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "{p0} را دوباره پیوست کنید تا تصاویرش را استخراج کنم (در جلسه قبلی پیوست شده بود).",

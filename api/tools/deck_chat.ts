@@ -47,9 +47,10 @@ const TOOLS = [
   }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file', 'references_topic']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
+    more_pages: { type: 'array', items: { type: 'integer' }, description: 'The other pages to extend the same way in this one step ("slides 4 and 5" -> index 4, more_pages [5]); [] for one page' },
     instruction: { type: 'string', description: 'What the user wants more of (or "" for general depth)' },
-    message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2)' },
-  }, ['index', 'instruction', 'message_new_pages']),
+    message_new_pages: { type: 'integer', description: 'How many new pages this message adds IN TOTAL (all steps together; one continuation page for each page extended)' },
+  }, ['index', 'more_pages', 'instruction', 'message_new_pages']),
   fn('add_chart_page', 'Add a new page whose main content is a chart (bar, column, line, pie, ring, area, radar, scatter).', {
     instruction: { type: 'string', description: 'What the chart shows, with the numbers if the user or deck gives them' },
     after: page,
@@ -214,7 +215,7 @@ const TOOLS = [
     said_background: { type: 'string', description: 'The user\'s own words that ask for the background, copied exactly as they wrote them ("фон", "nền", "背景", "background"), never words that describe a photo; "" when they do not ask for the background' },
     page_picture: { type: 'integer', description: 'When a picture that is ALREADY on that page is to become the page\'s background, cover or full-page picture ("put this photo as the background", "make the photo you put on slide 1 the cover", "şu fotoğrafı arka plan yap", "use that image as the background", "fill the slide with the picture" on a page that has one): its number on that page as listed (1 when the page has one picture), with pages = that one page and color and photo_query "". Never a new photo search and never change_image for it: the user keeps that same picture. 0 otherwise' },
   }, ['pages', 'color', 'photo_query', 'like_other_pages', 'said_background', 'page_picture']),
-  fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text.', {
+  fn('write_notes', 'Write, expand, shorten or restyle the SPEAKER NOTES / script (what the presenter says), not the slide text. Only when the user says notes, a script, or what to say / read aloud: sentences, explanations or examples "for slide N" go ON the slides (edit_page, or expand_page when long).', {
     pages: { ...pages, description: 'The current page unless the user names pages or says all; empty = every page, only when they say all' },
     instruction: { type: 'string', description: 'What to do with the notes ("expand to about 1 minute", "funnier", "write them"), or ""' },
     existing_only: { type: 'boolean', description: 'true when the user wants EXISTING notes changed (shorten, expand, translate, fix); false when they want notes written' },
@@ -441,6 +442,13 @@ Rules:
    more (e.g. "only one page"), FIRST edit_page the content page that will stay so it summarises the key points of the
    pages being removed, THEN delete_pages; never leave only an agenda or cover.
    Notes/script tools only when the message is about the script, speaker notes, 讲稿, Sprechertext, guion, narration text.
+   Sentences, explanations, examples or audience questions written "for slide N", also long ones meant to be presented
+   ("buat kalimat presentasi yang panjang untuk slide 4 dan 5, dengan contoh"), are SLIDE text the user must see, never
+   write_notes: write_notes only when the user says notes, a script, or what to say / read aloud. A few lines that fit
+   -> edit_page on each named page. Long text (sentences or an example for every point) or a page listed as one picture
+   covering the whole page -> ONE expand_page for all the named pages (index the first, more_pages the rest): a
+   continuation page right after each holds its text, and that is the whole request: the named pages stay as they are,
+   never edit_page them or the new pages after it.
    "Add/include another slide" with no topic -> add_page on the next logical topic of the deck, after the current page; don't ask.
    A message that is just pasted content (a paragraph of facts, no instruction) -> edit_page on the current page: put that
    content on it (or add_page if the current page is a cover/agenda/closing page).

@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " ({p0} is the most per request; ask again for more)",
   "Extending…": "Extending…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "Added a continuation page after page {p0}; it is page {p1} now.",
   "Added a chart page \"{p0}\".": "Added a chart page \"{p0}\".",
   "Added a table page \"{p0}\".": "Added a table page \"{p0}\".",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).",

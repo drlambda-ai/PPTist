@@ -1370,6 +1370,9 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   if (body.type === 'table') body.theme = { ...body.theme, color: lead }
   const slide: Slide = {
     ...JSON.parse(JSON.stringify(base)), id: nanoid(10), animations: [],
+    // a page that is one flat picture: its picture holds its words, which would show under the new page's own
+    // (a continuation page written over "Hak Individu dan Hak Kelompok", replay 2026-11-23)
+    ...(isFlat(base) ? { background: { type: 'solid', color: theme.value.backgroundColor } } : {}),
     elements: [
       ...(t ? keep : [{
         type: 'text', id: nanoid(10), left: W * 0.06, top: H * 0.06, width: W * 0.88, height: H * 0.1, rotate: 0, textType: 'title',
@@ -1433,11 +1436,13 @@ const addTableOnPage = async (instruction: string, id: string) => {
 // laid out as cards on a continuation page with the deck's header, footer and colours. Page N is left as it is.
 const expandPage = async (text: string, index: number, instruction: string) => {
   const sl = slides.value[index]
+  // a page that is one flat picture has its text painted in it, as writeNotes reads it
+  const painted = paintedPicture(sl).src ? (await paintedLines(sl)).map(l => l.text).join('\n') : ''
   const res = await fetch('/api/tools/ask_json', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ strong: true, instruction: `The user wants page ${index + 1} extended: ${instruction || 'more depth'}.
-Page ${index + 1} says: ${pageText(sl)}
-Write a continuation page in the page's language: a title (page ${index + 1}'s title + a short qualifier) and 3-4 points, each a short bold heading and one or two sentences of NEW content: what the numbers mean, causes, comparisons, implications, next steps. Never repeat a statement or number layout already on the page; use a number only when it is on the page or in the material, exactly as given; never invent figures.
+Page ${index + 1} says: ${painted || pageText(sl)}
+Write a continuation page in the page's language: a title (page ${index + 1}'s title + a short qualifier) and 3-4 points, each a short bold heading and one or two sentences of NEW content: what the numbers mean, causes, comparisons, implications, next steps. Never repeat a statement or number layout already on the page; use a number only when it is on the page or in the material, exactly as given; never invent figures. When the user asks for something for each point of the page, the 3-4 points together cover every point on it (related ones share a point).
 Return JSON {"title": "...", "points": [{"heading": "...", "text": "..."}]}.
 Deck: ${deckLines().join(' | ').slice(0, 2500)}
 Material: ${material().slice(0, 12000)}` }),
@@ -1458,11 +1463,14 @@ Material: ${material().slice(0, 12000)}` }),
       { type: 'shape', id: nanoid(10), left, top, width: cw, height: ch, rotate: 0, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z', fixedRatio: false, fill: '#f4f5f8', outline: { width: 0 } },
       { type: 'shape', id: nanoid(10), left, top, width: W * 0.006, height: ch, rotate: 0, viewBox: [200, 200], path: 'M 0 0 L 200 0 L 200 200 L 0 200 Z', fixedRatio: false, fill: color },
       { type: 'text', id: nanoid(10), left: left + W * 0.02, top: top + H * 0.02, width: cw - W * 0.035, height: ch - H * 0.04, rotate: 0,
-        defaultFontName: theme.value.fontName, defaultColor: theme.value.fontColor,
+        defaultFontName: theme.value.fontName, defaultColor: theme.value.fontColor, lineHeight: 1.4, // an imported deck's default spacing kept shrunk text over its card
         content: `<p><span style="font-size: ${k > 2 ? 18 : 20}px; color: ${color};"><strong>${esc(p.heading)}</strong></span></p><p><span style="font-size: ${k > 2 ? 14 : 16}px;">${esc(p.text)}</span></p>` },
     ]
   })
   slidesStore.updateSlide({ elements: [...page.elements.filter((e: any) => e.type !== '__cards'), ...cards] }, page.id)
+  // long points (a spoken paragraph with an example and a question each) ran past their cards: shrunk to fit
+  const texts = [...cards, ...page.elements.filter((e: any) => e.textType === 'title')].filter((e: any) => e.type === 'text') // a long title wrapped under the cards
+  await fitText(page.id, texts.map((e: any) => e.id), Object.fromEntries(texts.map((e: any) => [e.id, e.height * 0.92]))) // fitText lets a box run 6% over
 }
 
 // The free rectangle nearest to the requested box (same aspect, shrinking down to 40%) on a 24x14 occupancy grid;
@@ -1851,11 +1859,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: k, p1: after, p2: newTitles(after, k) })) + capped
   }
   if (action === 'expand_page') {
-    const i = pos(idOf(args.index))
-    busy.value = t('Extending…')
-    await expandPage(text, i, args.instruction || '')
-    slidesStore.updateSlideIndex(i + 1)
-    return t('Added an extension of page {p0} as page {p1}; page {p2} is unchanged.', { p0: i + 1, p1: i + 2, p2: i + 1 })
+    // several pages in one step, the last first: each new page moves only the pages after it, so the numbers the router
+    // gave stay right (one step per page, it extended a page's new continuation instead of the next page, 2026-11-23)
+    const ext = [...new Set([args.index, ...(args.more_pages || [])].map(Number).filter(n => n >= 1 && n <= ids.length).map(idOf))]
+    if (!ext.length) ext.push(idOf(args.index))
+    for (const id of [...ext].sort((a, b) => pos(b) - pos(a))) {
+      busy.value = t('Extending…')
+      await expandPage(text, pos(id), args.instruction || '')
+    }
+    slidesStore.updateSlideIndex(pos(ext[0]) + 1)
+    if (ext.length === 1) return t('Added an extension of page {p0} as page {p1}; page {p2} is unchanged.', { p0: pos(ext[0]) + 1, p1: pos(ext[0]) + 2, p2: pos(ext[0]) + 1 })
+    // the page as the user and the router numbered it, and where its new page is now
+    return ext.map(id => t('Added a continuation page after page {p0}; it is page {p1} now.', { p0: ids.indexOf(id) + 1, p1: pos(id) + 2 })).join('\n')
   }
   if (action === 'add_chart_page') {
     // changing a chart that is already there ("this chart -> pie"): edit it in place, never a new chart page
@@ -4265,14 +4280,17 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
     const at = d.indexOf(' -> ')
     return at < 0 ? cut(flat(d), 500) : `${cut(flat(d.slice(0, at)), 300)} -> ${cut(flat(d.slice(at + 4)), 500)}`
   })
-  const deckWas = (per: number) => was.map((_, k) => `page ${k + 1}: ${cut(pagesWere[k] || '', Math.max(60, Math.min(per, Math.floor(6000 / Math.max(1, was.length)))))}`)
+  // a page that is one flat picture shows its painted lines when a step read them: without them the check took a
+  // continuation page written from them for "different topics" and undid it (replay of a real turn, 2026-11-23)
+  const painted = (sl: Slide) => (paintedKnown.get(paintedPicture(sl).src) || []).map(l => l.text).join(' | ')
+  const deckWas = (per: number) => was.map((sl, k) => `page ${k + 1}: ${cut([pagesWere[k] || '', painted(sl) && `painted in it: ${painted(sl)}`].filter(Boolean).join(' '), Math.max(60, Math.min(per, Math.floor(6000 / Math.max(1, was.length)))))}`)
   // a picture asked for ON a page is right there: "new pictures for a page with no room go on a new page" read as a
   // rule made the check undo a picture put on the page the user named, and the second attempt added a page (2026-11-20)
   const head = 'You check an AI slide editor\'s work on one chat message, from the record below. Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \\"\\" when ok>"}.\n'
     + 'ok is false only when the record itself shows one of these:\n'
     + '1. A part of the message was not done at all, or was only offered or promised, and no step result and no line of the reply says why (nothing of that kind on the page, no room, a paid plan, something it cannot do). Look at the deck as it was first: a page with nothing of the kind asked (no picture to replace or remove) is no missed part, and a thing drawn as a shape (an arrow, a box) where a picture of it was asked is done.\n'
     + '2. Something was changed that the message did not ask for and the request does not need: the words already on a page put into another language though the message asks for no translation, a page added or removed and left there, pages rewritten that were not meant. What a step reports as part of its own work (the text colour that goes with a background, the font that goes with a file\'s look) is not this, and the language of the reply never is.\n'
-    + '3. The work went to a page other than the one the message means, and neither the deck as it was nor a step result explains it. The page the user was looking at is only where "this slide" and "here" point. The editor picks pages by its own rules with the whole deck in view, and these are right: a picture or thing the message names is changed on the page that has it (each picture\'s line in the deck as it was says what it shows); new pictures for a page with no room may go on a new page after it, and a picture put on the very page the message names is right however full that page was; the logo, a change for an audience and a change to "the presentation" or "the slides" go on every page; a request for every page skips the pages that have nothing of that kind.\n'
+    + '3. The work went to a page other than the one the message means, and neither the deck as it was nor a step result explains it. The page the user was looking at is only where "this slide" and "here" point. The editor picks pages by its own rules with the whole deck in view, and these are right: a picture or thing the message names is changed on the page that has it (each picture\'s line in the deck as it was says what it shows); new pictures for a page with no room may go on a new page after it, and text for a named page may go on a continuation page right after it (expand_page), that page left as it was, and a picture put on the very page the message names is right however full that page was; the logo, a change for an audience and a change to "the presentation" or "the slides" go on every page; a request for every page skips the pages that have nothing of that kind.\n'
     + '4. The reply says a change was made, of a kind you are shown, and the list of changes has nothing of it. The deck is what is checked: a reply that is clumsy, or wrong in a number or a side remark while the deck is right, is no reason.\n'
     + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong; anything marked as cut, shortened or left out for length (it is there, only not shown).\n'
     + 'Also fine: a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it.\n'

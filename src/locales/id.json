@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (maksimal {p0} per permintaan; minta lagi untuk yang lainnya)",
   "Extending…": "Memperluas…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "Menambahkan pengembangan dari slide {p0} sebagai slide {p1}; slide {p2} tidak berubah.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "Menambahkan slide lanjutan setelah slide {p0}; sekarang menjadi slide {p1}.",
   "Added a chart page \"{p0}\".": "Menambahkan slide diagram \"{p0}\".",
   "Added a table page \"{p0}\".": "Menambahkan slide tabel \"{p0}\".",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "Lampirkan {p0} lagi agar saya dapat mengambil gambarnya (file ini dilampirkan pada sesi sebelumnya).",

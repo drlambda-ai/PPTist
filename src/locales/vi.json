@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (mỗi yêu cầu tối đa {p0}; hãy yêu cầu thêm sau)",
   "Extending…": "Đang mở rộng…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "Đã thêm phần mở rộng của trang chiếu {p0} thành trang {p1}; trang {p2} không thay đổi.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "Đã thêm trang tiếp nối sau trang {p0}; giờ là trang {p1}.",
   "Added a chart page \"{p0}\".": "Đã thêm trang chiếu biểu đồ \"{p0}\".",
   "Added a table page \"{p0}\".": "Đã thêm trang chiếu bảng \"{p0}\".",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "Hãy đính kèm lại {p0} để tôi trích xuất ảnh (tệp đã được đính kèm trong phiên trước).",

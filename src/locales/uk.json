@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (до {p0} за запит; щоб додати більше, надішліть ще один запит)",
   "Extending…": "Розширюємо…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "На основі слайда {p0} створено продовження як слайд {p1}; слайд {p2} не змінено.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "Після слайда {p0} додано слайд-продовження; тепер це слайд {p1}.",
   "Added a chart page \"{p0}\".": "Додано слайд із діаграмою «{p0}».",
   "Added a table page \"{p0}\".": "Додано слайд із таблицею «{p0}».",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "Прикріпіть {p0} ще раз, щоб я міг витягти з нього зображення (його було прикріплено в попередньому сеансі).",

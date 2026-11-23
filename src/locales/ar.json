@@ -1007,6 +1007,7 @@
   " ({p0} is the most per request; ask again for more)": " (الحد الأقصى {p0} لكل طلب؛ اطلب المزيد في طلب آخر)",
   "Extending…": "جارٍ التوسيع…",
   "Added an extension of page {p0} as page {p1}; page {p2} is unchanged.": "أُضيفت صفحة موسّعة من الصفحة {p0} بوصفها الصفحة {p1}؛ ولم تتغير الصفحة {p2}.",
+  "Added a continuation page after page {p0}; it is page {p1} now.": "أُضيفت صفحة تكميلية بعد الصفحة {p0}؛ وهي الآن الصفحة {p1}.",
   "Added a chart page \"{p0}\".": "أُضيفت صفحة مخطط بعنوان \"{p0}\".",
   "Added a table page \"{p0}\".": "أُضيفت صفحة جدول بعنوان \"{p0}\".",
   "Attach {p0} again so I can pull its pictures out (it was attached in an earlier session).": "أرفق {p0} مجددًا لأستخرج صوره (أُرفق في جلسة سابقة).",
