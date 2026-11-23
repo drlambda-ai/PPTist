@@ -2296,7 +2296,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // the last photo" came as no_pictures_at_all and took page 10's background with it, replay 2026-11-13)
       // never the one full-slide picture of a page that is nothing else (a pasted screenshot): that would blank the page
       const all = content.length ? content : onlyFullPicture(sl) ? [] : sl.elements.filter((e: any) => e.type === 'image' && !logos.has(imgSpot(e)))
-      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? backdrop : imgs[k - 1])) : args.no_pictures_at_all ? all : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
+      const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? (onlyFullPicture(sl) ? null : backdrop) : imgs[k - 1])) : args.no_pictures_at_all ? all : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
         .filter(Boolean).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size

@@ -179,7 +179,7 @@ const TOOLS = [
   }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture', 'every_page', 'earlier', 'keep_pictures']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
-    images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); 0 = the background picture covering the whole slide (on a page whose only picture covers the whole slide, that one); empty = the content pictures, never the background picture or a logo' },
+    images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); 0 = the background picture covering the whole slide (on a page whose only picture covers the whole slide, that one); empty = the content pictures (on a page with no other picture, its background picture), never a logo' },
     no_pictures_at_all: { type: 'boolean', description: 'true when the user wants no pictures left at all, the full-slide background picture included' },
     user_asked_to_remove: { type: 'boolean', description: 'true ONLY if the user\'s latest message (or the question it answers) asks to remove, delete or take away pictures; false for anything else ("make it like page 6", "...", a complaint): the editor then asks the user first' },
   }, ['pages', 'images', 'no_pictures_at_all', 'user_asked_to_remove']),
