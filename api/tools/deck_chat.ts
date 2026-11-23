@@ -179,7 +179,7 @@ const TOOLS = [
   }, ['index', 'all_pictures', 'image', 'query', 'source', 'page_named', 'said_background', 'picture_named', 'medical', 'asked_for_ai', 'own_brand', 'specific_thing', 'wants_additional_picture', 'every_page', 'earlier', 'keep_pictures']),
   fn('remove_images', 'Remove pictures from pages (done directly). Never logos unless the user names the logo.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
-    images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); empty = every non-logo image' },
+    images: { type: 'array', items: { type: 'integer' }, description: 'Image numbers as listed (applied on each given page); 0 = the background picture covering the whole slide (on a page whose only picture covers the whole slide, that one); empty = the content pictures, never the background picture or a logo' },
     no_pictures_at_all: { type: 'boolean', description: 'true when the user wants no pictures left at all, the full-slide background picture included' },
     user_asked_to_remove: { type: 'boolean', description: 'true ONLY if the user\'s latest message (or the question it answers) asks to remove, delete or take away pictures; false for anything else ("make it like page 6", "...", a complaint): the editor then asks the user first' },
   }, ['pages', 'images', 'no_pictures_at_all', 'user_asked_to_remove']),
@@ -369,6 +369,11 @@ Rules:
    "Make it white" / "whiter" right after a request about the text's colour is the text again: set_text_style.
    Remove the background ("убери фон", "bỏ nền", "quita el fondo") of a page -> remove_images on that page (its
    background picture goes) or set_background with a plain colour; never edit_page.
+   The shapes, blobs, lines or patterns of the background ("arka plan şekilleri", "фигуры на фоне", "the background
+   decorations") are drawn in that full-slide background picture: removing them -> remove_images with images [0] (the
+   background picture only; the content pictures stay), never set_background or edit_page (asked for "the background
+   shapes", every picture of the deck was offered for removal, 2026-11-22). Pages [] when no page is named and the
+   pages share that background.
    No page named -> the current page; "all slides"/"cả 10 slide" -> every page.
    ALL changes to one page go into ONE edit_page call with one combined instruction.
    The same change on every page -> edit_all_pages.

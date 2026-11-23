@@ -615,7 +615,11 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       // the background picture says what it shows too: "keep the nurse, change the other image" names it by elimination
       if (!n) return e === backdrop ? `[image 0: background picture covering the whole slide${shows}${had}]` : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
-      const kind = `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
+      // the page's only picture covering the whole slide is its background picture (image 0 names it too): listed as a
+      // "large image", "remove the background shapes" left out the 15 pages with nothing else, the current one included
+      // (replay 2026-11-23)
+      const kind = isBackdrop(e) ? 'background picture covering the whole slide (image 0 names it too), the only picture here'
+        : `${area < 0.005 ? 'icon' : area < 0.04 ? 'small image' : 'large image'}${e.width * e.height === biggest ? ', the largest image here' : ''}`
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       // a logo, or the user's own attached picture, keeps its size and place so "move my logo top-right, smaller" can act
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo, ${Math.round(area * 100)}% of slide, ${where}]`
