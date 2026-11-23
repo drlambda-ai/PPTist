@@ -1291,5 +1291,6 @@
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Esta diapositiva no tiene ningún cuadro de texto para abrir sus ajustes. Haz clic en un texto de cualquier diapositiva y sus ajustes se abrirán a la derecha.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "He seleccionado el texto «{p0}» y he abierto sus ajustes a la derecha: fuente, tamaño, color, negrita y espaciado. Haz clic en otro texto para cambiar ese.",
   "That step failed on our side and was not done. Please ask for it again.": "Ese paso falló por nuestra parte y no se hizo. Pídelo de nuevo, por favor.",
-  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Ese cambio habría dejado el texto del mismo color que lo que tiene detrás, y no se podría leer. ¿De qué color debe ser?"
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Ese cambio habría dejado el texto del mismo color que lo que tiene detrás, y no se podría leer. ¿De qué color debe ser?",
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "El texto que no se vería sobre lo que tiene detrás tiene ahora una franja semitransparente, para que se pueda leer."
 }

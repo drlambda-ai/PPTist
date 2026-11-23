@@ -721,6 +721,40 @@ const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Objec
 // PowerPoint deck is one, so a heading the paid redesign added on top of the body text went unseen, and "the heading
 // overlaps the body text" was answered "Updated page 26" with the page looking the same (2026-11-18)
 const bareText = (e: any) => !!elText(e) && (e.type === 'text' || (e.type === 'shape' && !e.gradient && !e.pattern && (!e.fill || e.fill === 'transparent' || /^#[0-9a-f]{6}00$/i.test(e.fill))))
+// the colours a box's letters are drawn in: each run's own, else the box's
+const letters = (e: any) => {
+  const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html'), w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), out = new Set<string>()
+  for (let node = w.nextNode(); node; node = w.nextNode()) {
+    if (!(node as Text).data.trim()) continue
+    let x = node.parentElement
+    while (x && !x.style.color) x = x.parentElement
+    out.add(tinycolor(x?.style.color || (e.type === 'text' ? e.defaultColor : e.text.defaultColor) || '#333').toHex())
+  }
+  return out
+}
+// text on a picture: the nearest thing under at least 30% of the box is a picture that shows, not one that is hidden
+// or lies under an opaque shape; with nothing there, the slide's background picture
+const onPicture = (sl: Slide, e: any) => {
+  if (!bareText(e) || (e.type === 'text' && e.fill)) return false
+  const under = (x: any) => Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height
+  const solid = (x: any) => x.type === 'shape' && (x.opacity ?? 1) === 1 && (!!x.gradient || !!x.pattern || (!!x.fill && tinycolor(x.fill).getAlpha() === 1))
+  const behind = sl.elements.slice(0, sl.elements.findIndex(x => x.id === e.id)).reverse()
+    .find((x: any) => under(x) && ((x.type === 'image' && x.filters?.opacity !== '0%') || solid(x)))
+  return behind ? behind.type === 'image' : sl.background?.type === 'image'
+}
+// The see-through band the chat puts behind text on a picture: dark under light letters, light under dark ones. No
+// letter colour makes words readable on a busy photo by itself: a Tamil teacher's stock-photo backgrounds were followed
+// by "words are not visible" five times, through black and then white letters (2026-11-23)
+// (the light one at 85%: grey template letters on 70% white over a dark photo measured 2.5:1)
+const bandFill = (light: boolean) => (light ? '#00000080' : '#FFFFFFD9')
+const isBand = (e: any) => ['#00000080', '#FFFFFFD9', '#FFFFFFB3'].includes(String(e.fill || '').toUpperCase())
+const bandText = (id: string) => {
+  const sl = slides.value.find(x => x.id === id)
+  if (!sl) return 0
+  const els = sl.elements.filter((e: any) => onPicture(sl, e))
+  for (const e of els) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([...letters(e)].every(c => tinycolor(c).isLight())) }, slideId: id })
+  return els.length
+}
 const textOnText = (els: any[]) => {
   const texts = els.filter(bareText)
   // the letters, not the box: a text box keeps 10px of padding above and below its lines (a one-line heading right
@@ -2942,18 +2976,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
       return h
     }
-    // the colours a box's letters are drawn in: each run's own, else the box's
-    const letters = (e: any) => {
-      const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html'), w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), out = new Set<string>()
-      for (let node = w.nextNode(); node; node = w.nextNode()) {
-        if (!(node as Text).data.trim()) continue
-        let x = node.parentElement
-        while (x && !x.style.color) x = x.parentElement
-        out.add(tinycolor(x?.style.color || (e.type === 'text' ? e.defaultColor : e.text.defaultColor) || '#333').toHex())
-      }
-      return out
-    }
     const already: [string, any][] = [] // boxes whose letters were all that colour before: recolouring them shows nothing
+    const recoloured: [string, any][] = []
     let n = 0
     for (const id of targets) {
       const sl = slides.value[pos(id)]
@@ -2966,6 +2990,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const whole = color && !phrase ? { defaultColor: color } : {}
         if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
         else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
+        if (color && !phrase) recoloured.push([id, e])
         n++
       }
     }
@@ -2994,38 +3019,48 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!n && phrase && targets.length === 1) return byPageEdit()
     if (!n) fail(phrase ? t('I could not find “{p0}” in the text there.', { p0: phrase.slice(0, 60) }) : t('There is no such text to style there.'))
     if (!spanned) touched(targets)
+    // letters in a colour that does not show on the panel under them get the band too, in their colour's opposite tone
+    // (a box with a fill of its own keeps it): "the words should be visible" turned a page's words on pale cards white,
+    // and the next message was "words are not visible in box", which kept them white (2026-11-23, replayed 2026-11-24)
+    let panelled = 0
+    for (const [id, e] of recoloured) {
+      const ownFill = !isBand(e) && (!bareText(e) || (e.type === 'text' && !!e.fill))
+      if (ownFill || !unreadableText(slides.value[pos(id)].elements as any[]).includes(e.id)) continue
+      slidesStore.updateElement({ id: e.id, props: { fill: bandFill(tinycolor(color).isLight()) }, slideId: id })
+      panelled++
+    }
     // Text that already is the colour asked for and sits on a picture is hard to read because of the picture: "the
     // cover's text is unreadable, change its colour", "whiter", "white I said" on white letters over a pale photo was
     // answered four times with "it is already pure white" (2026-11-15), and then with "restyled" and no visible change.
     // It gets a see-through band of the opposite tone behind it, and the reply says so
     if (already.length === n && !Object.values(want).some(v => v === 'on' || v === 'off')) {
-      // on a picture: the nearest thing under at least 30% of the box is a picture that shows, not one that is hidden
-      // or lies under an opaque shape; with nothing there, the slide's background picture
-      const onPicture = ([id, e]: [string, any]) => {
-        const sl = slides.value[pos(id)]
-        if (!bareText(e) || (e.type === 'text' && e.fill)) return false
-        const under = (x: any) => Math.max(0, Math.min(e.left + e.width, x.left + x.width) - Math.max(e.left, x.left)) * Math.max(0, Math.min(e.top + e.height, x.top + x.height) - Math.max(e.top, x.top)) >= 0.3 * e.width * e.height
-        const solid = (x: any) => x.type === 'shape' && (x.opacity ?? 1) === 1 && (!!x.gradient || !!x.pattern || (!!x.fill && tinycolor(x.fill).getAlpha() === 1))
-        const behind = sl.elements.slice(0, sl.elements.findIndex(x => x.id === e.id)).reverse()
-          .find((x: any) => under(x) && ((x.type === 'image' && x.filters?.opacity !== '0%') || solid(x)))
-        return behind ? behind.type === 'image' : sl.background?.type === 'image'
-      }
-      const backed = already.filter(onPicture)
+      const backed = already.filter(([id, e]) => onPicture(slides.value[pos(id)], e))
       if (backed.length) {
         const light = tinycolor(color).isLight()
-        for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: light ? '#00000080' : '#FFFFFFB3' }, slideId: id })
+        for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: bandFill(light) }, slideId: id })
         args.backed = true // not a look to repeat on the other pages
         touched(targets)
-        return light ? t('The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.')
-          : t('The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.')
+        return (light ? t('The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.')
+          : t('The text there already is that colour, so I put a light see-through band behind it: it now stands out on the picture.'))
+          + (panelled ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : '')
       }
     }
     if (spanned) return byPageEdit() // not on a picture: nothing was changed here, the page edit looks at the words
+    // new letters on a picture keep (or get) the band in the tone that goes with them: black letters stayed on a dark
+    // band, and black or white letters alone stayed unreadable on a busy photo (2026-11-23)
+    let banded = 0
+    for (const [id, e] of recoloured) {
+      const sl = slides.value[pos(id)], now = sl.elements.find(x => x.id === e.id) as any
+      if (!now || !(isBand(now) || onPicture(sl, now))) continue
+      slidesStore.updateElement({ id: e.id, props: { fill: bandFill(tinycolor(color).isLight()) }, slideId: id })
+      if (!isBand(now)) banded++
+    }
+    const bandNote = banded || panelled ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : ''
     // one changed page is said by its number, two or more by their count: "Оформление текста изменено в текстовых блоках (3)
     // на 1 слайде" (… on 1 slide) read as "on slide 1" when page 3 changed, and the grader read it so too (bt-2745381,
     // "на 3 слайде сделай текст черным", 2026-11-24)
-    return targets.length === 1 ? t('Restyled the text in {p0} text boxes on page {p1}.', { p0: n, p1: pos(targets[0]) + 1 })
-      : t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length }, targets.length)
+    return (targets.length === 1 ? t('Restyled the text in {p0} text boxes on page {p1}.', { p0: n, p1: pos(targets[0]) + 1 })
+      : t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length }, targets.length)) + bandNote
   }
   // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
   // messages: the other pages take that page's text look as it is now, not the last step again. A user centred,
@@ -3477,9 +3512,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         showBackdrop(sl.id, e.id)
       }
       replacedThisTurn.add(`${sl.id}:${pictureNo(slides.value[pos(sl.id)], 0)}`)
+      const banded = bandText(sl.id)
       touched([sl.id])
       slidesStore.updateSlideIndex(pos(sl.id))
-      return t('The picture on page {p0} now is its background: it covers the whole page, behind the text.', { p0: pos(sl.id) + 1 })
+      return t('The picture on page {p0} now is its background: it covers the whole page, behind the text.', { p0: pos(sl.id) + 1 }) + (banded ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : '')
     }
     if (args.photo_query) {
       busy.value = t('Finding a picture…')
@@ -3506,6 +3542,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         replacedThisTurn.add(`${id}:${pictureNo(slides.value[pos(id)], 0)}`)
       }
     }
+    // the page's words stay readable on the photo without a second request (see bandText)
+    const banded = args.photo_query ? targets.reduce((n: number, id: string) => n + bandText(id), 0) : 0
     // same for a colour: the picture has to go, or "make it royal blue" changes nothing anyone can see
     if (!args.photo_query) for (const id of targets) fadeBackdrop(id)
     touched(targets)
@@ -3544,7 +3582,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       : (t('colour {p0}', { p0: args.color }))
     // a count read as a page number: "Фон 1 слайдів" ("background of 1 slide(s)") was taken for page 1 (replay 2026-11-18)
     const where = targets.length <= 3 ? t('Background of page(s) {p0} set to {p1}.', { p0: targets.map(id => pos(id) + 1).sort((a, b) => a - b).join(', '), p1: bgHow }, listed(targets)) : t('Background of {p0} page(s) set to {p1}.', { p0: targets.length, p1: bgHow }, targets.length)
-    return where + note + flatNote + (args.photo_query && pictureNote ? ` ${pictureNote}` : '')
+    return where + note + flatNote + (banded ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : '') + (args.photo_query && pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'write_notes') {
     const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()

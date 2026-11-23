@@ -1291,5 +1291,6 @@
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "Este slide não tem nenhuma caixa de texto para abrir as configurações de texto. Clique em um texto de qualquer slide e as configurações dele abrem à direita.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Selecionei o texto “{p0}” e abri as configurações dele à direita: fonte, tamanho, cor, negrito e espaçamento. Clique em outro texto para alterar esse.",
   "That step failed on our side and was not done. Please ask for it again.": "Essa etapa falhou do nosso lado e não foi feita. Peça de novo, por favor.",
-  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Essa alteração deixaria o texto da mesma cor do que está atrás dele, e não daria para ler. Qual cor deve ser?"
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Essa alteração deixaria o texto da mesma cor do que está atrás dele, e não daria para ler. Qual cor deve ser?",
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "O texto que não apareceria sobre o que está atrás dele ganhou uma faixa semitransparente, para que possa ser lido."
 }

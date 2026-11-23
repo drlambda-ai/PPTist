@@ -1291,5 +1291,6 @@
   "This page has no text box to open the text settings for. Click a text on any page and its settings open on the right.": "لا يوجد في هذه الشريحة مربع نص لفتح إعدادات النص له. انقر على أي نص في أي شريحة وستُفتح إعداداته على اليمين.",
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "حددت النص «{p0}» وفتحت إعداداته على اليمين: الخط والحجم واللون والخط العريض والتباعد. انقر على نص آخر لتغييره.",
   "That step failed on our side and was not done. Please ask for it again.": "فشلت تلك الخطوة من جانبنا ولم تُنفَّذ. يُرجى طلبها مرة أخرى.",
-  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "كان ذلك التغيير سيجعل النص بلون ما خلفه نفسه فلا يمكن قراءته. ما اللون المطلوب؟"
+  "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "كان ذلك التغيير سيجعل النص بلون ما خلفه نفسه فلا يمكن قراءته. ما اللون المطلوب؟",
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "النص الذي لن يظهر على ما خلفه حصل على شريط شبه شفاف، لتسهل قراءته."
 }
