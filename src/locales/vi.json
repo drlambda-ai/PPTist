@@ -1002,6 +1002,7 @@
   "page {p0}": "trang chiếu {p0}",
   "There is no page {p0} (the deck has {p1}).": "Không có trang chiếu {p0} (bộ trình chiếu có {p1} trang).",
   "Could not write that page.": "Không thể tạo trang chiếu đó.",
+  "Every part of the file already has a page in the deck.": "Mọi phần của tệp đều đã có trang trong bài.",
   "Added {p0} page(s) after page {p1}: {p2}.": "Đã thêm {p0} trang sau trang {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Đang viết trang chiếu {p0}/{p1}…",
   " ({p0} is the most per request; ask again for more)": " (mỗi yêu cầu tối đa {p0}; hãy yêu cầu thêm sau)",

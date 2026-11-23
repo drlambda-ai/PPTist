@@ -1002,6 +1002,7 @@
   "page {p0}": "slide {p0}",
   "There is no page {p0} (the deck has {p1}).": "Tidak ada slide {p0} (presentasi ini memiliki {p1} slide).",
   "Could not write that page.": "Tidak dapat menulis slide itu.",
+  "Every part of the file already has a page in the deck.": "Setiap bagian file sudah punya halaman di presentasi.",
   "Added {p0} page(s) after page {p1}: {p2}.": "Menambahkan {p0} halaman setelah halaman {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Menulis slide {p0} dari {p1}…",
   " ({p0} is the most per request; ask again for more)": " (maksimal {p0} per permintaan; minta lagi untuk yang lainnya)",

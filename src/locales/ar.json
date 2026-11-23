@@ -1002,6 +1002,7 @@
   "page {p0}": "الصفحة {p0}",
   "There is no page {p0} (the deck has {p1}).": "لا توجد صفحة {p0} (يحتوي العرض على {p1} صفحة).",
   "Could not write that page.": "تعذّرت كتابة تلك الصفحة.",
+  "Every part of the file already has a page in the deck.": "كل جزء من الملف له بالفعل شريحة في العرض التقديمي.",
   "Added {p0} page(s) after page {p1}: {p2}.": "تمت إضافة {p0} صفحة بعد الصفحة {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "جارٍ كتابة الصفحة {p0} من {p1}…",
   " ({p0} is the most per request; ask again for more)": " (الحد الأقصى {p0} لكل طلب؛ اطلب المزيد في طلب آخر)",

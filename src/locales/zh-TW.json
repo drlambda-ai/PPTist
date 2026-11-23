@@ -1002,6 +1002,7 @@
   "page {p0}": "第 {p0} 頁",
   "There is no page {p0} (the deck has {p1}).": "沒有第 {p0} 頁（簡報共有 {p1} 頁）。",
   "Could not write that page.": "無法撰寫該頁內容。",
+  "Every part of the file already has a page in the deck.": "檔案的每個部分在簡報中都已有對應的頁面。",
   "Added {p0} page(s) after page {p1}: {p2}.": "已在第 {p1} 頁後新增 {p0} 頁：{p2}。",
   "Writing page {p0} of {p1}…": "正在撰寫第 {p0}/{p1} 頁…",
   " ({p0} is the most per request; ask again for more)": "（每次最多 {p0} 頁；如需更多，請再次提出）",

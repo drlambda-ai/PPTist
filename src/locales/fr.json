@@ -1002,6 +1002,7 @@
   "page {p0}": "diapositive {p0}",
   "There is no page {p0} (the deck has {p1}).": "La diapositive {p0} n’existe pas (la présentation en compte {p1}).",
   "Could not write that page.": "Impossible de rédiger cette diapositive.",
+  "Every part of the file already has a page in the deck.": "Chaque partie du fichier a déjà sa diapositive dans la présentation.",
   "Added {p0} page(s) after page {p1}: {p2}.": "{p0} page ajoutée après la page {p1} : {p2}.",
   "Writing page {p0} of {p1}…": "Rédaction de la diapositive {p0} sur {p1}…",
   " ({p0} is the most per request; ask again for more)": " ({p0} maximum par demande ; faites une nouvelle demande pour en ajouter)",

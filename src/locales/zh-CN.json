@@ -1002,6 +1002,7 @@
   "page {p0}": "第 {p0} 页",
   "There is no page {p0} (the deck has {p1}).": "没有第 {p0} 页（演示文稿共 {p1} 页）。",
   "Could not write that page.": "无法编写该页面。",
+  "Every part of the file already has a page in the deck.": "文件的每个部分在演示文稿中都已有对应的页面。",
   "Added {p0} page(s) after page {p1}: {p2}.": "已在第 {p1} 页后添加 {p0} 页：{p2}。",
   "Writing page {p0} of {p1}…": "正在编写页面：第 {p0}/{p1} 页…",
   " ({p0} is the most per request; ask again for more)": "（每次请求最多 {p0} 页；如需更多，请再次请求）",

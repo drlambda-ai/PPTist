@@ -1002,6 +1002,7 @@
   "page {p0}": "diapositiva {p0}",
   "There is no page {p0} (the deck has {p1}).": "No existe la diapositiva {p0} (la presentación tiene {p1}).",
   "Could not write that page.": "No se pudo escribir esa diapositiva.",
+  "Every part of the file already has a page in the deck.": "Cada parte del archivo ya tiene una diapositiva en la presentación.",
   "Added {p0} page(s) after page {p1}: {p2}.": "Se agregó {p0} página después de la página {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Escribiendo la diapositiva {p0} de {p1}…",
   " ({p0} is the most per request; ask again for more)": " (máximo {p0} por solicitud; vuelve a pedir más)",

@@ -43,8 +43,9 @@ const TOOLS = [
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
     language: { type: 'string', description: 'The language the slide text must be in: the deck\'s, the one the user asks for, and for a translation the target language ("English", "Русский", "Tiếng Việt")' },
     from_users_file: { type: 'boolean', description: 'true when the pages are to be made from the user\'s own file, paper, article or document ("from my paper", "makalah ini", "bài này" meaning a document), attached or not' },
+    fill_from_file: { type: 'boolean', description: 'true when the new pages are to hold what the user\'s file has and the deck lacks yet ("why only 10 slides?" with the file the deck was made from, "add the rest of my document"): the editor itself compares the file with the pages and adds one page per part that none covers, so count and topics are its own; false otherwise' },
     references_topic: REFERENCES_TOPIC,
-  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file', 'references_topic']),
+  }, ['instruction', 'count', 'after', 'layout_from', 'after_named', 'message_new_pages', 'topics', 'hard', 'language', 'from_users_file', 'fill_from_file', 'references_topic']),
   fn('expand_page', 'Extend / expand / go deeper on an existing page ("扩展/展开/扩充第3页", "extend page 3", "more detail on this slide"): new analysis that goes beyond what the page already says, on a continuation page right after it. The page itself stays as it is.', {
     index: page,
     more_pages: { type: 'array', items: { type: 'integer' }, description: 'The other pages to extend the same way in this one step ("slides 4 and 5" -> index 4, more_pages [5]); [] for one page' },
@@ -573,10 +574,9 @@ Rules:
    all/every/the deck: pass that page in pages. "The cover", "first page", "last slide" name a page: page_named true. "Make it N slides" when the deck has fewer -> add_page with count = the difference; never delete.
    The deck has fewer pages than the user asked for when it was made and they ask why or for the rest ("why only 10
    slides?") -> add_page with the missing count, on the parts of that request not yet covered. The same with no count
-   asked but a file attached that the deck was made from ("thêm đi sao có 10 slides thôi vậy"): read_file it first, to
-   its end (every part it says it has), then ONE add_page with count = the parts of it that no page listed in the deck
-   covers yet and topics = those parts (its own slide plan, when it has one, names them and the slide count the user
-   wanted), from_users_file true; never one page on a topic of your own. Other wishes in the message get their own
+   asked but a file attached that the deck was made from ("thêm đi sao có 10 slides thôi vậy"): ONE add_page with
+   from_users_file and fill_from_file true (the editor finds the parts of the file no page covers yet); never one page
+   on a topic of your own. Other wishes in the message get their own
    steps. "I sent more text / you left things out" with that request holding their text -> put their own text back on the pages it belongs to
    (edit_page or edit_all_pages), never ask them to send it again.
    What this editor can do, by any wording: rewrite, shorten, expand, translate any text; fonts, sizes, colours, bold,

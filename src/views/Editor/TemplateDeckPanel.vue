@@ -653,6 +653,9 @@ const unchangedSaid = new Map<string, string[]>()
 // adds one per item (a one-per-page rule cut a doctor's four clinical examples to one, 2026-11-11)
 const picturedThisTurn = new Set<string>()
 const readThisTurn = new Set<string>() // names of the user's files a read_file step read in the current message
+// the file's uncovered parts became pages in this message: asked again, a second look at the grown deck read the file's
+// sections instead of its slide plan and added 4 more (replay, 2026-11-23)
+let filledThisTurn = false
 const roomMadeThisTurn = new Set<string>() // pages whose text was moved aside for a picture in the current message
 let sitePaywalledPage = '' // the page a free user was just told the brand's own pictures are a paid feature for
 const picKey = (page: string, query: unknown) => `${page}|${String(query || '').trim().toLowerCase()}`
@@ -1849,6 +1852,29 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (at >= 0) args.after = at + 1 // a 2nd new page follows the 1st
     }
     if (!(Number(args.after) >= 1)) args.after = Math.min(Math.max(slideIndex.value + 1, 1), slides.value.length)
+    // "why only 10 slides?" from the user's file: one call sees the whole file next to every page and names the parts no
+    // page covers; only those become pages. Left to the router, it read the file in parts and added 1 to 6 pages, some
+    // repeating pages 5-7 (replays, 2026-11-23). Unreadable: the router's own count and topics stand
+    const filled = args.from_users_file && args.fill_from_file ? s.docs.filter(d => d.text.trim()) : []
+    let covered: string[] = [] // the file's parts the deck's pages already hold: a new page wrote one of them again
+    if (filled.length && filledThisTurn) return t('Every part of the file already has a page in the deck.')
+    if (filled.length) {
+      const lines = deckLines().map((x, i) => `${i + 1}. ${x.slice(0, 400)}`).join('\n')
+      const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+        'A slide deck was made from the user\'s file, both below. First look through the WHOLE file, to its end, for its own list of the slides to make (a slide plan: "Slide 1 – ...", "Slide 2 – ..." in any language; often near the end). Then list EVERY part of the file meant for the audience, in its order: with a slide plan, exactly the slides of that plan; otherwise its sections, without headings that only group other parts. Never a part for the file\'s title block, notes to the presenter, a timing table or the slide plan itself. Give each the deck page that already covers its subject, in any wording (one page may cover several parts), or 0 when no page does. '
+          + 'Return JSON {"slide_plan": <true when the file lists its own slides>, "parts": [{"part": "<its title and what it holds, in the file\'s language>", "page": <number or 0>}]}.'
+          + `\n<deck>\n${fence(lines)}\n</deck>\n${filled.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(Math.max(8000, 28000 - lines.length) / filled.length)))}\n</file>`).join('\n')}` }) }).catch(() => null)
+      const parts = r?.ok ? (await r.json().catch(() => ({})))?.parts : null
+      if (Array.isArray(parts) && parts.length) {
+        const open = parts.filter((x: any) => !(Number(x?.page) >= 1 && Number(x.page) <= slides.value.length)).map((x: any) => String(x?.part || '').trim()).filter(Boolean)
+        filledThisTurn = true
+        if (!open.length) return t('Every part of the file already has a page in the deck.')
+        covered = parts.filter((x: any) => !open.includes(String(x?.part || '').trim())).map((x: any) => String(x?.part || '').trim()).filter(Boolean)
+        args.topics = open
+        args.count = open.length
+      }
+      filled.forEach(d => readThisTurn.add(d.name)) // the page writer gets the file
+    }
     const after = beforeClosing(pos(idOf(args.after)) + 1)
     // up to 30 new pages in one step: "increase to 30 slides" on a 10-page deck stopped at 20 with "ask again for
     // more" (2026-11-15), and the router's next step claimed a wrong total
@@ -1898,7 +1924,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const before = written.length && !own1 ? ` The pages before it in this batch are: ${written.map(x => `"${x}"`).join(', ')}; this page takes the next part, never one of those again.` : ''
       // the deck's own language, read from its slides and the user's words: the router named German for an English
       // deck and an English request, and 12 German pages came out (e2e, 2026-11-16)
-      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(said)}.${own}${fromFile}`
+      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(said)}.${own}${fromFile}${covered.length ? `\nThe deck's other pages already hold these parts of the file, so this page never takes one of them: ${covered.map(x => `"${x.slice(0, 160)}"`).join('; ')}` : ''}`
       const advanced = !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)
       try {
         // "this page contains unrelated coffee text, so I left it unchanged" (page 6 of 12, e2e 2026-11-16): once more, plainly
@@ -3811,6 +3837,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   unchangedSaid.clear()
   picturedThisTurn.clear()
   readThisTurn.clear()
+  filledThisTurn = false
   roomMadeThisTurn.clear()
   sitePaywalledPage = ''
   replacedThisTurn.clear()

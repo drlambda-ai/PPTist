@@ -1002,6 +1002,7 @@
   "page {p0}": "slide {p0}",
   "There is no page {p0} (the deck has {p1}).": "O slide {p0} não existe (a apresentação tem {p1} slides).",
   "Could not write that page.": "Não foi possível escrever essa página.",
+  "Every part of the file already has a page in the deck.": "Cada parte do arquivo já tem um slide na apresentação.",
   "Added {p0} page(s) after page {p1}: {p2}.": "{p0} página adicionada após a página {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Criando o slide {p0} de {p1}…",
   " ({p0} is the most per request; ask again for more)": " (o máximo por solicitação é {p0}; peça mais em seguida)",

@@ -1002,6 +1002,7 @@
   "page {p0}": "слайд {p0}",
   "There is no page {p0} (the deck has {p1}).": "Слайда {p0} нет (в презентации всего {p1}).",
   "Could not write that page.": "Не удалось создать этот слайд.",
+  "Every part of the file already has a page in the deck.": "Для каждой части файла в презентации уже есть слайд.",
   "Added {p0} page(s) after page {p1}: {p2}.": "Добавлен {p0} слайд после слайда {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Создаём слайд {p0} из {p1}…",
   " ({p0} is the most per request; ask again for more)": " (не более {p0} за запрос; для остальных отправьте новый запрос)",

@@ -1002,6 +1002,7 @@
   "page {p0}": "اسلاید {p0}",
   "There is no page {p0} (the deck has {p1}).": "اسلاید {p0} وجود ندارد (این ارائه {p1} اسلاید دارد).",
   "Could not write that page.": "نوشتن آن اسلاید ممکن نشد.",
+  "Every part of the file already has a page in the deck.": "هر بخش از فایل از قبل یک اسلاید در ارائه دارد.",
   "Added {p0} page(s) after page {p1}: {p2}.": "{p0} صفحه بعد از صفحهٔ {p1} اضافه شد: {p2}.",
   "Writing page {p0} of {p1}…": "در حال نوشتن اسلاید {p0} از {p1}…",
   " ({p0} is the most per request; ask again for more)": " (حداکثر {p0} مورد در هر درخواست؛ برای موارد بیشتر دوباره درخواست دهید)",

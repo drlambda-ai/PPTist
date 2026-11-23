@@ -1002,6 +1002,7 @@
   "page {p0}": "page {p0}",
   "There is no page {p0} (the deck has {p1}).": "There is no page {p0} (the deck has {p1}).",
   "Could not write that page.": "Could not write that page.",
+  "Every part of the file already has a page in the deck.": "Every part of the file already has a page in the deck.",
   "Added {p0} page(s) after page {p1}: {p2}.": "Added {p0} page(s) after page {p1}: {p2}.",
   "Writing page {p0} of {p1}…": "Writing page {p0} of {p1}…",
   " ({p0} is the most per request; ask again for more)": " ({p0} is the most per request; ask again for more)",
