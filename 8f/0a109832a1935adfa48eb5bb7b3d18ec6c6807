@@ -1,0 +1,3 @@
+Codex-Review: passed
+Reviewer: gpt-6-astra high (reviewed as c7124c52+bb986995 and d88e3349+e86b169e, cherry-picked unchanged onto 226f589e). Pasted-essay findings closed; picture-skip findings closed except one declined edge case (a moved helper picture page; cost: one honest refusal, no charge).
+Regression: 170 real accepted turns via API ($2.45), 103 pass / 45 partial / 22 fail (previous build 99/46/25); 8 pass->fail flips read, none attributable to these changes (one is the intended cat-outline-as-picture behaviour).
