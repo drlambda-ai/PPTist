@@ -1867,10 +1867,17 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // gave stay right (one step per page, it extended a page's new continuation instead of the next page, 2026-11-23)
     const ext = [...new Set([args.index, ...(args.more_pages || [])].map(Number).filter(n => n >= 1 && n <= ids.length).map(idOf))]
     if (!ext.length) ext.push(idOf(args.index))
+    const done: string[] = []
     for (const id of [...ext].sort((a, b) => pos(b) - pos(a))) {
       busy.value = t('Extending…')
-      await expandPage(text, pos(id), args.instruction || '')
+      try { await expandPage(text, pos(id), args.instruction || '') }
+      catch (e) {
+        if (!(e instanceof StepFailed) || !done.length) throw e
+        break // the continuation pages written so far stay, and the reply names only those
+      }
+      done.push(id)
     }
+    ext.splice(0, ext.length, ...ext.filter(id => done.includes(id)))
     slidesStore.updateSlideIndex(pos(ext[0]) + 1)
     if (ext.length === 1) return t('Added an extension of page {p0} as page {p1}; page {p2} is unchanged.', { p0: pos(ext[0]) + 1, p1: pos(ext[0]) + 2, p2: pos(ext[0]) + 1 })
     // the page as the user and the router numbered it, and where its new page is now
