@@ -3171,9 +3171,15 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // content against the files; given only a list of citations, pages guessed and wrote "no source can be linked
     // with certainty" onto the slides (PRO user cancelled, "inaccurate", 2026-11-14)
     const files = args.cite_files ? s.docs.filter(d => d.text.trim()) : []
+    // a wish about the look only ("thay đổi font chữ và làm nó đẹp hơn") gets no material: given the file the same
+    // message had read to add pages, each page took "its own slide" of the file by number and rewrote its words, pages
+    // 4-7 and 10 and a new Q&A page among them, and the result check undid the turn (a real user's message of
+    // 2026-11-22, both replays that reached the restyle, 2026-11-23). The words stay; only the look changes (0 texts
+    // reworded in 3 of 3 replays)
+    const looks = !!args.style_only && !files.length && !args.users_text
     // a file read for this request is its material on every page: the router's instruction said "as in the document"
     // and each page answered that no document was attached (a teacher asked twice, 2026-11-15)
-    const read = files.length ? [] : s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim())
+    const read = files.length || looks ? [] : s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim())
     const given = (docs: typeof s.docs) => docs.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / docs.length)))}\n</file>`).join('\n')
     const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${given(files)}` : args.instruction
     // a long message is material too (a pasted outline "fill in exactly these infos"): the router's instruction only
@@ -3183,8 +3189,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const own = args.users_text ? [...s.history.filter(h => h.role === 'user' && h.text.length > 300).slice(-3).map(h => h.text), s.brief?.text || ''] : []
     const said = [s.pending?.request, text, ...own].filter((x, k, arr) => x && arr.indexOf(x) === k).join('\n\n')
     const forPage = (id: string) => instruction
+      + (looks ? '\n\nOnly the look of this page changes (fonts, colours, sizes, spacing, positions): every text keeps its words exactly as they are now, none added, removed, reworded or moved to another page.' : '')
       + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
-      + ((said.length > 600 || args.users_text) && !files.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
+      + ((said.length > 600 || args.users_text) && !files.length && !looks ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
     const worker = async () => {
       while (next < todo.length && !stop) {
         const id = todo[next++]

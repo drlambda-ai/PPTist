@@ -139,7 +139,8 @@ const TOOLS = [
     cite_files: { type: 'boolean', description: 'true when the change cites the user\'s own attached files on the pages they informed ("add references of the articles to each slide so it matches where you got the info", "cite my papers on each slide"): each page is then given the files to match its content against; false otherwise' },
     pages: { ...pages, description: 'Only the pages the user names ("slides 1 to 10", "from the second to the ninth"); [] = every page' },
     users_text: { type: 'boolean', description: 'true when the pages are to carry the user\'s OWN text: text they pasted for several slides ("Slide 1 ... Slide 2 ..."), or "put the text I wrote / sent on the slides" meaning text from an earlier message or from what they asked for when the deck was made; false otherwise' },
-  }, ['instruction', 'every_page', 'language', 'cite_files', 'pages', 'users_text']),
+    style_only: { type: 'boolean', description: 'true when the change is only to how the pages LOOK ("làm nó đẹp hơn", "make it prettier", "a nicer design", "better layout", "more attractive"): every page keeps its words exactly and only fonts, colours, sizes and positions change; false when any wording changes (translate, shorten, more detail, a tone, fix typos, the user\'s text)' },
+  }, ['instruction', 'every_page', 'language', 'cite_files', 'pages', 'users_text', 'style_only']),
   fn('apply_theme', 'Give the whole deck, or only the pages the user limits it to, a new look from colours you choose: a style or topic ("a theme for cybersecurity", "more corporate", "military look", "a new theme only on the cover, leave the rest"). Done directly, keeps the wording.', {
     pages: { ...pages, description: 'Only when the user limits the new look to some pages ("only the first page", "just the cover, the rest as it was"): those pages; else [] = the whole deck' },
     background: { type: 'string', description: 'Slide background #RRGGBB' },
