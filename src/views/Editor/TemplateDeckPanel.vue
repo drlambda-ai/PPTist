@@ -61,7 +61,38 @@
 <script lang="ts" setup>
 import { PRESET_THEMES } from '@/configs/theme'
 import { CLIPPATHS } from '@/configs/imageClip'
-import { t, direction, lang } from '@/i18n'
+import { t as tApp, direction, lang, translatorIn } from '@/i18n'
+
+// Each line the app writes (in the app language), by its text: its string and parameters, so the reply can say it again
+// in the language of the user's message from the same strings in that locale (see finalize)
+const ownText = new Map<string, [string, Record<string, string | number> | undefined]>()
+const t = (key: string, parameters?: Record<string, string | number>) => {
+  const out = tApp(key, parameters)
+  if (out.trim()) ownText.set(out, [key, parameters]).set(out.trim(), [key, parameters])
+  return out
+}
+// a text made of the app's own lines, said with another locale's strings; null when any part of it was written by a
+// model (that part is only in the language it came in). A model's words inside one of them (the picture's subject in
+// 'Added a picture of "{p0}"…') go through `words`: they stayed English in a Spanish line otherwise (replay, 2026-11-23)
+const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v => v): string | null => {
+  const own = ownText.get(text)
+  const [, before, inner, after] = text.match(/^(\s*)([\s\S]*?)(\s*)$/)!
+  // a line joined with a space ("Made the text bigger…" + " 10 text box(es) had no room…", replay 2026-11-23)
+  if (!own && (before || after)) {
+    const said = sayIn(inner, tr, words)
+    return said === null ? null : before + said + after
+  }
+  if (own) {
+    return tr(own[0], own[1] && Object.fromEntries(Object.entries(own[1]).map(([k, v]) => [k, typeof v !== 'string' ? v
+      : ownText.has(v) ? sayIn(v, tr, words) ?? v : /\p{L}/u.test(v) ? words(v) : v])))
+  }
+  for (let i = text.length - 1; i > 0; i--) { // one line joined from several ("Added 2 page(s)…" + " Only 2 fit.")
+    if (!ownText.has(text.slice(0, i))) continue
+    const rest = sayIn(text.slice(i), tr, words)
+    if (rest !== null) return sayIn(text.slice(0, i), tr, words)! + rest
+  }
+  return /\p{L}/u.test(text) ? null : text // spaces, digits and punctuation between them
+}
 
 defineProps<{ inline?: boolean }>() // on a phone: part of the page, not a floating window
 // The chat opens at the right edge, over the Design sidebar: in the middle it covered half the slide on a laptop and
@@ -3814,6 +3845,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   const startTheme = JSON.parse(JSON.stringify(slidesStore.theme)), startRatio = slidesStore.viewportRatio
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
   if (!again) newTurn() // a new message: charged on its own (a second attempt stays the same message)
+  ownText.clear()
   replyTurn = currentTurn()
   const versionUrl = s.savedVersions?.[text.trim()]
   s.savedVersions = undefined
@@ -4428,8 +4460,8 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   }
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
-  const said = await finalize(text, reply, free, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null)
-  say('assistant', said + fee)
+  const [said, feeSaid] = await finalize(text, reply, free, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null, fee)
+  say('assistant', said + feeSaid)
   recordTurn(text, said, done, true)
 }
 
@@ -4537,18 +4569,36 @@ const forAnyPage = async (instruction: string) => {
 // The follow-up buttons of this message too: the router's "Apply to the whole deck" label came in the deck's language
 // (Spanish for a Vietnamese user) and the code's ones in the app's. A tap sends the label, so the pending keeps the
 // translated labels it matches against.
-const finalize = async (instruction: string, reply: string, free: string[] = [], offer: NonNullable<typeof s.pending> | null = null) => {
+const finalize = async (instruction: string, reply: string, free: string[] = [], offer: NonNullable<typeof s.pending> | null = null, fee = ''): Promise<[string, string]> => {
   try {
     const options = offer?.options || []
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, free, options, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
+    // the words a model put inside the app's lines go out with the router's lines, each translated on its own
+    const inside = new Set<string>()
+    for (const l of reply.split('\n')) sayIn(l, tApp, (v) => { if (!free.includes(v) && reply.includes(v)) inside.add(v); return v })
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, free: [...free, ...inside], options, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
     if (offer && s.pending === offer && Array.isArray(r.options) && r.options.length === options.length && r.options.every((o: unknown) => typeof o === 'string' && o.trim())) {
       offer.options = r.options.map((o: string) => o.trim())
       save()
     }
-    return r.reply || reply
+    // the app's own lines from its strings in the language the step named, only the router's lines translated by it: the
+    // model translating everything wrote a Vietnamese user's reply in English with "trang(s)" for "page(s)" (replay of
+    // the real turn "thêm đi sao có 10 slides thôi vậy, thay đổi font chữ và làm nó đẹp hơn", 2026-11-23)
+    const tr = r.code && r.code !== lang ? await translatorIn(String(r.code)) : null
+    const lines: Record<string, string> = r.lines && typeof r.lines === 'object' ? r.lines : {}
+    if (tr) {
+      const routers = free.filter(f => f.trim() && reply.includes(f.trim())).map(f => f.trim()).sort((a, b) => b.length - a.length)
+      const mark = (i: number) => `⟦${i + 1}⟧`
+      const marked = routers.reduce((x, f, i) => x.split(f).join(mark(i)), reply)
+      const said = marked.split('\n').map(l => sayIn(l, tr, v => String(lines[v] || v)))
+      const feeSaid = fee ? sayIn(fee, tr) : ''
+      if (said.every(l => l !== null) && feeSaid !== null) {
+        return [routers.reduce((x, f, i) => x.split(mark(i)).join(String(lines[f] || f)), said.join('\n')), feeSaid]
+      }
+    }
+    return [r.reply || reply, fee]
   }
   catch {
-    return reply
+    return [reply, fee]
   }
 }
 

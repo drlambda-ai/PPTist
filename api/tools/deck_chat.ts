@@ -840,7 +840,10 @@ async function handler(req: any, res: any) {
       // kept as written (also when the translation came back unusable), except the router's own lines: each is
       // swapped for its translation, by its exact text
       const kept = free.reduce((r, f, i) => r.split(f).join(line(i)), String(body.localize))
-      res.status(200).json({ reply: !sameAsUi && reply.trim() ? reply.trim() : kept, options }); return
+      // with the language named, the editor says its own lines from its strings in that language and takes only the
+      // router's lines from here (each by its exact text): the model translating the code's lines turned a Vietnamese
+      // user's reply into English with "trang(s)" for "page(s)" (replay of a real turn, 2026-11-23)
+      res.status(200).json({ reply: !sameAsUi && reply.trim() ? reply.trim() : kept, options, code, lines: Object.fromEntries(free.map((f, i) => [f, line(i)])) }); return
     }
     const { instruction = '', pages: deckPages = [], current = 1, history = [], template = false, done = [] } = body
     const deck = deckPages.map((p: string, i: number) => `${i + 1}. ${String(p).slice(0, 400)}`).join('\n')
