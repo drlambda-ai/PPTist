@@ -1872,7 +1872,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       busy.value = t('Extending…')
       try { await expandPage(text, pos(id), args.instruction || '') }
       catch (e) {
-        if (!(e instanceof StepFailed) || !done.length) throw e
+        if (!done.length) throw e
         break // the continuation pages written so far stay, and the reply names only those
       }
       done.push(id)
