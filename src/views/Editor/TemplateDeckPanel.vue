@@ -4165,8 +4165,12 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
         : leftWrong(extra) ? `that would leave ${n - new Set(extra.args.pages.filter((p: number) => p >= 1 && p <= n)).size} pages, but the user wants ${keep} in the end: call delete_pages with exactly ${n - keep} pages, the least essential first`
         : extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
+          // the pages really added, and the message's other wishes still to do: "the 1 new page(s) ... are already added;
+          // finish" after 3 pages from the user's file, and "thay đổi font chữ và làm nó đẹp hơn" was never done (the
+          // router asked for a 0-page add twice more, the 2nd skip ended the message; replay of 2026-11-22's real turn,
+          // 2026-11-23)
           : adds(extra) && pagesWanted >= 0 && created() >= pagesWanted
-            ? `the ${pagesWanted} new page(s) this message asks for are already added (see Done so far); finish`
+            ? `the ${created()} new page(s) this message asks for are already added (see Done so far): go on with the other parts of the message, or finish if none is left`
             : turnExact.includes(`${extra.action} ${JSON.stringify(extra.args || {})}`)
               ? 'this exact step already ran in this message (see Done so far): the request is done, finish'
               : lastTurnCalls.includes(stepKey(extra.action, extra.args)) && done.some(d => d.startsWith('undo '))
@@ -4332,7 +4336,11 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
         ? slides.value.map((x, k) => (idsAtStart.has(x.id) && !picturedPages.has(x.id) && (c.action === 'add_image' || pictures(x).length) ? k + 1 : 0)).filter(Boolean) : []
       const rest = left.length ? `\n(Every page was asked for: pages still without a ${c.action === 'add_image' ? 'new' : 'replaced'} picture: ${left.join(', ')}. Call ${c.action} for the next one, on that page's own topic.)` : ''
       if ((c.action === 'find_papers' || c.action === 'web_search') && memo) found.set(String(c.args?.query || '').trim(), memo)
-      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}${rest}`)
+      // pages from the user's file: told only "Added 3 page(s)", the router asked for a 0-page add of "the remaining
+      // topics" twice more instead of the font and the restyle the same message wanted (replay, 2026-11-23)
+      const filledAll = c.action === 'add_page' && c.args?.fill_from_file && filledThisTurn
+        ? '\n(Every part of the user\'s file now has its page in the deck: nothing of the file is left to add. Go on with the other parts of the message.)' : ''
+      done.push(`${c.action} ${JSON.stringify(c.args || {})} -> ${reply}${offered}${memo ? `\n${memo}` : ''}${rest}${filledAll}`)
       memo = ''
       if (!['answer_question', 'ask_user', 'say_unable', 'undo', 'redo', 'download_deck', 'read_file', 'web_search', 'find_papers', 'read_link', 'go_to_page', 'open_design'].includes(c.action) && !askedThisTurn) changed = true
     }
