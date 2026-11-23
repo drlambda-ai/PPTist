@@ -109,7 +109,8 @@ const TOOLS = [
     font: { type: 'string', description: 'Font family name, e.g. "Microsoft YaHei", "Arial", "SimHei"; "" with same_as_page. No font named ("change the font", "đổi font chữ") -> one you choose that fits the deck and its language, never "" (an empty font asked "Which font?" and ended the message before the restyle it also asked for, 2026-11-23)' },
     same_as_page: { type: 'integer', description: 'To match another page\'s font ("same font as slide 1"): that page number, else 0' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
-  }, ['pages', 'font', 'same_as_page', 'scope']),
+    page_named: { type: 'boolean', description: 'true if the user named the page ("на 3 слайде", "slide 2", "the cover"); false for "this slide"/"here"/nothing. Named, the reply never offers the same on the other pages ("на 3 слайде сделай текст черным" was asked about the other pages, replay 2026-11-24)' },
+  }, ['pages', 'page_named', 'font', 'same_as_page', 'scope']),
   fn('move_logo', 'Move or resize the user\'s logo, or their own attached picture, where it already is on the slides ("move my logo to the top right and make it small", "logo smaller", "mueve mi logotipo arriba a la derecha"). Done directly, exact. When the slides have no logo the editor itself asks the user to attach it.', {
     pages: { ...pages, description: 'Pages to change; empty = every page that has the logo' },
     corner: { type: 'string', enum: ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'same'], description: 'Where it goes; "same" when only the size changes' },
@@ -122,7 +123,8 @@ const TOOLS = [
     same_as_page: { type: 'integer', description: 'To match another page\'s text size ("as big as slide 1"): that page number, else 0' },
     points: { type: 'number', description: 'An exact size the user names ("28pt", "size 24", "字号 20"): that number, else 0' },
     back: { type: 'boolean', description: 'true ONLY when the user wants the text size back to what it was before this chat resized it ("make the text smaller again, as it was", "назад, як було", "return the old font size", "undo the bigger text"): the editor puts back each box\'s exact earlier size, on every page it resized (pages [], scale ignored). Never a scale of 0.8 for this, and never undo (it reverts one message only). false for plain "smaller"' },
-  }, ['pages', 'scope', 'scale', 'same_as_page', 'points', 'back']),
+    page_named: { type: 'boolean', description: 'true if the user named the page ("slide 2", "the cover"); false for "this slide"/"here"/nothing' },
+  }, ['pages', 'page_named', 'scope', 'scale', 'same_as_page', 'points', 'back']),
   fn('set_text_style', 'Change how existing text LOOKS, on some or all pages (done directly, exact, keeps every word and layout): its colour ("text black", "make the title white", "font colour light yellow", "chữ màu vàng", "текст чёрным"), bold, italic or underline, for all text, the titles, the body, or the words the user names ("underline 4.5 billion", "put X in bold"). A colour for the text, letters or font is this, never set_background, set_font or apply_theme. Asked again or "more" ("whiter", "make it white I said") -> do it again, never answer that it already looks that way.', {
     pages: { ...pages, description: 'Pages; empty = every page' },
     scope: { type: 'string', enum: ['all', 'titles', 'body'], description: 'all text, only titles, or only non-title text' },
@@ -131,7 +133,8 @@ const TOOLS = [
     bold: { type: 'string', enum: ['on', 'off', 'same'] },
     italic: { type: 'string', enum: ['on', 'off', 'same'] },
     underline: { type: 'string', enum: ['on', 'off', 'same'] },
-  }, ['pages', 'scope', 'phrase', 'color', 'bold', 'italic', 'underline']),
+    page_named: { type: 'boolean', description: 'true if the user named the page ("на 3 слайде", "slide 2", "the cover"); false for "this slide"/"here"/nothing. Named, the reply never offers the same on the other pages ("на 3 слайде сделай текст черным" was asked about the other pages, replay 2026-11-24)' },
+  }, ['pages', 'page_named', 'scope', 'phrase', 'color', 'bold', 'italic', 'underline']),
   fn('edit_all_pages', 'Apply the same change to every page: more detail / more text, shorter, simpler, a tone, an audience or purpose ("for a scientific congress", "for kids"), translate... Each page keeps its own topic and content.', {
     instruction: { type: 'string', description: 'The change for every page.' },
     every_page: { type: 'boolean', description: 'true when every page should end up changed (translate, shorten, rewrite, add sources); false when only some pages may have it (remove a logo, fix typos)' },
