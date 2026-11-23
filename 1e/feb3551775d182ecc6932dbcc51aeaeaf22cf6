@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-23T07:19:55Z
+Fixed: images [0] deleted the only picture of a pasted-screenshot page (now skipped, flat-picture reply)
+Fixed: remove_images description promised empty never removes the background; it now states the code's fallback
+Declined-By: Claude Code
+Declined: pages [] for a shared background widens to every page - removal on more than one page always asks the user first with the count, so nothing goes without a yes
+Re-review skipped: the fix is a one-branch guard plus description text
