@@ -1860,18 +1860,21 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (filled.length && filledThisTurn) return t('Every part of the file already has a page in the deck.')
     if (filled.length) {
       const lines = deckLines().map((x, i) => `${i + 1}. ${x.slice(0, 400)}`).join('\n')
+      const cap = Math.floor(Math.max(8000, 28000 - lines.length) / filled.length)
       const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
         'A slide deck was made from the user\'s file, both below. First look through the WHOLE file, to its end, for its own list of the slides to make (a slide plan: "Slide 1 – ...", "Slide 2 – ..." in any language; often near the end). Then list EVERY part of the file meant for the audience, in its order: with a slide plan, exactly the slides of that plan; otherwise its sections, without headings that only group other parts. Never a part for the file\'s title block, notes to the presenter, a timing table or the slide plan itself. Give each the deck page that already covers its subject, in any wording (one page may cover several parts), or 0 when no page does. '
           + 'Return JSON {"slide_plan": <true when the file lists its own slides>, "parts": [{"part": "<its title and what it holds, in the file\'s language>", "page": <number or 0>}]}.'
-          + `\n<deck>\n${fence(lines)}\n</deck>\n${filled.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(Math.max(8000, 28000 - lines.length) / filled.length)))}\n</file>`).join('\n')}` }) }).catch(() => null)
+          + `\n<deck>\n${fence(lines)}\n</deck>\n${filled.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, cap))}\n</file>`).join('\n')}` }) }).catch(() => null)
       const parts = r?.ok ? (await r.json().catch(() => ({})))?.parts : null
       if (Array.isArray(parts) && parts.length) {
         const open = parts.filter((x: any) => !(Number(x?.page) >= 1 && Number(x.page) <= slides.value.length)).map((x: any) => String(x?.part || '').trim()).filter(Boolean)
-        filledThisTurn = true
-        if (!open.length) return t('Every part of the file already has a page in the deck.')
+        // a file cut short may hold its missing parts and its slide plan past the cut: "all covered" is not known then
+        if (!open.length && !filled.some(d => d.text.length > cap)) {
+          filledThisTurn = true
+          return t('Every part of the file already has a page in the deck.')
+        }
         covered = parts.filter((x: any) => !open.includes(String(x?.part || '').trim())).map((x: any) => String(x?.part || '').trim()).filter(Boolean)
-        args.topics = open
-        args.count = open.length
+        if (open.length) { args.topics = open; args.count = open.length }
       }
       filled.forEach(d => readThisTurn.add(d.name)) // the page writer gets the file
     }
@@ -1899,6 +1902,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         }
       }
       const added = slides.value.length - n0
+      if (filled.length && added >= count) filledThisTurn = true
       return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: added, p1: after, p2: newTitles(after, added) })) + capped
     }
     // text the user pasted for the pages (in this message or the request this message answers) goes to each page as
@@ -1954,6 +1958,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         await changeImage(text, page.id, n + 1, String(own1 || written[k] || args.instruction).slice(0, 80), 'photo').catch(() => undefined)
       }
     }
+    if (filled.length && k >= count) filledThisTurn = true // set only when every open part got its page: one failed page left the rest refused
     return (t('Added {p0} page(s) after page {p1}: {p2}.', { p0: k, p1: after, p2: newTitles(after, k) })) + capped
   }
   if (action === 'expand_page') {
