@@ -745,14 +745,19 @@ const onPicture = (sl: Slide, e: any) => {
 // The see-through band the chat puts behind text on a picture: dark under light letters, light under dark ones. No
 // letter colour makes words readable on a busy photo by itself: a Tamil teacher's stock-photo backgrounds were followed
 // by "words are not visible" five times, through black and then white letters (2026-11-23)
-// (the light one at 85%: grey template letters on 70% white over a dark photo measured 2.5:1)
-const bandFill = (light: boolean) => (light ? '#00000080' : '#FFFFFFD9')
+// (the light one at 85%: grey template letters on 70% white over a dark photo measured 2.5:1). The tone is the one
+// whose worst case reads best for every letter colour in the box: the dark band over a white photo is #808080, the
+// light one over a black photo #D9D9D9 (a lightness test put #888888 letters on the dark band at 1.1:1)
+const bandFill = (colours: string[]) => {
+  const worst = (under: string) => Math.min(...colours.map(c => tinycolor.readability(c, under)))
+  return worst('#808080') >= worst('#D9D9D9') ? '#00000080' : '#FFFFFFD9'
+}
 const isBand = (e: any) => ['#00000080', '#FFFFFFD9', '#FFFFFFB3'].includes(String(e.fill || '').toUpperCase())
 const bandText = (id: string) => {
   const sl = slides.value.find(x => x.id === id)
   if (!sl) return 0
   const els = sl.elements.filter((e: any) => onPicture(sl, e))
-  for (const e of els) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([...letters(e)].every(c => tinycolor(c).isLight())) }, slideId: id })
+  for (const e of els) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([...letters(e)]) }, slideId: id })
   return els.length
 }
 const textOnText = (els: any[]) => {
@@ -2978,6 +2983,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     const already: [string, any][] = [] // boxes whose letters were all that colour before: recolouring them shows nothing
     const recoloured: [string, any][] = []
+    const phrased: [string, any][] = [] // named words recoloured: a band already behind their box follows its letters
     let n = 0
     for (const id of targets) {
       const sl = slides.value[pos(id)]
@@ -2990,7 +2996,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const whole = color && !phrase ? { defaultColor: color } : {}
         if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { ...whole, content: now }, slideId: id })
         else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, ...whole, content: now } }, slideId: id })
-        if (color && !phrase) recoloured.push([id, e])
+        if (color) (phrase ? phrased : recoloured).push([id, e])
         n++
       }
     }
@@ -3026,7 +3032,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const [id, e] of recoloured) {
       const ownFill = !isBand(e) && (!bareText(e) || (e.type === 'text' && !!e.fill))
       if (ownFill || !unreadableText(slides.value[pos(id)].elements as any[]).includes(e.id)) continue
-      slidesStore.updateElement({ id: e.id, props: { fill: bandFill(tinycolor(color).isLight()) }, slideId: id })
+      slidesStore.updateElement({ id: e.id, props: { fill: bandFill([color]) }, slideId: id })
       panelled++
     }
     // Text that already is the colour asked for and sits on a picture is hard to read because of the picture: "the
@@ -3036,8 +3042,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (already.length === n && !Object.values(want).some(v => v === 'on' || v === 'off')) {
       const backed = already.filter(([id, e]) => onPicture(slides.value[pos(id)], e))
       if (backed.length) {
-        const light = tinycolor(color).isLight()
-        for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: bandFill(light) }, slideId: id })
+        const light = bandFill([color]) === '#00000080'
+        for (const [id, e] of backed) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([color]) }, slideId: id })
         args.backed = true // not a look to repeat on the other pages
         touched(targets)
         return (light ? t('The text there already is that colour, so I put a dark see-through band behind it: it now stands out on the picture.')
@@ -3052,8 +3058,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const [id, e] of recoloured) {
       const sl = slides.value[pos(id)], now = sl.elements.find(x => x.id === e.id) as any
       if (!now || !(isBand(now) || onPicture(sl, now))) continue
-      slidesStore.updateElement({ id: e.id, props: { fill: bandFill(tinycolor(color).isLight()) }, slideId: id })
+      slidesStore.updateElement({ id: e.id, props: { fill: bandFill([color]) }, slideId: id })
       if (!isBand(now)) banded++
+    }
+    for (const [id, e] of phrased) {
+      const now = slides.value[pos(id)].elements.find(x => x.id === e.id) as any
+      if (now && isBand(now)) slidesStore.updateElement({ id: e.id, props: { fill: bandFill([...letters(now)]) }, slideId: id })
     }
     const bandNote = banded || panelled ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : ''
     // one changed page is said by its number, two or more by their count: "Оформление текста изменено в текстовых блоках (3)
