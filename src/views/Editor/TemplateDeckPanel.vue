@@ -2130,7 +2130,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const swap = slides.value.filter(sl => has(sl).length)
       for (const sl of swap) for (const e of has(sl)) slidesStore.updateElement({ id: e.id, props: { src, height: e.width / shape }, slideId: sl.id })
       if (!swap.length) for (const sl of at.pages) slidesStore.updateSlide({ elements: [...sl.elements, { type: 'image', id: nanoid(10), src, fixedRatio: true, rotate: 0, ...at.c, width, height } as any] }, sl.id)
-      said.push(((n: number) => t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: n }, n))(swap.length || at.pages.length))
+      said.push(((on: Slide[]) => on.length === 1 ? t('Put the logo from {p0} on page {p1}.', { p0: file!.name, p1: pos(on[0].id) + 1 })
+        : t('Put the logo from {p0} on {p1} page(s).', { p0: file!.name, p1: on.length }, on.length))(swap.length ? swap : at.pages))
     }
     touched(ids)
     return said.join(' ')
@@ -2380,7 +2381,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (!moved.length) fail(t('There is no logo on the slides yet. Attach your logo with the 📎 icon and tell me where to put it.'))
     touched(moved)
-    return t('Moved the logo on {p0} page(s).', { p0: moved.length }, moved.length)
+    return moved.length === 1 ? t('Moved the logo on page {p0}.', { p0: pos(moved[0]) + 1 }) : t('Moved the logo on {p0} page(s).', { p0: moved.length }, moved.length)
   }
   if (action === 'remove_images') {
     const targets = args.only?.length ? nums(args.only) : args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2443,7 +2444,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'set_transition') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
     for (const id of targets) slidesStore.updateSlide({ turningMode: args.effect }, id)
-    return t('Transition set on {p0} page(s).', { p0: targets.length }, targets.length)
+    return targets.length === 1 ? t('Transition set on page {p0}.', { p0: pos(targets[0]) + 1 }) : t('Transition set on {p0} page(s).', { p0: targets.length }, targets.length)
   }
   if (action === 'animate_pages') {
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2455,7 +2456,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }))
       slidesStore.updateSlide({ animations }, id)
     }
-    return (args.effect === 'none' ? t('Animations removed.') : t('Animated {p0} page(s).', { p0: targets.length }, targets.length))
+    return (args.effect === 'none' ? t('Animations removed.') : targets.length === 1 ? t('Animated page {p0}.', { p0: pos(targets[0]) + 1 }) : t('Animated {p0} page(s).', { p0: targets.length }, targets.length))
   }
   if (action === 'delete_pages') {
     let del = nums(args.pages)
@@ -2784,7 +2785,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         n++
       }
     }
-    return t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length }, targets.length)
+    // one page by its number, as in set_text_style ("на 1 слайде" read as slide 1, bt-2745381, 2026-11-24)
+    return targets.length === 1 ? t('Set {p0} on {p1} text boxes on page {p2}.', { p0: font, p1: n, p2: pos(targets[0]) + 1 })
+      : t('Set {p0} on {p1} text boxes across {p2} page(s).', { p0: font, p1: n, p2: targets.length }, targets.length)
   }
   if (action === 'set_font_size') { // direct, like set_font: "title bigger", "more" got barely-changed model rewrites (2026-11-10)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -2847,7 +2850,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (restore) {
       if (!n) fail(t('I have not resized any text here, so there is no earlier size to go back to.'))
       touched([...pagesDone])
-      return t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size }, pagesDone.size)
+      return pagesDone.size === 1 ? t('The text in {p0} text boxes on page {p1} is back to the size it had before I resized it.', { p0: n, p1: pos([...pagesDone][0]) + 1 })
+        : t('The text in {p0} text boxes across {p1} page(s) is back to the size it had before I resized it.', { p0: n, p1: pagesDone.size }, pagesDone.size)
     }
     if (!n) fail(t('There is no such text to resize there.'))
     // bigger text takes only the room its box has: x2.5 ran over the next text and off every slide, and the user then
@@ -2859,7 +2863,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const stuck = [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
       .filter(e => grew[e.id] && !sizes(html(e)).some((v, i) => v >= (grew[e.id][i] || 16) + 1)).length // under 1px is not a change anyone sees
     if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck))
-    return t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size }, pagesDone.size)
+    return (pagesDone.size === 1 ? t('Resized the text in {p0} text boxes on page {p1}.', { p0: n - stuck, p1: pos([...pagesDone][0]) + 1 })
+      : t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size }, pagesDone.size))
       + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck)}` : '')
   }
   if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
@@ -3016,7 +3021,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
     }
     if (spanned) return byPageEdit() // not on a picture: nothing was changed here, the page edit looks at the words
-    return t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length }, targets.length)
+    // one changed page is said by its number, two or more by their count: "Оформление текста изменено в текстовых блоках (3)
+    // на 1 слайде" (… on 1 slide) read as "on slide 1" when page 3 changed, and the grader read it so too (bt-2745381,
+    // "на 3 слайде сделай текст черным", 2026-11-24)
+    return targets.length === 1 ? t('Restyled the text in {p0} text boxes on page {p1}.', { p0: n, p1: pos(targets[0]) + 1 })
+      : t('Restyled the text in {p0} text boxes across {p1} page(s).', { p0: n, p1: targets.length }, targets.length)
   }
   // "Do the same on the other pages" after a size or style step on a page the user had already shaped in earlier
   // messages: the other pages take that page's text look as it is now, not the last step again. A user centred,
@@ -3067,7 +3076,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!n) fail(t('There is no such text to style there.'))
     await fitOverflow().catch(() => undefined) // a box whose text still runs over grows into the free space or shrinks
     touched(targets)
-    return t("Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
+    return targets.length === 1 ? t('Gave page {p1} the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.', { p0: pos(src.id) + 1, p1: pos(targets[0]) + 1 })
+      : t("Gave {p1} page(s) the text look of page {p0}: its sizes as far as the text fits, its bold and its alignment.", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
   }
   // The user's own text, page by page: each page gets only its part. Given the whole text, each page picked a part
   // itself and slide 3 took slide 2's (replayed 2026-11-18, 4 decks); one page edit at a time stopped after slide 1
@@ -3192,7 +3202,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     if (fresh.length) await fitOverflow(placed, {}, new Set(fresh.map(e => e.id)), Object.fromEntries(fresh.map(e => [e.id, gap(e)]))).catch(() => undefined)
     const placedOn = onPages.length - same.length - failed.length
-    const lines = [t('Placed your text on {p0} page(s).', { p0: placedOn }, placedOn)]
+    const lines = [placedOn === 1 && placed.length === 1 ? t('Placed your text on page {p0}.', { p0: pos(placed[0]) + 1 }) : t('Placed your text on {p0} page(s).', { p0: placedOn }, placedOn)]
     if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') }, listed(same))} ${why}`.trim())
     if (same.length) unchangedSaid.set(lines[lines.length - 1], same.map(p => ids0[p - 1]).filter(id => !editedThisTurn.has(id)))
     if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }, listed(failed)).trim())
@@ -3542,7 +3552,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (args.clear) {
       for (const id of asked) slidesStore.updateSlide({ remark: '' }, id)
       touched(asked)
-      return t('Cleared the speaker notes on {p0} page(s).', { p0: asked.length }, asked.length)
+      return asked.length === 1 ? t('Cleared the speaker notes on page {p0}.', { p0: pos(asked[0]) + 1 }) : t('Cleared the speaker notes on {p0} page(s).', { p0: asked.length }, asked.length)
     }
     // revising touches only pages that have notes; with no notes anywhere ("make the script funnier") write them that way
     const having = args.existing_only ? asked.filter(hasNotes) : asked
@@ -3614,7 +3624,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const id of ids) fadeBackdrop(id) // a full-slide picture would hide it
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true, ids.length < slides.value.length ? ids : undefined)
     touched(ids)
-    return ids.length < slides.value.length ? t('Applied a new theme to {p0} page(s).', { p0: ids.length }, ids.length) : t('Applied a new theme to the whole deck.')
+    return ids.length < slides.value.length ? (ids.length === 1 ? t('Applied a new theme to page {p0}.', { p0: pos(ids[0]) + 1 }) : t('Applied a new theme to {p0} page(s).', { p0: ids.length }, ids.length)) : t('Applied a new theme to the whole deck.')
   }
   if (action === 'say_unable') {
     // only says "recorded" when it was: outside ChatSlide nothing records it
@@ -3652,7 +3662,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       slidesStore.updateSlide({ background: copiedBackground(src), elements: backdrop ? [{ ...JSON.parse(JSON.stringify(backdrop)), id: `${backdrop.id}-${id}`.slice(0, 40) }, ...elements] : elements }, id)
     }
     touched(targets)
-    return t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
+    return targets.length === 1 ? t("Applied page {p0}'s background and text colour to page {p1}.", { p0: pos(src.id) + 1, p1: pos(targets[0]) + 1 })
+      : t("Applied page {p0}'s background and text colour to {p1} page(s).", { p0: pos(src.id) + 1, p1: targets.length }, targets.length)
   }
   if (action === 'open_design') {
     // "open the text settings for me" (after five "whiter" messages changed nothing, 2026-11-15) opened the Design
