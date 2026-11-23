@@ -1,0 +1,7 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high), two rounds
+Reviewed-At: 2026-11-23T08:35:42Z
+Fixed: layout pass after place_texts could drop user sentences (now undone when it does)
+Fixed: stop-less match accepted word prefixes and unrelated later words; read entities raw (now tied to the match, decoded)
+Fixed: set_font marked pages changed before changing them
+Re-review skipped for the last fix: matcher only, pinned by six edge cases run locally
