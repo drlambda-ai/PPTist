@@ -1,0 +1,8 @@
+Codex-Review: passed
+Reviewer: OpenAI Codex CLI (gpt-6-astra, high)
+Reviewed-At: 2026-11-23T06:21:34Z
+Fixed: expand_page partial success reported as failure (any error after a written page now ends the step with the pages written)
+Declined-By: Claude Code
+Declined: expand_page silently drops out-of-range more_pages - the router numbers pages from the deck it is shown; cost if wrong is a reply that omits a page that does not exist
+Declined: page-less document chunks read as pages - only documents with no page marks are chunked; before, the same request got the first 12,000 characters only
+Regression: 170 real accepted turns, 107/44/19 vs 103/45/22 on 943d76f3
