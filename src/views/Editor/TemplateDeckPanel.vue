@@ -1811,6 +1811,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // written: the router's instruction for 21 pasted slides said only "add them after the presentation" (2026-11-15)
     const said = [s.pending?.request, text].filter((x, k, all) => x && all.indexOf(x) === k).join('\n')
     const own = said.length > 600 ? `\nThe user's own text (where it gives this page's content, use that word for word):\n${fence(said.slice(0, 12000))}` : ''
+    // pages "from my file": the file read for this request is their material, as edit_all_pages gives it; told only
+    // "use the document's remaining content", a page answered that no script was attached (replay, 2026-11-23)
+    const read = args.from_users_file ? s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim()) : []
+    const fromFile = read.length ? `\nThe user's file this page comes from (take the part this page is about, in its own words):\n${read.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / read.length)))}\n</file>`).join('\n')}` : ''
     const written: string[] = [] // titles of the pages written in this step
     let k = 0
     for (; k < count; k++) {
@@ -1826,7 +1830,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const before = written.length && !own1 ? ` The pages before it in this batch are: ${written.map(x => `"${x}"`).join(', ')}; this page takes the next part, never one of those again.` : ''
       // the deck's own language, read from its slides and the user's words: the router named German for an English
       // deck and an English request, and 12 German pages came out (e2e, 2026-11-16)
-      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(said)}.${own}`
+      const write = `This is NEW page ${k + 1} of ${count} on: ${topic}.${before} The page is a copy of another slide, made only to lend its layout: its present text belongs to that slide and is all replaced with this page's own content (no repeats across pages). Keep the layout and styling. Write all its text in ${deckLanguage(said)}.${own}${fromFile}`
       const advanced = !!args.hard && !!(chatslide?.canUseAdvanced?.() ?? (window as any).__evalAdvanced)
       try {
         // "this page contains unrelated coffee text, so I left it unchanged" (page 6 of 12, e2e 2026-11-16): once more, plainly
@@ -2383,13 +2387,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         parts = filePages(doc.text)
       }
     }
+    // a document with no page marks (a Word file) longer than one read: read in parts of 12,000 characters, so its end
+    // can be read too (a script's slide plan for slides 11-12 sat past the cut, and "why only 10 slides?" added one
+    // page on a topic of the router's own, 2026-11-22)
+    const chunked = !parts.length && doc.text.length > 12000
+    if (chunked) parts = Array.from({ length: Math.ceil(doc.text.length / 12000) }, (_, k) => ({ n: k + 1, text: doc.text.slice(k * 12000, (k + 1) * 12000) }))
     const total = parts.length
     const missing = want.filter(n => n < 1 || n > total)
     if (want.length && total && missing.length === want.length) fail(t('{p0} has only {p1} pages.', { p0: doc.name, p1: total }))
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(p.n)).map(p => p.text).join('\n') : doc.text
     if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }) : '' }))
-    memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? '\n[…cut; read fewer pages for the rest]' : ''}\n</file-content>`
+    memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? (chunked && !want.length ? `\n[…cut: this is part 1 of ${total}; the rest of the file is not shown here. Before anything that needs the whole file, read_file with pages [2]${total > 2 ? `, then [3] and so on to [${total}]` : ''}]` : '\n[…cut; read fewer pages for the rest]') : ''}\n</file-content>`
     const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
     return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }) : '' })) + skipped
   }
