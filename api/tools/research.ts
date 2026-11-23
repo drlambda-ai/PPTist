@@ -78,10 +78,19 @@ const wikimedia = async (query: string, nearest = false, avoid: string[] = [], w
       // crew came back for "Indian infant on oxygen support" (replay 2026-11-19)
       const small = close ? await commons({ titles: pages.map(p => p.title).join('|'), iiurlwidth: '330' }).catch(() => [] as any[]) : []
       const viewable = (u: string) => /\.(jpe?g|png|webp)$/i.test(u.split('?')[0]) // an animated GIF cannot be looked at, and failed the whole look
-      const shown = pages.map((p, k) => ({ k, x: small.find(x => x.title === p.title && viewable(x.imageinfo[0].thumburl)) })).filter(c => c.x)
+      // the thumbnails go inline: Wikimedia answers OpenAI's own downloader with 429, the whole look failed and a stock
+      // photo went on for "breast anatomy" twice (2026-11-23, reproduced 2026-11-24)
+      const inline = async (u: string) => {
+        const r = await fetch(u, { headers: UA }).catch(() => null)
+        return r?.ok ? `data:${r.headers.get('content-type') || 'image/jpeg'};base64,${Buffer.from(await r.arrayBuffer()).toString('base64')}` : ''
+      }
+      const shown = (await Promise.all(pages.map(async (p, k) => {
+        const x = small.find(x => x.title === p.title && viewable(x.imageinfo[0].thumburl))
+        return { k, url: x ? await inline(x.imageinfo[0].thumburl) : '' }
+      }))).filter(c => c.url)
       // a nearest picture nobody could look at is never placed: no thumbnails came, or only unviewable files
       if (close && !shown.length) return null
-      const seen = shown.flatMap(c => [{ type: 'text', text: `${c.k}:` }, { type: 'image_url', image_url: { url: c.x.imageinfo[0].thumburl, detail: 'low' } }])
+      const seen = shown.flatMap(c => [{ type: 'text', text: `${c.k}:` }, { type: 'image_url', image_url: { url: c.url, detail: 'low' } }])
       const out = JSON.parse(seen.length
         ? await chat([{ role: 'user', content: [{ type: 'text', text: `${ask}\nWhat the user wrote (any language; the latest message is last and wins):\n${want}\nThe files' pictures follow, numbered alike. Look at each: pick one only when its picture is shown and itself shows what the user asked for.` }, ...seen] }], { model: LOOK_MODEL, jsonMode: true, maxTokens: 4000 })
         : await chat([{ role: 'user', content: ask }], { model: 'gpt-6-luna', jsonMode: true }))
