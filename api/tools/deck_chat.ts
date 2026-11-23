@@ -778,7 +778,7 @@ async function handler(req: any, res: any) {
       // lines the router wrote itself (an answer, a question, what it could not do) and the follow-up buttons: the code's
       // lines follow the app language, but these come in whatever language the router chose. An English user got a
       // Chinese line after "Updated page 1." (2026-11-10), a Vietnamese user a Spanish "Aplicar a toda la presentación"
-      const strs = (x: unknown) => (Array.isArray(x) ? x : []).map(v => String(v)).filter(v => v.trim()).slice(0, 8)
+      const strs = (x: unknown) => (Array.isArray(x) ? x : []).map(v => String(v)).filter(v => v.trim()).slice(0, 24) // 8 left a 9th picture subject in English inside a translated reply (review, 2026-11-23); the reply's own 4000-character cut bounds it
       const original = String(body.localize).slice(0, 4000)
       // each router line is already inside the reply: it goes out once, as a marker in the reply plus its own entry,
       // never twice (the doubled text truncated the JSON and the whole reply fell back untranslated, review 2026-11-13)
