@@ -4359,7 +4359,10 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   // turn, 2026-11-20). Under 120 characters a side the mark is the short one, said in the rules
   const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… ${n < 120 ? '(cut)' : '(cut here for length: the rest is there, not shown)'}` : t)
   const texts = (sl: Slide, room: number) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
-  const shown = (sl: Slide, room: number) => `${texts(sl, room)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
+  // shapes and lines with no words: a diagram drawn on the page read as "only text labels, no diagram was created" and
+  // the drawn diagram was undone (replay 2026-11-23)
+  const drawn = (sl: Slide) => sl.elements.filter(e => e.type === 'line' || (e.type === 'shape' && !elText(e))).length
+  const shown = (sl: Slide, room: number) => `${texts(sl, room)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${drawn(sl) ? `, ${drawn(sl)} drawn shape(s) and line(s)` : ''}${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
   const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
   const now = new Set(slides.value.map(x => x.id))
   const hidden = (sl: Slide) => sl.elements.filter((e: any) => e.type === 'image' && isBackdrop(e) && e.filters?.opacity === '0%').length
