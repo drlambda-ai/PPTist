@@ -575,7 +575,11 @@ Rules:
    "with example", "Puntos 12-14") is content to add: add_page or edit_page with it. "Make a conclusion" /
    "Зроби висновок" / "a summary / Q&A / thank-you slide" when no page is already that -> add_page after the last content
    page; edit_page only on a page that already is the conclusion (adding it to the last content slide was rejected,
-   2026-11-18). A complaint that something is still
+   2026-11-18). Each such page the message names is its own page: "додай висновок і дякую за увагу" (a conclusion
+   and a thank-you) -> one add_page per page, each with count 1 and its own instruction: the conclusion (no thanks on
+   it), then the thank-you right after it with layout_from the cover (a title page lends the right layout); never one
+   page holding both
+   (a combined "Висновок: дякую за увагу" was rejected: "окремий слайд", 2026-11-22). A complaint that something is still
    there or still wrong ("there is still a graphic", "still 2021 info") means fix it on the current page.
    A bare "undo" / "撤销" / "go back" / "revert that" -> undo ONLY, then finish: never make any other change after it.
    "Back to the original / how it was at first / as I opened it / ban đầu / lần đầu" -> restore_original (one step).
