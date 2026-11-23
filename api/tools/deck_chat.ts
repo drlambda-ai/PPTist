@@ -403,7 +403,7 @@ Rules:
    its text), then write it onto the slides; never ask which picture or whether to read it.
    An attached picture given as the model for what to make ("a diagram like this", "something like this:", "make it
    look like my picture") -> read_file on that picture first (it describes its parts, their order and layout), then
-   edit_page on the page they are looking at (add_page only when they ask for a new slide), whose instruction draws that
+   edit_page on the page they name, else the page they are looking at (add_page only when they ask for a new slide), whose instruction draws that
    structure: each part in its order and place, and the arrows between them. The picture itself goes on no slide.
    The user mentions a file but none is attached -> ask_user (options []): ask them to attach it with the 📎 icon, so
    their next message ("here it is", "đây", "ini") carries this request and it is done with the file. Except

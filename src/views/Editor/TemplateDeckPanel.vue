@@ -820,7 +820,7 @@ const fitLabels = (pageId: string, ids: Set<string>) => withRenderer(async () =>
         let broken = false
         for (let t = walk.nextNode(); t && !broken; t = walk.nextNode()) {
           for (const m of (t.textContent || '').matchAll(/[^\s/\-–—]+/g)) {
-            if (m[0].length > 24) continue
+            if (m[0].length > 24 || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(m[0])) continue // scripts written without spaces wrap anywhere (Codex review)
             const r = document.createRange()
             r.setStart(t, m.index!)
             r.setEnd(t, m.index! + m[0].length)
@@ -4369,7 +4369,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
       for (const k of Object.keys(s)) if (!(k in startS)) delete (s as any)[k]
       Object.assign(s, startS)
       slidesStore.updateSlideIndex(Math.max(0, startSlides.findIndex((x: Slide) => x.id === startPageId)))
-      return deckTurn(text, problem, done.filter(d => d.startsWith('read_file ')))
+      return deckTurn(text, problem, done.filter(d => d.startsWith('read_file ') && !d.includes(' -> failed, and the user was told: '))) // a failed read is tried again
     }
   }
   if (changed) {
