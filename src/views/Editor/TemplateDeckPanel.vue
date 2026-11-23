@@ -2963,12 +2963,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const onPages = items.filter((x: { page: number }) => x.page <= ids0.length)
     const past = items.filter((x: { page: number }) => x.page > ids0.length)
     const same: number[] = [], failed: number[] = []
+    const pre = new Map(ids0.flatMap(id => slides.value[pos(id)].elements.map(e => [e.id, elText(e)] as const))) // each box's words before
     let next = 0, why = ''
     const worker = async () => {
       while (next < onPages.length) {
         const x = onPages[next++]
         try {
           const i = pos(ids0[x.page - 1])
+          const hadBefore = textOnPictures(slides.value[i].elements)
           await editSlide(i, `Put this text on this page, exactly as written, replacing the page's current text (its first line is the title when it reads as one). Every sentence of it goes on the page, none dropped or shortened, and none of the page's old text stays (the last page's "thank you" included). Keep the pictures and colours; split it over the page's text boxes, and add or resize text boxes when it does not fit. Never refuse for lack of room:\n${fence(x.text)}`)
           // their own lines, copied: a list layout dropped the opening sentence in 2 of 3 runs (2026-11-19). A line that
           // is not on the page verbatim gets one more pass naming it
@@ -2979,7 +2981,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           const flat = (v: string) => (new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '').replace(/\s+/g, '').toLowerCase()
           // every sentence, short ones and a one-word heading included; what is missing is the sentence, never its whole line
           const sentences = String(x.text).split('\n').flatMap((l: string) => l.split(/(?<=[.!?…。！？])\s+/)).map((l: string) => l.trim()).filter((l: string) => flat(l).length >= 2)
-          const has = (page: string, l: string) => page.includes(flat(l))
+          // without its closing full stop: a step set as a heading drops it ("1. Визначення потреб учасників."), and the
+          // six headings, read as missing, were added again on top of themselves (replay 2026-11-23)
+          const has = (page: string, l: string) => page.includes(flat(l).replace(/[.!?…。！？]+$/u, ''))
           const onPage = flat(slides.value[i].elements.map(elText).join(' '))
           const missing = sentences.filter((l: string) => !has(onPage, l))
           if (missing.length) await editSlide(i, `These lines of the user's text are missing from this page. Add each one, word for word, where it belongs (add or resize text boxes when needed); change nothing else:\n${fence(missing.join('\n'))}`).catch(() => undefined)
@@ -2994,9 +2998,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           if (still.length && box) {
             const html = String(box.type === 'text' ? box.content : box.text.content)
             const open = html.match(/<p[^>]*>/)?.[0] || '<p>'
-            const content = still.map((l: string) => `${open}${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('') + html
+            // inside the box's first run too: a bare paragraph took the default 18px over 9px card text, and the fit,
+            // which scales the sizes written in the text, could not make it smaller (replay 2026-11-23)
+            const run = html.match(/<span[^>]*>/)?.[0]
+            const content = still.map((l: string) => { const w = l.replace(/&/g, '&amp;').replace(/</g, '&lt;'); return `${open}${run ? `${run}${w}</span>` : w}</p>` }).join('') + html
             slidesStore.updateElement({ id: box.id, props: box.type === 'text' ? { content } : { text: { ...box.text, content } }, slideId: sl.id })
             await fitText(sl.id, [box.id], { [box.id]: box.height })
+          }
+          // the page model laid long text over the page's pictures, over the card numbers, and below the page's edge
+          // (section 5's six steps, replay 2026-11-23): one layout pass, as a page edit gets
+          const { width: W, height: H } = slideSize()
+          const els = slides.value[i].elements as any[]
+          if ([...textOnPictures(els)].some(k => !hadBefore.has(k)) || els.some(e => elText(e) && (e.top + e.height > H + 4 || e.left + e.width > W + 4))) {
+            await editSlide(i, 'Fix the layout only: no text may overlap other text, sit behind a picture or run past the edge of the page. Move the text boxes clear of the pictures and make them fit (smaller font, narrower, or side by side). Keep every word, and every picture at its size.').catch(() => undefined)
           }
         }
         catch (e) {
@@ -3009,7 +3023,27 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const settled = await Promise.allSettled(Array.from({ length: Math.min(5, onPages.length) }, worker))
     const err = settled.find((x): x is PromiseRejectedResult => x.status === 'rejected')
     if (err) throw err.reason
-    touched(onPages.filter((x: { page: number }) => !same.includes(x.page) && !failed.includes(x.page)).map((x: { page: number }) => ids0[x.page - 1]))
+    const placed: string[] = onPages.filter((x: { page: number }) => !same.includes(x.page) && !failed.includes(x.page)).map((x: { page: number }) => ids0[x.page - 1])
+    touched(placed)
+    // measured as drawn: the page fit above only grows plain text boxes, and a deck's text sits in shapes, so six steps
+    // put on a three-card page ran past the cards, into the next box and the picture under them (replay 2026-11-23).
+    // The boxes that got new words are fitted as after more spacing: wider into free room beside, down to the next
+    // element, else smaller letters, until they fit (the page's other boxes, its number badges, stay as they are)
+    await fitQueue
+    const fresh = placed.flatMap(id => slides.value[pos(id)].elements as any[]).filter(e => elText(e) && pre.get(e.id) !== elText(e))
+    const gap = (e: any) => { const x = e.type === 'text' ? e : e.text || {}; return [x.lineHeight ?? 1.5, x.paragraphSpace ?? 5] }
+    // a box the page model widened over the photo beside it (the six steps ran across the page's photo, 3 of 8 replays)
+    // goes back to the free side of that photo first; the fit then sizes its letters for the narrower box
+    for (const e of fresh) {
+      const sl = slides.value.find(x => x.elements.some(y => y.id === e.id))!
+      const side = (p: any) => Math.min(p.top + p.height, e.top + e.height) - Math.max(p.top, e.top) >= 0.5 * Math.min(p.height, e.height) && p.left < e.left + e.width && p.left + p.width > e.left
+      const p: any = sl.elements.find((x: any) => x.type === 'image' && !isBackdrop(x) && side(x))
+      if (!p) continue
+      const onLeft = p.left + p.width / 2 < e.left + e.width / 2
+      const left = onLeft ? p.left + p.width + 12 : e.left, right = onLeft ? e.left + e.width : p.left - 12
+      if (right - left >= 0.3 * slideSize().width) slidesStore.updateElement({ id: e.id, props: { left, width: right - left }, slideId: sl.id })
+    }
+    if (fresh.length) await fitOverflow(placed, {}, new Set(fresh.map(e => e.id)), Object.fromEntries(fresh.map(e => [e.id, gap(e)]))).catch(() => undefined)
     const lines = [t('Placed your text on {p0} page(s).', { p0: onPages.length - same.length - failed.length })]
     if (same.length) lines.push(`${t('Page(s) {p0} were not changed.', { p0: same.join(', ') })} ${why}`.trim())
     if (failed.length) lines.push(t(' Page(s) {p0} failed.', { p0: failed.join(', ') }).trim())
