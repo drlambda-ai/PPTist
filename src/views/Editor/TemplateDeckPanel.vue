@@ -4401,6 +4401,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   // to one slide got a pointless 'the same on the other pages?' (2026-11-11). set_background: one pass per message
   const perPage = ['add_image', 'change_image', 'set_font_size', 'set_font', 'set_text_style', 'remove_images']
   let followUp = ''
+  const offerLine = t('Done on this page. Want the same on the other pages?')
   // a message that changed the text look of the page it was sent on, and no other page, shaped that page
   const startNow = slides.value.find(x => x.id === startPageId), startWas = startSlides.find((x: Slide) => x.id === startPageId)
   const shapedBefore = !!startPageId && !!s.shaped?.includes(startPageId)
@@ -4416,7 +4417,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   }
   else if (changed && !turnSelected && !s.pending && !askedThisTurn && slides.value.length > 1 && editedThisTurn.size === 1 && editedThisTurn.has(startPageId)
     && ran.length && ran.every(c => perPage.includes(c.action) && c.args?.page_named !== true && !(c.args?.items?.length > 1) && !c.args?.phrase && !c.args?.backed)) { // a picture set may add pages: not repeated; named words are on one page
-    followUp = t('Done on this page. Want the same on the other pages?')
+    followUp = offerLine
     const here = slides.value.findIndex(x => x.id === startPageId) + 1
     const others = slides.value.map((_, k) => k + 1).filter(k => k !== here)
     // the router learns which pages are left and what was done here, so it neither redoes this page nor skips one
@@ -4449,7 +4450,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0 || c.args?.backed))) {
     // the question is passed only when the message is one of its own buttons: any other reply may be a new request
     // ("never mind, make the background white"), and the check would hold it to the request it dropped
-    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null, pagesAtSend, done)
+    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null, pagesAtSend, done, followUp === offerLine)
     if (problem) {
       slidesStore.setSlides(startSlides)
       slidesStore.setTheme(startTheme)
@@ -4488,7 +4489,11 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
 // gets the deck as the router saw it (what each picture shows, the logo, the pages with nothing to change) and the
 // steps with their results (the page each one worked on and why), and it fails a turn only for a ground it can show
 // from that record; its rules come first, so a long record is cut at its end, never at the question
-const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending, pagesWere: string[], steps: string[]) => {
+// The one-page offer ("Done on this page. Want the same on the other pages?") is the editor's own rule for a message that
+// names no page, and the check is told so: read as "only offered, not done", "Встав реальні фото Миколи Міхновського"
+// (a real Wikimedia photo put on page 1, the rest offered) was undone, and the second attempt put that same photo on
+// all ten pages, one router round each, until the 420 s case timeout (bt-2725242, 1 of 3 replays on each build, 2026-11-24)
+const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending, pagesWere: string[], steps: string[], offeredRest = false) => {
   // a page's text is cut to the room there is, and the cut is marked: cut bare, at 700 characters a page and 7,000 in
   // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
   const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
@@ -4543,6 +4548,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
     + '4. The reply says a change was made, of a kind you are shown, and the list of changes has nothing of it. The deck is what is checked: a reply that is clumsy, or wrong in a number or a side remark while the deck is right, is no reason.\n'
     + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong; anything marked as cut, shortened or left out for length (it is there, only not shown).\n'
     + 'Also fine: a page of its own for each page the message names ("a conclusion and a thank-you" are two pages), a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it.\n'
+    + (offeredRest ? 'The reply ends with the editor\'s offer of the same change on the other pages, as a button: the editor makes a change the message gives no pages for on the page the user was looking at and offers the rest, so that offer is right and the other pages are no part left undone, unless the message itself asks for every page or the whole presentation.\n' : '')
     + `${made}${s.docs.length ? `Files the user gave (their "document", "file", "text"): ${s.docs.map(d => d.name).join(', ').slice(0, 600)}\n` : ''}`
     + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
   const instruction = fitCheck({ head, reply, request: answers, earlier, deck: deckWas, steps: max => cut(ran.join('\n'), max), changes }, room0)
