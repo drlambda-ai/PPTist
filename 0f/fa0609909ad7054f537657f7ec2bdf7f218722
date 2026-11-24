@@ -1,0 +1,4 @@
+Codex-Review: passed
+Reviewer: codex gpt-6-astra (high), 2 rounds
+Finding fixed: on_page description said 'never page 0' though 0 is the new-page value; now 'after is never 0' (4707556e)
+Replays: bt-2755347, bt-2755322 targets improved (master 1 pass/2 partial/1 fail -> fix 2 pass/1 partial/1 fail); 10 guard turns no regression attributable
