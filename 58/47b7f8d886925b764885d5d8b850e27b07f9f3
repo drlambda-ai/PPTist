@@ -1,0 +1,3 @@
+Codex-Review: skipped
+Reason: PPTist is not reviewed (Quanlai, 2026-11-24: "For any repository that is not ours, please do not do it."); 4-line router-input change, verified by vue-tsc and backtest on the user's saved deck (old 3/3 wrong, new 3/3 right) plus 11 accepted turns
+Reviewed-At: 2026-11-24T19:26:31Z
