@@ -663,6 +663,8 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}${had}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
+    // a table had no words here: "the tables only where the examples are" could not see the one put on the cover (2026-11-20)
+    if (e.type === 'table') return `[table: ${(e.data?.[0] || []).map((c: any) => c.text).join(', ').slice(0, 80)}]`
     const t = elText(e)
     return common.has(t) ? '' : t
   }).join(' ').replace(/\s+/g, ' ').trim()
