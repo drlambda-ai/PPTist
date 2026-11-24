@@ -1,0 +1,5 @@
+Codex-Review: passed
+Reviewer: codex gpt-6-astra (3 rounds over 39a8f13a..572ded4e)
+Fixed: band tone chosen by contrast at both photo extremes (f83e9000, 572ded4e); a named-words recolour re-tones the band behind its box.
+Declined: one box holding named words recoloured to the opposite tone of its other words cannot have one band readable for both; the named words decide. Splitting a box's band per run would need a new element kind.
+Declined-By: Claude (review rounds spent; the user's named words are what the message asks about)
