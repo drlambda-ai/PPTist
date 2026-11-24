@@ -666,6 +666,10 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
     // a table had no words here: "the tables only where the examples are" could not see the one put on the cover (2026-11-20)
     if (e.type === 'table') return `[table: ${(e.data?.[0] || []).map((c: any) => c.text).join(', ').slice(0, 80)}]`
     const t = elText(e)
+    // a list's number badge is on most pages, so it read as a footer and was left out: asked "what is that 1 for?",
+    // the router never saw the lone "1" on the page and said it was a credit used (2026-11-24)
+    if (/^\d{1,2}$/.test(t)) return sl.elements.filter(x => /^\d{1,2}$/.test(elText(x))).length > 1 ? `[number badge "${t}"]`
+      : `[number badge "${t}", the page's only one: left from the layout's numbered list, it numbers nothing]`
     return common.has(t) ? '' : t
   }).join(' ').replace(/\s+/g, ' ').trim()
 }
