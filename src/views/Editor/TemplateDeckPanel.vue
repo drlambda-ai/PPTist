@@ -3261,6 +3261,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // the deck grows with each new page: its page numbers are read from it now
     for (const x of past) lines.push(await runCall(text, 'add_page', { instruction: `Exactly this text, as written, every sentence, nothing added:\n${x.text}`, count: 1, after: slides.value.length, layout_from: slides.value.length, after_named: true, message_new_pages: past.length, topics: [], hard: false, language: '', from_users_file: false }, slides.value.map(sl => sl.id)))
     await fitQueue
+    // "1 пункт 1 слайд" with a six-point plan on a 10-page deck: the plan went on pages 1-7 and pages 8-10 kept the old
+    // duplicates (replay of 2026-11-25's real turn, 1 of 3 API runs). The pages after their last part are offered for
+    // deletion, through delete_pages' own confirmation
+    const last = Math.max(...items.map((x: { page: number }) => x.page))
+    if (args.whole_deck === true && Math.min(...items.map((x: { page: number }) => x.page)) === 1 && last < slides.value.length) {
+      const left = slides.value.slice(last).map((_, k) => last + k + 1)
+      lines.push(await runCall(text, 'delete_pages', { pages: left, user_asked_to_cut: true, yes_to_delete_question: false, pages_left: last }, slides.value.map(sl => sl.id)))
+    }
     return lines.join('\n')
   }
   if (action === 'edit_all_pages') { // 5 pages in flight, the next starts as soon as one ends; merged by slide id
