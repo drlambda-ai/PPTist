@@ -1289,6 +1289,7 @@ const numberedParts = async (src: string, request = ''): Promise<{ page: number,
       : request ? `Their latest message is: ${JSON.stringify(request.slice(0, 600))}. Only when that message asks to put this text of theirs on the slides (insert it, use it, "the text I wrote"), go on, and return only the slides it asks for (all of them unless it names some); otherwise return {"slides": []}. ` : '')
     + 'If it gives the text of several slides, each marked with its number ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), copy each slide\'s text exactly as written, every word, its title first, without the "Slide N" label itself. '
     + 'labels_slides is true only when their text itself says which part goes on which slide ("Slide 1", "Слайд 2", "Diapositiva 3", "第4页"), or their latest message says its numbers are the slide numbers ("put each numbered part on that slide"); false for an essay, report or article whose own sections are numbered or headed ("1. Introduction", "Вступ", "2. ..."): those numbers are its sections, not slides. '
+    + 'false too when what is written for each slide says what to put on it rather than being its text ("Na 2. napsat proč je to důležité", "on slide 3 explain the healthy plate", "слайд 4: додай роль білків"): those are instructions, not text to copy. '
     + 'Return JSON {"labels_slides": true|false, "slides": [{"number": <the number they wrote>, "text": "..."}]}, or {"labels_slides": false, "slides": []} when it is not text for numbered slides.' }) }).catch(() => null)
   // a pasted essay with "1. ... 2. ..." sections had its sections placed as slides 1-4, reworded, over a 14-page deck on
   // another topic (Ukrainian student, 2026-11-19): only slides their text labels are placed; the rest is the router's
@@ -1296,6 +1297,21 @@ const numberedParts = async (src: string, request = ''): Promise<{ page: number,
   const got = json?.labels_slides === true ? (json.slides || []) : []
   return (Array.isArray(got) ? got : []).map((x: any) => ({ page: Number(x?.number), text: String(x?.text || '').trim() }))
     .filter((x: { page: number, text: string }) => Number.isInteger(x.page) && x.page >= 1 && x.text)
+}
+// a message that says what each numbered slide should say or show (not their text to copy): one instruction per slide,
+// with what it asks of every slide ("points, not full sentences") folded into each. Three slides or more, else []
+const slideAsks = async (msg: string): Promise<{ page: number, instruction: string, new_topic: boolean, language: string }[]> => {
+  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+    `A user wrote this to a slide editor:\n<message>\n${fence(msg.slice(0, 12000))}\n</message>\n`
+    + 'Does it say, slide by slide by number, what each of at least three existing slides should contain or how to change it ("on slide 2 write why it matters", "Na 3. dát…", "слайд 4: роль білків")? '
+    + 'If so, return one entry per numbered slide: an instruction in English for that slide alone, keeping every point, example and wording the user gave for it, plus anything the message asks of all slides (style, bullet points, language). '
+    + 'new_topic is true when the slide is to be about what the user lists rather than a tweak of what it already says; its instruction then starts with "Title: <a short title for that topic, in the user\'s language>." (a slide about weight loss kept its old title on proteins, replay 2026-11-27). A slide the user asks to keep, shorten or restyle is not a new topic and keeps its own title ("leave only the title" renamed the cover). '
+    + 'Return JSON {"language": "<the language the slide text is to be written in: the one the user names, else the user\'s>", "slides": [{"number": <slide number>, "instruction": "...", "new_topic": true|false}]}; {"slides": []} when the message is not slide-by-slide instructions, names fewer than three slides, or is a speech, script or speaker notes for the slides (what to say aloud, "ghép giọng vào slide").' }) }).catch(() => null)
+  const json = r?.ok ? await r.json().catch(() => ({})) : {}
+  const got = json?.slides || [], language = String(json?.language || '').slice(0, 40)
+  const asks = (Array.isArray(got) ? got : []).map((x: any) => ({ page: Number(x?.number), instruction: String(x?.instruction || '').trim(), new_topic: x?.new_topic === true, language }))
+    .filter((x: { page: number, instruction: string }) => Number.isInteger(x.page) && x.page >= 1 && x.page <= slides.value.length && x.instruction)
+  return asks.length >= 3 ? asks : []
 }
 const fitText = (slideId: string, ids: string[], before: Record<string, number>) => {
   fitQueue = fitQueue.then(() => fitOne(slideId, ids, before)).catch(() => undefined)
@@ -2673,8 +2689,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const editing = Number(args.index)
     const sources = nums((args.source_pages || []).map(Number).filter((n: number) => n >= 1 && n <= slides.value.length && n !== editing))
     // a long pasted message is material: page by page, its words go on the page, not the router's summary of them
-    // (a pasted 11-slide plan edited one page at a time came back reworded, 2026-11-19)
-    if (text.length > 600 && !args.translate_to) args = { ...args, instruction: `${args.instruction}\n\nThe user's own message, in full: where it gives text for this page, use that part word for word, every sentence:\n${fence(text.slice(0, 12000))}` }
+    // (a pasted 11-slide plan edited one page at a time came back reworded, 2026-11-19). Not for slideAsks' steps: the
+    // message is instructions, and "Na 2. napsat proč…" went on the page word for word (replay 2026-11-27)
+    if (text.length > 600 && !args.translate_to && !args.from_asks) args = { ...args, instruction: `${args.instruction}\n\nThe user's own message, in full: where it gives text for this page, use that part word for word, every sentence:\n${fence(text.slice(0, 12000))}` }
     // "slide 5: main clinical signs: 1 skin ..." gives the page its topic: the new text was added in a corner of the
     // old page, its old text squeezed aside, and the user asked three more times ("make a NEW slide 5", "redo slide 5
     // completely", 2026-11-11; replayed 2026-11-20: the same on 2 of 3 such messages). The router says the page takes
@@ -2738,7 +2755,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       }
       // the user pasted the page's text and the page model answered it was already there, untouched: wrong in 6 of 6
       // replayed cases (slides 1, 8, 9 of three decks, 2026-11-11..16). One more pass, told it is not there
-      if (e instanceof NoChange && text.length > 300 && !editedThisTurn.has(slides.value[i].id)) {
+      if (e instanceof NoChange && text.length > 300 && !args.from_asks && !editedThisTurn.has(slides.value[i].id)) {
         return editSlide(i, `${args.instruction}\n\nThe user's message gives text for this page. It is NOT on the page yet: put it there now, in their words. Never answer that it is already there.`)
       }
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
@@ -4055,10 +4072,23 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   // before the router runs. Left to the router, 1 run in 4 edited page by page and inserted a missing slide mid-deck,
   // shifting the rest (replayed on users' decks, 2026-11-19). Anything else in the message the router does after
   const pre: any[] = []
+  const askIds = new Set<string>() // pages slideAsks gave their part of the message
+  const askCalls = new Set<any>() // its steps: the router copying their arguments is not one of them
   if (!repeating && !pendingAtStart && text.length > 600) {
     // "review these slides, change nothing" with numbered slides in it is not a request to place them (Codex review)
-    const items = await numberedParts(text, text)
+    // both read the message at once: one waited on the other before every long message
+    const [items, asks] = await Promise.all([numberedParts(text, text), slideAsks(text)])
     if (items.length) pre.push({ action: 'place_texts', args: { items } }) // one slide is fine when that is what they asked for
+    // what to write on each numbered slide ("Na 2. napsat proč…, Na 3. …" up to slide 10): left to the router, the
+    // retry after the end check edited slide 1 and stopped (Czech user, 2026-11-25). Each slide gets its own page edit
+    else {
+      for (const x of asks) {
+        askIds.add(slides.value[x.page - 1].id)
+        const c = { action: 'edit_page', args: { index: x.page, instruction: x.instruction, page_named: true, replaces_content: x.new_topic, language: x.language, from_asks: true } }
+        askCalls.add(c)
+        pre.push(c)
+      }
+    }
   }
   // "insert the text I wrote into slides 1 to 10" points back at that text: edited slide 1 only, then stopped (1 run in
   // 4, 2026-11-19). With a long text of theirs on hand, the same small model decides whether this message asks for it
@@ -4073,7 +4103,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     }
   }
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
-  const rounds = 16 + repeat.length // fixed before the queue drains (re-read each round it ended a long repeat early)
+  const rounds = 16 + repeat.length + pre.length // fixed before the queue drains (re-read each round it ended a long repeat early)
   for (; round < rounds; round++) {
     const { calls, error } = pre.length ? { calls: [pre.shift()], error: '' } : repeat.length ? { calls: [repeat.shift()], error: '' } : await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
@@ -4223,6 +4253,9 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     const extra = work.find((c: any) => c.action === 'edit_page' && c.args?.new_content && !c.args?.page_named && created() >= 1)
       || work.find(dropsNew)
       || work.find(leftWrong)
+      // after those steps the router redid slides 1-5 one by one with the same parts (replay 2026-11-27)
+      // (only once that step changed the slide: one that failed leaves the slide to the router)
+      || work.find((c: any) => c.action === 'edit_page' && !askCalls.has(c) && askIds.has(landsOn(c)) && editedThisTurn.has(landsOn(c)))
       || work.find((c: any) => c.action === 'delete_pages' && !c.args?.user_asked_to_cut && (c.args?.pages?.length || 0) >= Math.max(2, slides.value.length * 0.3))
       || work.find((c: any) => c.action === 'add_image' && picturedThisTurn.has(picKey(landsOn(c), c.args?.items?.length > 1 ? c.args.items.slice(0, 6).join('|') : c.args?.query)))
       // more new pages than the message asks for: re-plans added "the next" page, or extended the page just added
@@ -4281,6 +4314,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
       const why = dropsNew(extra) ? 'those pages were added by this message (see Done so far): they are what the user asked for and they stay; finish'
         : leftWrong(extra) ? `that would leave ${n - new Set(extra.args.pages.filter((p: number) => p >= 1 && p <= n)).size} pages, but the user wants ${keep} in the end: call delete_pages with exactly ${n - keep} pages, the least essential first`
         : extra.action === 'delete_pages' ? 'the user did not ask to delete or cut these pages. Do not delete: ask_user what they want, with options'
+        : extra.action === 'edit_page' && askIds.has(landsOn(extra)) && editedThisTurn.has(landsOn(extra)) ? 'that slide already got its part of the message (see Done so far): do a different part of the message, or finish'
         : extra.action === 'edit_page' && extra.args?.new_content ? 'that new content is already on the new page just added (see Done so far); finish'
           // the pages really added, and the message's other wishes still to do: "the 1 new page(s) ... are already added;
           // finish" after 3 pages from the user's file, and "thay đổi font chữ và làm nó đẹp hơn" was never done (the
