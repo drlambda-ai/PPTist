@@ -1113,8 +1113,9 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
       const vb = typeof e.viewBox === 'string' ? e.viewBox.trim().split(/[\s,]+/).map(Number).slice(-2) : e.viewBox
       e.viewBox = Array.isArray(vb) && vb.length === 2 && vb.every((v: any) => Number.isFinite(Number(v)) && Number(v) > 0) ? vb.map(Number) : [e.width || 1, e.height || 1]
       // a shape name for a path ("rect") draws nothing: a box covering a painted name stayed invisible (replay
-      // 2026-11-22). It becomes the shape it names, an oval or else a rectangle
-      if (e.path !== undefined && !/^\s*[Mm]/.test(String(e.path))) {
+      // 2026-11-22). It becomes the shape it names, an oval or else a rectangle. A shape with no path and no words is a
+      // rectangle too: a "guide-panel" with only a fill drew nothing and broke every PPTX download (ticket 173, 2026-11-26)
+      if ((e.path !== undefined || e.content === undefined) && !/^\s*[Mm]/.test(String(e.path ?? ''))) {
         const [w, h] = e.viewBox
         e.path = /circle|ellipse|oval/i.test(String(e.path)) ? `M 0 ${h / 2} A ${w / 2} ${h / 2} 0 1 0 ${w} ${h / 2} A ${w / 2} ${h / 2} 0 1 0 0 ${h / 2} Z` : `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
       }

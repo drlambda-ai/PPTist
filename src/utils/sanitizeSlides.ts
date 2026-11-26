@@ -20,6 +20,12 @@ export const sanitizeElements = (elements: PPTElement[]) => {
   for (const el of elements) {
     if (el.type === 'text') el.content = cleanHtml(el.content)
     if (el.type === 'shape' && el.text) el.text.content = cleanHtml(el.text.content)
+    // a shape saved with no path drew nothing and broke the PPTX download (ticket 173, 2026-11-26): it becomes its box
+    if (el.type === 'shape' && typeof el.path !== 'string') {
+      const [w, h] = Array.isArray(el.viewBox) && el.viewBox.length === 2 ? el.viewBox : [el.width || 1, el.height || 1]
+      el.viewBox = [w, h]
+      el.path = `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+    }
     if (el.link?.type === 'web' && !isWebLink(el.link.target)) delete el.link
   }
 }
