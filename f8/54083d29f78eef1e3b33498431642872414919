@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. Typecheck clean. Sets PPTImageElement.own where a picture is added (add_image, use_file_images) or swapped (change_image), and carries it through the put-back list. Checked end to end on production after the deploy (see the session's e2e run).
