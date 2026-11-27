@@ -2460,7 +2460,13 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const attached = new Set((s.images || []).map(m => m.url))
     // nor the page's backdrop: with its own figure kept, a page has no other picture left and the template background would go
     // only a picture known to be added (own false) goes: one with no mark may be theirs
-    const kept = (e: any) => args.keep_own === true && (e.own !== false || attached.has(e.src) || isBackdrop(e))
+    // "remove the images from all slides": the pictures go, the template's backgrounds stay. A page with no other
+    // picture gave up its backdrop, so 4 of 12 pages lost their background and 8 kept it (production run,
+    // 2026-11-27). The backdrop is the picture meant only on pages the user named, in a deck that has no other
+    // picture, or when they want no picture at all
+    const backdropsStay = !args.pages?.length && !args.images?.length && args.no_pictures_at_all !== true
+      && targets.some(id => slides.value[pos(id)].elements.some((e: any) => e.type === 'image' && !isBackdrop(e) && !logos.has(imgSpot(e))))
+    const kept = (e: any) => (backdropsStay && isBackdrop(e)) || (args.keep_own === true && (e.own !== false || attached.has(e.src) || isBackdrop(e)))
     if (args.keep_own === true && !slides.value.some(sl => sl.elements.some((e: any) => e.type === 'image' && typeof e.own === 'boolean'))) {
       fail('This deck was opened before the editor kept track of which pictures came from your files, so I cannot tell them apart here. Nothing was removed. Tell me the pages or pictures to remove.')
     }
