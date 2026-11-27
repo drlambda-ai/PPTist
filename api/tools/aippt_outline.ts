@@ -32,6 +32,7 @@ Write in ${language}. Output only the outline, no preface, no code fences. If th
     res.end()
   }
   catch (e: any) {
+    console.error('[aippt_outline] failed:', String(e?.message || e).slice(0, 300))
     res.write(`\n[error] ${String(e?.message || e)}`)
     res.end()
   }

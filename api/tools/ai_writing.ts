@@ -22,6 +22,7 @@ export default async function handler(req: any, res: any) {
     res.end()
   }
   catch (e: any) {
+    console.error('[ai_writing] failed:', String(e?.message || e).slice(0, 300))
     res.write(`\n[error] ${String(e?.message || e)}`)
     res.end()
   }

@@ -296,6 +296,7 @@ async function handler(req: any, res: any) {
     else res.status(400).json({ error: 'kind must be web, scholar, url, wikimedia or stock' })
   }
   catch (e: any) {
+    console.error('[research] failed:', String(e?.message || e).slice(0, 300)) // the 500 alone leaves the request log blank
     res.status(500).json({ error: String(e?.message || e) })
   }
 }

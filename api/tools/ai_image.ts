@@ -25,6 +25,7 @@ export default async function handler(req: any, res: any) {
     res.status(200).json({ src: `data:image/png;base64,${b64}` })
   }
   catch (e: any) {
+    console.error('[ai_image] failed:', String(e?.message || e).slice(0, 300)) // the 500 alone leaves the request log blank
     res.status(500).json({ error: String(e?.message || e) })
   }
 }
