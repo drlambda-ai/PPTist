@@ -870,7 +870,7 @@ async function handler(req: any, res: any) {
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
     const from = Number(body.moved_from)
-    const moved = from >= 1 && from <= deckPages.length && from !== Number(current) ? ` They sent their previous message from page ${from} and have gone to page ${current} since: a message that names no page is about page ${current}, also when it repeats what they asked for on page ${from} (page_named false).` : ''
+    const moved = from >= 1 && from <= deckPages.length && from !== Number(current) ? ` They sent their previous message from page ${from} and have gone to page ${current} since: a message about one page that names none means page ${current}, also when it repeats what they asked for on page ${from} (page_named false); what it asks for the whole deck or for pages it names is unchanged.` : ''
     const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now.${grown} The user is looking at page ${current}.${moved} ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
