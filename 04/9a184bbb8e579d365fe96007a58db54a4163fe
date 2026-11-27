@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. One predicate: keep_own keeps every picture not marked own false. Typecheck clean; the real-turn replay still removes the 25 marked-added pictures.
