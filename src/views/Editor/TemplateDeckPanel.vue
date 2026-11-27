@@ -160,7 +160,7 @@ interface Session {
   // time, and uploaded it again herself (2026-11-16)
   // others / background: for a background picture, the page's other full-slide pictures and its background as they
   // were then, so a picture put back puts each of them back too
-  was?: Record<string, { src: string, clip: any, shows: string, others?: Record<string, { src: string, clip: any }>, background?: any }[]>
+  was?: Record<string, { src: string, clip: any, own?: boolean, shows: string, others?: Record<string, { src: string, clip: any }>, background?: any }[]>
   // the letter sizes a text box had before the chat first resized it (element id -> px, in order): "back as it was"
   // puts them back exactly. Asked after two "bigger" messages, a 0.8 scale left other sizes, on the wrong pages (2026-11-19)
   sizes?: Record<string, number[]>
@@ -3468,7 +3468,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === now && was.others?.[e.id]) : []
         const bgBack = isBackdrop(el) && was.background && sl.background?.type === 'image' && sl.background.image?.src === now
         keepPic(el, sl)
-        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip, own: (was as any).own } as any, slideId: id })
+        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip, own: was.own } as any, slideId: id })
         s.pics = { ...s.pics, [el.id]: was.shows }
         for (const e of copies) {
           keepPic(e)
