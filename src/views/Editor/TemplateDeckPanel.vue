@@ -4614,7 +4614,10 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   }
   const sp = takeSpend()
   const fee = sp.charged > 0 ? (t('\n(Credits used: {p0}{p1})', { p0: sp.charged, p1: sp.left >= 0 && sp.left <= 9000000 ? t(' · {p0} left', { p0: sp.left }) : '' })) : ''
-  const [said, feeSaid] = await finalize(text, reply, free, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null, fee)
+  // as the reply holds them: its lines are joined without the blank ones, so an answer in paragraphs matched no part of
+  // it, went untranslated, and an English user read a speech in Chinese (production run, 2026-11-27)
+  const shown = free.map(f => f.split('\n').filter(Boolean).join('\n'))
+  const [said, feeSaid] = await finalize(text, reply, shown, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null, fee)
   say('assistant', said + feeSaid)
   recordTurn(text, said, done, true)
 }
