@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Two prompt texts (the page editor's flat-page note, the router's flat-page line); no code path changed. Judged by my own eyes on the before/after screenshots of the replay. Risk: new text in a default font where the painted one had another; a page whose lines sit on photos is untouched.
