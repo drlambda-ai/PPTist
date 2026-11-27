@@ -869,7 +869,9 @@ async function handler(req: any, res: any) {
     const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
-    const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now.${grown} The user is looking at page ${current}. ${template
+    const from = Number(body.moved_from)
+    const moved = from >= 1 && from <= deckPages.length && from !== Number(current) ? ` They sent their previous message from page ${from} and have gone to page ${current} since: a message that names no page is about page ${current}, also when it repeats what they asked for on page ${from} (page_named false).` : ''
+    const context = `Today is ${today}. The deck has ${deckPages.length} page(s) right now.${grown} The user is looking at page ${current}.${moved} ${template
       ? 'The deck was built from the user\'s company template.'
       : 'No company template is in use: never call rebuild_from_template.'}${body.selected
       ? `\nOn page ${current} the user has selected: ${String(body.selected).slice(0, 300)}. "This"/"it"/"this picture/text/chart" means it, and it is the target when the message names no other (a selected picture counts as picture_named).`

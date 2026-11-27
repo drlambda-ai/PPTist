@@ -165,7 +165,7 @@ interface Session {
   // puts them back exactly. Asked after two "bigger" messages, a 0.8 scale left other sizes, on the wrong pages (2026-11-19)
   sizes?: Record<string, number[]>
   // turn: the chat message this reply answers (its x-turn-id); rating 1 up, 0 down; comment: sent with a thumbs-down
-  history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string }[]
+  history: { role: 'user' | 'assistant', text: string, turn?: string, rating?: 0 | 1, comment?: string, page?: string }[] // page: id of the page a user message was sent from
   versions: { spec: any, deckUrl: string, h: number }[]
   edited?: boolean // template deck changed in the editor since the last build
   synced?: { keys: string[], urls: Record<string, string> } // ChatSlide: pages last sent to the project, and their pictures
@@ -323,7 +323,7 @@ const keepUnaskedSizes = (i: number, was: PPTElement[]) => {
 
 let replyTurn = '' // the chat message being answered: its replies get the thumbs, tied to its turn id
 const say = (role: 'user' | 'assistant', text: string) => {
-  s.history.push(role === 'assistant' && replyTurn ? { role, text, turn: replyTurn } : { role, text })
+  s.history.push(role === 'assistant' && replyTurn ? { role, text, turn: replyTurn } : role === 'user' ? { role, text, page: slides.value[slideIndex.value]?.id } : { role, text })
   save()
   nextTick(() => {
     if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight 
@@ -4032,6 +4032,11 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   let leftNudged = false // a not_done the router was sent back over, once per message
   let wordsNudged = false // an answer that only offered the change asked for was sent back, once per message
   currentAtSend = startPageId || ''
+  // the page the previous message was sent from, when the user has gone to another page since: a page-less repeat of
+  // an earlier ask ("shorter, bigger text") then went to the earlier message's page, not the one on screen (real
+  // turns 2026-11-24: sent from 18, edited 17; sent from 24, edited 23)
+  const prevPage = s.history.filter(h => h.role === 'user').slice(-2, -1)[0]?.page
+  const movedFrom = prevPage && prevPage !== startPageId ? slides.value.findIndex(x => x.id === prevPage) + 1 : 0
   const pagesAtSend = deckLines() // the deck as the router is shown it, for the check of the finished message
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
@@ -4117,6 +4122,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
         before: pagesAtStart, added: slides.value.map((x, k) => (idsAtStart.has(x.id) ? 0 : k + 1)).filter(Boolean),
         pending: pendingAtStart || undefined,
         selected: selected || undefined,
+        moved_from: movedFrom || undefined,
         painted: paintedAtSend || undefined,
         files: s.docs.map(d => ({ name: d.name, pages: filePages(d.text).length || undefined, chars: d.text.length, look: d.name === lookFile() || undefined })),
         pictures: (s.images || []).map(m => m.name),
