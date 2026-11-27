@@ -2457,8 +2457,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // (PPTImageElement.own), or attached in this chat
     const attached = new Set((s.images || []).map(m => m.url))
     // nor the page's backdrop: with its own figure kept, a page has no other picture left and the template background would go
-    const kept = (e: any) => args.keep_own === true && (e.own === true || attached.has(e.src) || isBackdrop(e))
-    if (args.keep_own === true && !attached.size && !slides.value.some(sl => sl.elements.some((e: any) => e.type === 'image' && typeof e.own === 'boolean'))) {
+    // only a picture known to be added (own false) goes: one with no mark may be theirs
+    const kept = (e: any) => args.keep_own === true && (e.own !== false || attached.has(e.src) || isBackdrop(e))
+    if (args.keep_own === true && !slides.value.some(sl => sl.elements.some((e: any) => e.type === 'image' && typeof e.own === 'boolean'))) {
       fail('This deck was opened before the editor kept track of which pictures came from your files, so I cannot tell them apart here. Nothing was removed. Tell me the pages or pictures to remove.')
     }
     if (!args.confirmed && (targets.length > 1 || args.user_asked_to_remove !== true)) {
