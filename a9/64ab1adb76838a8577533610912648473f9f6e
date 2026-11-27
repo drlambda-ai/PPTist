@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. Two tool-description sentences (set_text_style, say_unable); no code path changed. Both real turns replayed on the users' saved decks in Codex mode: edit_all_pages for the colour ask, say_unable for the script ask. Risk: a 'lighter colour' ask that meant the text now goes to a page edit; the user can name the text.
