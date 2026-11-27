@@ -4019,6 +4019,16 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     recordTurn(text, line, ['load_version'], true)
     return
   }
+  // "No, keep them" ends the question. Sent on to the router, it offered the same pages again, and again after a
+  // second No (production run, 2026-11-28)
+  if (!again && s.pending?.options?.length === 2 && s.pending.options[1].trim() === text.trim() && (s.deleteAsked?.length || s.pending.repeat?.every(c => c.args?.confirmed))) {
+    s.pending = null
+    s.deleteAsked = undefined
+    const line = t('No page was changed. {p0}', { p0: '' }).trim()
+    say('assistant', line)
+    recordTurn(text, line, ['kept'], true)
+    return
+  }
   if (!Object.keys(openedSlides).length) rememberOriginal() // a deck opened another way (?pptx=, a local session): its state before the first change
   // the Yes button confirms; so does a typed reply to the question when the router, reading it, asks again to delete
   // exactly those pages as the user's own wish ("можешь их заменить!" got the same question back, 2026-11-12)
