@@ -2452,11 +2452,20 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // and on one page only when the router says the user's words asked for it ("..." after "like page 6" removed one,
     // eval 2026-11-13). The yes button runs exactly this removal, page by page, without asking the router again
     const logos = logoSpots()
+    // "remove the pictures that are not from my files": the user's own stay (a 23-paper deck held 8 of its figures and
+    // 25 AI pictures, the question offered all 43, prod 2026-11-27). Own = marked so when the project was opened
+    // (PPTImageElement.own), or attached in this chat
+    const attached = new Set((s.images || []).map(m => m.url))
+    // nor the page's backdrop: with its own figure kept, a page has no other picture left and the template background would go
+    const kept = (e: any) => args.keep_own === true && (e.own === true || attached.has(e.src) || isBackdrop(e))
+    if (args.keep_own === true && !attached.size && !slides.value.some(sl => sl.elements.some((e: any) => e.type === 'image' && typeof e.own === 'boolean'))) {
+      fail('This deck was opened before the editor kept track of which pictures came from your files, so I cannot tell them apart here. Nothing was removed. Tell me the pages or pictures to remove.')
+    }
     if (!args.confirmed && (targets.length > 1 || args.user_asked_to_remove !== true)) {
       // only pages that have a picture to remove: a page with none would end the confirmed run there (eval 2026-11-14)
-      const withPictures = targets.filter(id => pictures(slides.value[pos(id)]).some(e => !logos.has(imgSpot(e))))
+      const withPictures = targets.filter(id => pictures(slides.value[pos(id)]).some(e => !logos.has(imgSpot(e)) && !kept(e)))
       if (!withPictures.length) fail(t('There is no picture to remove.'))
-      const count = withPictures.reduce((k, id) => k + (args.images?.length || pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e))).length), 0)
+      const count = withPictures.reduce((k, id) => k + (args.images?.length || pictures(slides.value[pos(id)]).filter(e => !logos.has(imgSpot(e)) && !kept(e)).length), 0)
       // one page by its number: "from 1 page(s)" had no plural to pick for two counts (2026-11-23)
       const q = withPictures.length === 1
         ? t('Remove {p0} picture(s) from page {p1}? Nothing is removed yet.', { p0: count, p1: pos(withPictures[0]) + 1 }, count)
@@ -2475,14 +2484,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // no numbers, "delete the pictures" removes content pictures, never the background or a logo
       const sl = slides.value[pos(id)]
       const imgs = pictures(sl), backdrop = firstBackdrop(sl)
-      const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e))
+      const content = imgs.filter(e => !logos.has(imgSpot(e)) && !isBackdrop(e) && !kept(e))
       // "no pictures at all" includes the full-slide one ("no image at all in the last slide" answered "there is no
       // picture to remove", prod 2026-11-13) when it is the only picture there; with content pictures it stays ("remove
       // the last photo" came as no_pictures_at_all and took page 10's background with it, replay 2026-11-13)
       // never the one full-slide picture of a page that is nothing else (a pasted screenshot): that would blank the page
       const all = content.length ? content : onlyFullPicture(sl) ? [] : sl.elements.filter((e: any) => e.type === 'image' && !logos.has(imgSpot(e)))
       const drop = new Set((args.images?.length ? args.images.map((k: number) => (k === 0 ? (onlyFullPicture(sl) ? null : backdrop) : imgs[k - 1])) : args.no_pictures_at_all ? all : content.length ? content : [backdrop]) // only the background is left: that is the picture they see
-        .filter(Boolean).map((e: any) => e.id))
+        .filter((e: any) => e && !kept(e)).map((e: any) => e.id))
       if (!drop.size) continue
       n += drop.size
       slidesStore.updateSlide({ elements: slides.value[pos(id)].elements.filter(e => !drop.has(e.id)) }, id)

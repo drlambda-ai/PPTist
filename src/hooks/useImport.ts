@@ -1,7 +1,7 @@
 import { t } from '@/i18n'
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { normalizePptx } from '@/utils/normalizePptx'
+import { normalizePptx, pictureOrigins } from '@/utils/normalizePptx'
 import { parse, type Shape, type Element, type ChartItem, type BaseElement } from 'pptxtojson'
 import { nanoid } from 'nanoid'
 import tinycolor from 'tinycolor2'
@@ -668,7 +668,9 @@ export default () => {
     const reader = new FileReader()
     reader.onload = async e => {
       let json = null
+      let origins: Awaited<ReturnType<typeof pictureOrigins>> = new Map()
       try {
+        origins = await pictureOrigins(e.target!.result as ArrayBuffer).catch(() => new Map())
         json = await parse(await normalizePptx(e.target!.result as ArrayBuffer), {
           imageMode: 'base64',
           videoMode: 'blob',
@@ -839,6 +841,10 @@ export default () => {
                 flipH: el.isFlipH,
                 flipV: el.isFlipV,
               }
+              // whose picture it is, when the file says so: the one marked picture in this place on this slide
+              const near = (a: number, b: number) => Math.abs(a - b * ratio) < 1.5
+              const origin = origins.get(slideNo)?.find(o => near(el.left, o.x) && near(el.top, o.y) && near(el.width, o.w) && near(el.height, o.h))
+              if (origin) element.own = origin.own
               if (el.borderWidth) {
                 element.outline = {
                   color: el.borderColor,

@@ -313,6 +313,7 @@ export interface PPTImageElement extends PPTBaseElement {
   type: 'image'
   fixedRatio: boolean
   src: string
+  own?: boolean // a ChatSlide deck: true = from the user's own files, false = stock or AI; unset when not known
   outline?: PPTElementOutline
   filters?: ImageElementFilters
   clip?: ImageElementClip

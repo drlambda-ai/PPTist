@@ -67,3 +67,25 @@ export const normalizePptx = async (buf: ArrayBuffer): Promise<ArrayBuffer> => {
   }
   return changed ? zip.generateAsync({ type: 'arraybuffer' }) : buf
 }
+
+// ChatSlide's own PowerPoint (the first open of a project) says of each picture, in its alt text, whether it came from
+// the user's files ("chatslide:own") or was added (stock, AI: "chatslide:added"). pptxtojson drops alt text, so the
+// pictures are read here: slide number -> their boxes in pt, matched to the imported pictures by position.
+export const pictureOrigins = async (buf: ArrayBuffer) => {
+  const out = new Map<number, { own: boolean, x: number, y: number, w: number, h: number }[]>()
+  const zip = await JSZip.loadAsync(buf)
+  for (const name of Object.keys(zip.files)) {
+    if (!name.startsWith('ppt/slides/slide') || !name.endsWith('.xml')) continue
+    const doc = new DOMParser().parseFromString(await zip.file(name)!.async('string'), 'application/xml')
+    const boxes = []
+    for (const pic of Array.from(doc.getElementsByTagName('p:pic'))) {
+      const mark = pic.getElementsByTagName('p:cNvPr')[0]?.getAttribute('descr') || ''
+      const off = pic.getElementsByTagName('a:off')[0], ext = pic.getElementsByTagName('a:ext')[0]
+      if (!mark.startsWith('chatslide:') || !off || !ext) continue
+      const pt = (el: Element, a: string) => Number(el.getAttribute(a)) / 12700
+      boxes.push({ own: mark === 'chatslide:own', x: pt(off, 'x'), y: pt(off, 'y'), w: pt(ext, 'cx'), h: pt(ext, 'cy') })
+    }
+    if (boxes.length) out.set(Number(name.slice('ppt/slides/slide'.length, -'.xml'.length)), boxes)
+  }
+  return out
+}
