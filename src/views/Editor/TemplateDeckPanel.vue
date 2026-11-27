@@ -4662,13 +4662,17 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
   const now = new Set(slides.value.map(x => x.id))
   const hidden = (sl: Slide) => sl.elements.filter((e: any) => e.type === 'image' && isBackdrop(e) && e.filters?.opacity === '0%').length
+  // a picture that became its own file while the turn ran (data: -> link, externalizeImages) is the same picture: read
+  // as a change, "page 20 had a background change that was not asked for" undid a correct turn and ran it again
+  // (3 of 36 reruns in real turns, 2026-11-24..27)
+  const hosted = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === 'string' && uploaded.has(x) ? uploaded.get(x) : x)
   const changes = (room: number) => {
     const lines: string[] = []
     slides.value.forEach((x, k) => {
       const o = old.get(x.id)
       if (!o) lines.push(`page ${k + 1} NEW: ${shown(x, room)}`)
-      else if (o.n !== k + 1 && JSON.stringify(o.sl) === JSON.stringify(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x, room), 120)}`)
-      else if (JSON.stringify(o.sl) !== JSON.stringify(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${JSON.stringify(o.sl.background) !== JSON.stringify(x.background) ? '\n  (its background changed)' : ''}${texts(o.sl, 100000) === texts(x, 100000) ? '\n  (the same words: what changed is what you are not shown, such as positions, sizes, line spacing or colours)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
+      else if (o.n !== k + 1 && hosted(o.sl) === hosted(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x, room), 120)}`)
+      else if (hosted(o.sl) !== hosted(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${hosted(o.sl.background) !== hosted(x.background) ? '\n  (its background changed)' : ''}${texts(o.sl, 100000) === texts(x, 100000) ? '\n  (the same words: what changed is what you are not shown, such as positions, sizes, line spacing or colours)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
     })
     was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x, room)}`) })
     return lines
