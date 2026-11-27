@@ -279,7 +279,7 @@ const TOOLS = [
     page_named: { type: 'boolean', description: 'true ONLY if the user named the source page; false for "this slide"' },
     pages: { ...pages, description: 'Pages to change; empty = every other page' },
   }, ['from', 'page_named', 'pages']),
-  fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else.', {
+  fn('say_unable', 'The request is clear, but neither this editor nor any tool here can do it. Say so plainly instead of doing something else. Never for text the user wants written "as a Word / PDF / document file" (a speech, an oral defence, a script, a summary, questions): only the file is missing, so write that text in full now with answer_question and say it can be copied into a document; an offer to write it is not an answer.', {
     what: { type: 'string', description: 'The capability that is missing, in English, in a few words' },
     message: { type: 'string', description: 'For the user, in their language: what cannot be done yet, and what you can do instead' },
   }, ['what', 'message']),
