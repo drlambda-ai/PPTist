@@ -4003,7 +4003,10 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   const pagesAtStart = slides.value.length
   if (!again) takeSpend() // spend from an earlier, failed turn never lands in this footnote (a first attempt does)
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
-  if (s.pending?.offer && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
+  // the same request sent again in answer to "Remove 43 pictures? Nothing is removed yet." is a yes: asked again, the
+  // user got the same question twice (prod 2026-11-27)
+  const resent = !!s.pending?.repeat?.every(c => c.args?.confirmed) && s.pending.request?.trim() === text.trim()
+  if (s.pending?.offer && !resent && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
   // what the first attempt read stays read: a retry that dropped the attached picture's description drew a generic
   // diagram instead of the one the user showed (replay 2026-11-23)
@@ -4072,7 +4075,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   // a font change takes every page in one step: page by page, identical lines merged and the reply listed 4 changes
   // for 9 pages, and the user asked again (2026-11-17)
   const allAtOnce = ['set_font_size', 'set_font', 'set_text_style']
-  const repeat: any[] = pendingAtStart?.repeat && pendingAtStart.options?.[0]?.trim() === text.trim()
+  const repeat: any[] = pendingAtStart?.repeat && (resent || pendingAtStart.options?.[0]?.trim() === text.trim())
     // from a page shaped over earlier messages (like): its look as it is now, in place of the last size step again
     ? [...(pendingAtStart.like ? [{ action: 'match_look', args: { from: pendingAtStart.like, pages: pendingAtStart.pages || [], more: pendingAtStart.repeat.some(c => c.action !== 'set_font_size') } }] : []),
       ...pendingAtStart.repeat.filter(c => allAtOnce.includes(c.action) && !(pendingAtStart.like && c.action === 'set_font_size')).map(c => ({ action: c.action,
