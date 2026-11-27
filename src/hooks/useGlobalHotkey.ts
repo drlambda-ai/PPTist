@@ -267,6 +267,9 @@ export default () => {
     }
     if (key === KEYS.ENTER) {
       if (disableHotkeys.value) return
+      // Enter typed in a text field (the chat box) sends that field: with the page list still marked as focused it
+      // also added a blank page to the deck, three in one chat session (production run, 2026-11-27)
+      if ((e.target as HTMLElement | null)?.closest?.('textarea, input, [contenteditable="true"]')) return
       e.preventDefault()
       create()
     }
