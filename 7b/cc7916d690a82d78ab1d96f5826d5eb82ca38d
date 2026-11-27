@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Early return for the second button of a delete / remove confirmation; uses an existing translated line. Verified on production after deploy.
