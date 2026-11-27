@@ -2045,17 +2045,22 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         if (!(e instanceof StepFailed) || !k) throw e
         break // the pages written so far stay, and the reply counts them
       }
+      // the new page by its id: an Undo pressed while the pages were being written took the page out, and reading it
+      // by its number crashed the turn ("Cannot read properties of undefined (reading 'elements')", prod 2026-11-27)
+      const at = pos(page.id)
+      if (at < 0) break
       // a line left exactly as on the copied page (the small header "Key Takeaway: Match Platform to Your Goal" stayed
       // on a new TikTok page): one more pass names those lines
       const copied = new Set(source.elements.map(elText).filter(Boolean))
-      const stale = slides.value[after + k].elements.map(elText).filter(t => t && copied.has(t))
-      if (stale.length) await editSlide(after + k, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${own1 || args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
-      written.push(titleAt(after + k))
+      const stale = slides.value[at].elements.map(elText).filter(t => t && copied.has(t))
+      if (stale.length) await editSlide(at, `These lines are still the text of the page this one was copied from; rewrite each for THIS page's topic (${own1 || args.instruction}), same length and style: ${stale.map(t => `"${t.slice(0, 120)}"`).join('; ')}`).catch(() => undefined)
+      if (pos(page.id) < 0) break
+      written.push(titleAt(pos(page.id)))
       // pictures still the copied page's (a new "coffee prices" page kept slide 2's barista photos, 2026-11-11): a stock
       // photo for this page's topic in the same frame, so the layout stays and nothing repeats
       const copiedPics = new Set(source.elements.filter((e: any) => e.type === 'image' && !isBackdrop(e)).map((e: any) => e.src))
       const { width: SW, height: SH } = slideSize()
-      for (const [n, e] of pictures(slides.value[after + k]).entries()) {
+      for (const [n, e] of pictures(slides.value[pos(page.id)]).entries()) {
         if (isBackdrop(e) || !copiedPics.has(e.src) || e.width * e.height < 0.02 * SW * SH) continue // keep backdrops and logos
         await changeImage(text, page.id, n + 1, String(own1 || written[k] || args.instruction).slice(0, 80), 'photo').catch(() => undefined)
       }
