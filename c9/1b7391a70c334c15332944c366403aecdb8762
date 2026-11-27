@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Found by the production end-to-end run; the localize request showed a 643-character line against a 637-character reply (blank lines dropped). Verified on production after deploy by the same run.
