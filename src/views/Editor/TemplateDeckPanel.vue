@@ -2923,12 +2923,25 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     await fitOverflow([...pagesDone], grew, new Set(Object.keys(was)))
     touched([...pagesDone])
     // a box with no room to grow kept its size: said, never counted as resized
-    const stuck = [...pagesDone].flatMap(id => (slides.value[pos(id)]?.elements || []) as any[])
-      .filter(e => grew[e.id] && !sizes(html(e)).some((v, i) => v >= (grew[e.id][i] || 16) + 1)).length // under 1px is not a change anyone sees
+    const stuckIn = (id: string) => ((slides.value[pos(id)]?.elements || []) as any[])
+      .filter(e => grew[e.id] && !sizes(html(e)).some((v, i) => v >= (grew[e.id][i] || 16) + 1)) // under 1px is not a change anyone sees
+    // "bigger, shorten if needed": a full box could not grow, the step said so, the router shortened the words in a
+    // second step and never grew them, and the user asked three more times (real turns 2026-11-24, one page each).
+    // The words of such a box are shortened here until the bigger size fits. ponytail: 3 pages a step, the rest is said
+    const notes: string[] = []
+    if (args.shorten_to_fit === true && k > 1) {
+      for (const id of [...pagesDone].filter(x => stuckIn(x).length).slice(0, 3)) {
+        const boxes = stuckIn(id).map(e => `"${elText(e).slice(0, 60)}" (now ${Math.max(...grew[e.id], 16)}px, wanted about ${Math.round(Math.max(Math.max(...grew[e.id], 16) * k, Math.max(...grew[e.id], 16) + 4))}px)`).join('; ')
+        const r = await editSlide(pos(id), `The user wants bigger text on this page and allows shorter wording for it. These text boxes are full, so their text could not grow: ${boxes}. Shorten the wording of each (keep its key points and its language) until it fits the same box at the wanted font size, and set that font size. Change nothing else on the page.`).catch(() => '')
+        if (r) notes.push(String(r))
+      }
+    }
+    const stuck = [...pagesDone].flatMap(id => stuckIn(id)).length
     if (stuck === n) fail(t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck))
     return (pagesDone.size === 1 ? t('Resized the text in {p0} text boxes on page {p1}.', { p0: n - stuck, p1: pos([...pagesDone][0]) + 1 })
       : t('Resized the text in {p0} text boxes across {p1} page(s).', { p0: n - stuck, p1: pagesDone.size }, pagesDone.size))
       + (stuck ? ` ${t('{p0} text box(es) had no room to grow and kept their size.', { p0: stuck }, stuck)}` : '')
+      + (notes.length ? ` ${notes.join(' ')}` : '')
   }
   if (action === 'set_text_style') { // direct, like set_font_size: "text black", "bold", "underline 4.5 billion" through edit_page changed nothing or the wrong thing (prod 2026-11-15..17)
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
