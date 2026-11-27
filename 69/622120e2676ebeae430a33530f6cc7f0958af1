@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. The question runs only when pages_left would cut more than half the deck and the message is not a yes to the delete question; an unreadable answer leaves the old behaviour.
