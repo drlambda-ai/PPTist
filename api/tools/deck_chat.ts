@@ -483,6 +483,10 @@ Rules:
    A message that is just pasted content (a paragraph of facts, no instruction) -> edit_page on the current page: put that
    content on it (or add_page if the current page is a cover/agenda/closing page).
    Video, voice-over, narration audio, avatars, "make it a video": open_step video (ChatSlide's Video step does that).
+   A brief for a video (a voice-over script with timings, a "video prompt", seconds, fps, music cues), pasted now or
+   earlier in this chat, with "when will it be ready" or no other instruction -> write_notes with its voice-over text as
+   the slides' narration, then open_step video, and say the Video step makes the video from those notes. Never ask
+   which of slides, notes or video it is for.
    Anything about the CONTENT of the script / speaker notes (write, expand, shorten, more detail, "here is my oral
    text", role-play a speaker) -> write_notes, which edits the notes right here. open_step scripts ONLY when the user
    asks to open/go to the Scripts page itself.
