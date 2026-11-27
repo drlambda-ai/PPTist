@@ -1837,10 +1837,12 @@ const keepPic = (el: any, sl?: Slide) => {
     s.was = { ...s.was, [el.id]: list }
     return
   }
-  list.push({ src: el.src, clip: el.clip, shows: s.pics?.[el.id] || '', ...page })
+  list.push({ src: el.src, clip: el.clip, own: (el as any).own, shows: s.pics?.[el.id] || '', ...page })
   if (list.length > 5) list.splice(1, 1) // the first one stays: it is the one users ask for
   s.was = { ...s.was, [el.id]: list }
 }
+// whose picture a picture step adds: the user's attached one, one from a stock site or AI, or (an address they gave) not known
+const ownOf = (source: string) => source === 'attached' ? { own: true } : source === 'direct' ? { own: undefined } : { own: false }
 const changeImage = async (text: string, slideId: string, image: number, query: string, source: string) => {
   const sl = slides.value.find(x => x.id === slideId)
   // picture 0 = the full-slide backdrop ("change the background picture"); 1.. = the content pictures
@@ -1860,7 +1862,7 @@ const changeImage = async (text: string, slideId: string, image: number, query: 
   keepPic(el, sl)
   for (const e of [el, ...copies]) {
     if (e !== el) keepPic(e)
-    slidesStore.updateElement({ id: e.id, props: { src, clip } as any, slideId })
+    slidesStore.updateElement({ id: e.id, props: { src, clip, ...ownOf(source) } as any, slideId })
     s.pics = { ...s.pics, [e.id]: query }
   }
   // the slide's own background, the same photo, shows at the edges the picture does not reach
@@ -2228,7 +2230,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     for (const m of chosen) {
       const box = freeBox(slides.value[pos(id)], { left: W * 0.55, top: H * 0.2, width: W * 0.4, height: H * 0.6 })
       if (!box) break
-      slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src: m.url, fixedRatio: true, rotate: 0, ...box } as any] }, id)
+      slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: nanoid(10), src: m.url, fixedRatio: true, rotate: 0, ...box, own: true } as any] }, id)
       placed++
     }
     touched([id])
@@ -2404,7 +2406,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       Object.assign(now, { left: now.left + (now.width - w) / 2, top: now.top + (now.height - h) / 2, width: w, height: h })
     }
     const picId = nanoid(10)
-    slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: picId, src, fixedRatio: true, rotate: 0, ...now } as any] }, id)
+    slidesStore.updateSlide({ elements: [...slides.value[pos(id)].elements, { type: 'image', id: picId, src, fixedRatio: true, rotate: 0, ...now, ...ownOf(args.source) } as any] }, id)
     s.pics = { ...s.pics, [picId]: String(args.query || '') }
     touched([id])
     picturedThisTurn.add(picKey(id, args.query))
@@ -3466,7 +3468,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
         const copies = isBackdrop(el) ? sl.elements.filter((e: any) => e.type === 'image' && e.id !== el.id && isBackdrop(e) && e.src === now && was.others?.[e.id]) : []
         const bgBack = isBackdrop(el) && was.background && sl.background?.type === 'image' && sl.background.image?.src === now
         keepPic(el, sl)
-        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip } as any, slideId: id })
+        slidesStore.updateElement({ id: el.id, props: { src: was.src, clip: was.clip, own: (was as any).own } as any, slideId: id })
         s.pics = { ...s.pics, [el.id]: was.shows }
         for (const e of copies) {
           keepPic(e)
