@@ -2541,7 +2541,22 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   if (action === 'delete_pages') {
     let del = nums(args.pages)
     // "10 slides it must be": the pages listed first go, until that many are left
-    const keep = Number(args.pages_left) || 0
+    let keep = Number(args.pages_left) || 0
+    // a cut of more than half the deck from a number in the message: is the number how many pages go, or how many stay?
+    // "Скороди на чотири слайди" (shorten BY four) was read as "four in the end": 21 of 25 pages were offered, the user
+    // tapped yes, and wrote "no, delete only five" (prod 2026-11-26). The router keeps reading it so; asked this one
+    // thing alone, the model tells them apart
+    if (keep > 0 && n - keep > n / 2 && args.yes_to_delete_question !== true) {
+      const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+        `A user of a slide editor wrote this about a deck of ${n} slides: ${JSON.stringify(userText.slice(0, 2000))}\n`
+        + `The message holds the number ${keep}. Is ${keep} how many slides they want REMOVED ("shorten by 4 slides", "скороти на 4 слайди", "quita 4 diapositivas", "4 slides fewer") `
+        + `or how many slides the deck should HAVE in the end ("make it 4 slides", "скороти до 4 слайдів", "має бути 4", "only 4")? `
+        + 'Return JSON {"number_is": "removed" | "left" | "unclear"}.' }) }).catch(() => null)
+      if (r?.ok && (await r.json().catch(() => ({})))?.number_is === 'removed') {
+        del = del.slice(0, keep) // the router lists the least essential pages first
+        keep = 0
+      }
+    }
     if (keep > 0 && n - del.length < keep) del = del.slice(0, Math.max(0, n - keep))
     if (!del.length) fail(t('The deck already has {p0} pages.', { p0: n }))
     if (del.length >= n) fail(t('A deck needs at least one page, so I kept it.'))
