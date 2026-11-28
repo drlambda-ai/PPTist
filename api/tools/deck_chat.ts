@@ -296,7 +296,7 @@ const TOOLS = [
   fn('talk_to_human', 'The user asks for a human / real person / support, or asks about cancelling, payments, plans/pricing, their account, the app language, or a bug the editor cannot fix. ChatSlide\'s support assistant answers with the real policy and can act; NEVER answer such questions yourself.', {
     message: { type: 'string', description: 'Their issue or question, in their own words' },
   }, ['message']),
-  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it. Never to ask what a new picture should show (change_image picks one for the page\'s topic).', {
+  fn('ask_user', 'Ask ONE short clarifying question, only when acting on a guess could do the wrong thing (which file, which slide, what style). Give 2-4 concrete options when possible. The user\'s next message answers it. Never to ask what a new picture should show (change_image picks one for the page\'s topic). Never right after the user answered your question: a "yes" ("oui", "так", "sí") to a yes/no question means do it; an answer that does not pick one of your options ("oui" to "the voice or the text?") means the option their earlier messages point to, done now, never the same question again (a French user typed "oui" twice and was asked the same thing twice, 2026-11-28).', {
     user_language: { type: 'string', description: 'The language of the user\'s latest message' },
     question: { type: 'string', description: 'The question, in that language' },
     options: { type: 'array', items: { type: 'string' }, description: '2-4 short clickable answers in that language, or []' },
