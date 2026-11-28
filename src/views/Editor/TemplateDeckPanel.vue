@@ -3835,7 +3835,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     busy.value = t('Exporting the .pptx…')
     exportPPTX(slides.value, true, false) // the browser saves the file; no dialog
     const asked = String(args.asked || '').trim()
-    const other = asked && !/pptx|powerpoint|ppt/i.test(asked) // a format we cannot export to directly (Google Slides, Keynote…)
+    // the router says whether the file stands in for another format: a pattern for "PowerPoint" told a user who asked
+    // for «повер поінт» that there is no direct export to it (prod 2026-11-27)
+    const other = asked && args.substituted === true // a format we cannot export to directly (Google Slides, Keynote…)
     return other
       ? (t('There is no direct export to {p0} here; downloading a .pptx, which {p1} opens directly.', { p0: asked, p1: asked }))
       : (t('Downloading the .pptx now.'))

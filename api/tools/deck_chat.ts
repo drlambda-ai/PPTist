@@ -268,7 +268,8 @@ const TOOLS = [
   fn('download_deck', 'Download the deck as a file ("下载", "download", "export"): PowerPoint, PDF or images (a zip) really download. Google Slides / Keynote / other formats are not direct exports: use pptx and the reply says so.', {
     format: { type: 'string', enum: ['pptx', 'pdf', 'images'], description: 'pptx unless the user names PDF or images' },
     asked: { type: 'string', description: 'The format the user asked for in their words ("Google Slides", "Keynote", "pdf", ""), so the reply can say what was substituted' },
-  }, ['format', 'asked']),
+    substituted: { type: 'boolean', description: 'true ONLY when the user asked for a format this editor cannot export to directly (Google Slides, Keynote, Word, video) and the PowerPoint file stands in for it; false when they asked for PowerPoint in any language or spelling ("повер поінт", "PPT", "пауэр поинт", "파워포인트"), for PDF, for images, or named no format' },
+  }, ['format', 'asked', 'substituted']),
   fn('share_deck', 'Share the deck / get a share link ("share this", "分享", "link to send").', {}, []),
   fn('open_step', 'Open another ChatSlide page when the user asks to go there or wants what it does: scripts (write/see the narration scripts page), video (turn the deck into a video, voice-over, avatar), outlines (the outline step), dashboard (their projects; where a new project starts).', {
     step: { type: 'string', enum: ['scripts', 'video', 'outlines', 'dashboard'] },
