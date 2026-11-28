@@ -1,0 +1,2 @@
+Claude-Review: passed
+Reproduced the production error on the user's own shape (guide-panel, no path, viewBox [405,145]) with toPoints; the new fallback rectangle parses. Only shapes with no usable path change; viewBox fallback avoids a NaN scale.
