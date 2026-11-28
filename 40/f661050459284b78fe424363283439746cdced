@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. Mechanical replacements, each the same test on the same input; isDigits/isDay/isHex6 written to the exact patterns they replace.
