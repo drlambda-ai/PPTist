@@ -2892,6 +2892,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Swapped pages {p0} and {p1}.', { p0: i + 1, p1: j + 1 })
   }
   if (action === 'edit_page') {
+    // no page named = the page on screen when the message was sent. The router read "the text on this slide is too
+    // close to the bottom" as the page added one message earlier (24) while the user was on page 9 (production run,
+    // 2026-11-28). A page this turn already worked on (a page it just added) keeps its number
+    const here = currentAtSend ? pos(currentAtSend) : -1
+    const target = slides.value[Number(args.index) - 1]
+    if (args.page_named === false && here >= 0 && target && !editedThisTurn.has(target.id) && Number(args.index) !== here + 1) args = { ...args, index: here + 1 }
     // text from other pages ("slide 7: the text of slide 10, points 1-3"): the edit sees only its own page, so it
     // answered "send me slide 10's text" (2026-11-11)
     const editing = Number(args.index)
