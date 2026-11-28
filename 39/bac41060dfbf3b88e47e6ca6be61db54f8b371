@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Runs once per deck (originsTried), only when no picture has a mark and the host offers firstPictures; marks nothing unless best <= 14 and the nearest of the other origin >= max(25, 3x). Checked on the real deck in the built editor (Playwright): 32 of 32 right.
