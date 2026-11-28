@@ -829,12 +829,16 @@ async function handler(req: any, res: any) {
       // longest first and each once: a line inside another line ('Apply' in 'Apply to all pages') would otherwise lose its marker
       const free = [...new Set(strs(body.free).map(v => v.trim()).filter(v => original.includes(v)))].sort((a, b) => b.length - a.length), buttons = strs(body.options).map(v => v.slice(0, 120))
       const mark = (i: number) => `⟦${i + 1}⟧`
-      const marked = free.reduce((r, f, i) => r.split(f).join(mark(i)), original)
+      // a slide's own words the reply quotes (a new page's title) stay as they are on the slide: translated, «Thank You for
+      // Your Attention!» came back «Дякуємо за увагу!» and the user read that the English page was Ukrainian (2026-11-28)
+      const keep = [...new Set(strs(body.keep).map(v => v.trim()).filter(v => v && original.includes(v) && !free.some(f => f.includes(v))))].sort((a, b) => b.length - a.length)
+      const hold = (i: number) => `⟪${i + 1}⟫`
+      const marked = keep.reduce((r, k, i) => r.split(k).join(hold(i)), free.reduce((r, f, i) => r.split(f).join(mark(i)), original))
       const raw = await chat([
         // the language is named first: asked to translate in one step, gpt-6-luna answered an English message in Spanish
         // "на англіській" (in English) earlier made a Ukrainian user's next reply English (2026-11-12): the language the
         // user writes in, never one their messages ask the slides to be in
-        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). It is the language the words are WRITTEN in, never a language they ask for: "на англіській" or "en español" asks the slides to change language and is written in Ukrainian or Spanish. Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. A reply is in it only when EVERY sentence is: translate each sentence that is not, and keep the others word for word ("Page 3 was not changed. Trang này chỉ có một hình ảnh." for a Vietnamese user -> both sentences in Vietnamese). Do the same for each of the "Lines" and each of the "Buttons" (short button labels) when given, one entry per item, in order. Markers ⟦1⟧, ⟦2⟧... in the reply stand for line 1, 2...: keep each marker exactly where it is in the reply, and never put a marker in "lines". Return JSON, keys in this order: {"user_language": "<language of the user\'s message>", "code": "<its ISO 639-1 code, lowercase; zh-CN or zh-TW for Chinese>", "buttons": ["<each button label in that language>"], "lines": ["<each line in that language>"], "reply": "<the reply in that language, markers kept>"}.' },
+        { role: 'system', content: 'First name the language of the USER\'S MESSAGE (only that message, not the reply; when it is too short or has no accents to tell, the language of their earlier messages). It is the language the words are WRITTEN in, never a language they ask for: "на англіській" or "en español" asks the slides to change language and is written in Ukrainian or Spanish. Then give the assistant reply in that language: if the reply is already in it, copy it unchanged; otherwise translate it, keeping meaning, numbers and line breaks. A reply is in it only when EVERY sentence is: translate each sentence that is not, and keep the others word for word ("Page 3 was not changed. Trang này chỉ có một hình ảnh." for a Vietnamese user -> both sentences in Vietnamese). Do the same for each of the "Lines" and each of the "Buttons" (short button labels) when given, one entry per item, in order. Markers ⟦1⟧, ⟦2⟧... in the reply stand for line 1, 2...: keep each marker exactly where it is in the reply, and never put a marker in "lines". Markers ⟪1⟫, ⟪2⟫... are words on the slides: keep each exactly where it is, never translate or drop it. Return JSON, keys in this order: {"user_language": "<language of the user\'s message>", "code": "<its ISO 639-1 code, lowercase; zh-CN or zh-TW for Chinese>", "buttons": ["<each button label in that language>"], "lines": ["<each line in that language>"], "reply": "<the reply in that language, markers kept>"}.' },
         // a short or accent-less message ("VIDEO DC HCX", "DC R") reads as English: the user's earlier messages say
         // which language they write in (a Vietnamese user got four English replies, 2026-11-11)
         { role: 'user', content: `User's message: ${String(body.instruction || '').slice(0, 2000)}\n\n${Array.isArray(body.earlier) && body.earlier.length ? `Only if that message alone cannot tell, the language their earlier messages are written in: ${body.earlier.map((m: unknown) => String(m).slice(0, 200)).join(' | ').slice(0, 800)}\n\n` : ''}Assistant reply:\n${marked}${free.length ? `\n\nLines: ${JSON.stringify(free)}` : ''}${buttons.length ? `\n\nButtons: ${JSON.stringify(buttons)}` : ''}` },
@@ -867,9 +871,12 @@ async function handler(req: any, res: any) {
       const line = (i: number) => lines[i] || free[i]
       // the translated reply with each marker back as its line; unusable when cut off or a marker went missing
       let reply = whole ? String(j?.reply || '') : ''
-      if (reply && free.every((_, i) => reply.includes(mark(i)))) {
+      if (reply && free.every((_, i) => reply.includes(mark(i))) && keep.every((_, i) => reply.includes(hold(i)))) {
         free.forEach((_, i) => {
           reply = reply.split(mark(i)).join(line(i))
+        })
+        keep.forEach((k, i) => {
+          reply = reply.split(hold(i)).join(k)
         })
       }
       else reply = ''

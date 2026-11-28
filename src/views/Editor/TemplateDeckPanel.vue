@@ -4898,7 +4898,7 @@ const finalize = async (instruction: string, reply: string, free: string[] = [],
     // the words a model put inside the app's lines go out with the router's lines, each translated on its own
     const inside = new Set<string>()
     for (const l of reply.split('\n')) sayIn(l, tApp, (v) => { if (!free.includes(v) && reply.includes(v)) inside.add(v); return v })
-    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, free: [...free, ...inside], options, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
+    const r = await (await fetch('/api/tools/deck_chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ localize: reply, instruction, ui_language: lang, free: [...free, ...inside], keep: slides.value.map((_, k) => titleAt(k)).filter(v => v && reply.includes(`"${v}"`)), options, earlier: s.history.filter(h => h.role === 'user').slice(-4, -1).map(h => h.text) }) })).json()
     if (offer && s.pending === offer && Array.isArray(r.options) && r.options.length === options.length && r.options.every((o: unknown) => typeof o === 'string' && o.trim())) {
       offer.options = r.options.map((o: string) => o.trim())
       save()
