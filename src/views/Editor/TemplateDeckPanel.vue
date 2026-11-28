@@ -5112,7 +5112,10 @@ const syncOnce = async () => {
 }
 // Repeats until the project has the deck as it is now: edits made during a sync are sent by the next round
 // (a caller that joins a running sync, e.g. flush before Scripts, waits for that too).
+// never from a deck that did not open (opened, see save): "go to Scripts" flushes here too, and would have sent the
+// empty page to ChatSlide's Scripts and Video as the project's slides
 const syncToChatSlide = () => syncing ||= (async () => {
+  if (!opened) return
   try {
     for (let round = 0; round < 5; round++) {
       await syncOnce()
