@@ -2959,6 +2959,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     let upgradeLine = ''
     const pageId = slides.value[i].id
+    // content "from the attached file": the page editor sees only the page, so it answered there was no file and changed
+    // nothing (a real turn replayed, 2026-11-28). The files read in this message go with it, else all of the user's files
+    const fileDocs = args.from_users_file ? (s.docs.some(d => readThisTurn.has(d.name)) ? s.docs.filter(d => readThisTurn.has(d.name)) : s.docs).filter(d => d.text.trim()) : []
+    if (fileDocs.length) args = { ...args, instruction: `${args.instruction}\n\nThe user's file(s), for this page: take what belongs on it, in the file's own words where they fit:\n${fileDocs.map(d => `<file name="${drop(d.name, '"<>')}">\n${fence(d.text.slice(0, Math.floor(40000 / fileDocs.length)))}\n</file>`).join('\n')}` }
     const reply = await editSlide(i, args.instruction, (!!args.hard || !!args.redesign) && canAdvanced, !args.redesign).catch(async (e) => {
       // "the heading overlaps the body text" and the page model changed nothing (a paid user, twice, 2026-11-18): the
       // collision is measured and fixed here
