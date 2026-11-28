@@ -75,6 +75,49 @@ const t = (key: string, parameters?: Record<string, string | number>, n?: number
 // a text made of the app's own lines, said with another locale's strings; null when any part of it was written by a
 // model (that part is only in the language it came in). A model's words inside one of them (the picture's subject in
 // 'Added a picture of "{p0}"…') go through `words`: they stayed English in a Spanish line otherwise (replay, 2026-11-23)
+// plain string checks for machine formats (no regular expressions in product code)
+const hasExt = (name: string, ...exts: string[]) => exts.some(x => String(name || '').toLowerCase().endsWith(`.${x}`))
+const isHex6 = (c: unknown) => typeof c === 'string' && c.length === 7 && c[0] === '#' && [...c.slice(1)].every(ch => '0123456789abcdefABCDEF'.includes(ch))
+const isDigits = (t: string, max: number) => t.length >= 1 && t.length <= max && [...t].every(ch => ch >= '0' && ch <= '9')
+const isDay = (d: unknown) => typeof d === 'string' && d.length === 10 && d[4] === '-' && d[7] === '-' && isDigits(d.slice(0, 4) + d.slice(5, 7) + d.slice(8), 8)
+const squash = (t: string) => t.split('').map(ch => (ch.trim() ? ch : ' ')).join('').split(' ').filter(Boolean).join(' ')
+// every "font-size: <n>px" in slide HTML, read by scanning (the same matches as the old /font-size:\s*([\d.]+)px/g)
+const fontSizesIn = (html: string): { at: number, end: number, px: number }[] => {
+  const found: { at: number, end: number, px: number }[] = []
+  for (let at = html.indexOf('font-size:'); at >= 0; at = html.indexOf('font-size:', at + 1)) {
+    let k = at + 'font-size:'.length
+    while (k < html.length && !html[k].trim()) k++
+    const from = k
+    while (k < html.length && ('0123456789.'.includes(html[k]))) k++
+    if (k > from && html.startsWith('px', k)) found.push({ at, end: k + 2, px: Number(html.slice(from, k)) })
+  }
+  return found
+}
+const pxSizes = (html: string) => fontSizesIn(html).map(f => f.px)
+const mapPx = (html: string, to: (px: number, i: number) => number) => {
+  let out = '', last = 0
+  fontSizesIn(html).forEach((f, i) => { out += `${html.slice(last, f.at)}font-size: ${to(f.px, i)}px`; last = f.end })
+  return out + html.slice(last)
+}
+// every <...> tag replaced by a space (the same as the old .replace(/<[^>]+>/g, ' ')); an unclosed "<" stays text
+const stripTags = (html: string, by = ' ') => {
+  let out = ''
+  for (let k = 0; k < html.length; k++) {
+    const close = html[k] === '<' ? html.indexOf('>', k + 1) : -1
+    if (close > k + 1) { out += by; k = close }
+    else out += html[k]
+  }
+  return out
+}
+// a letter of any script (what /\p{L}/u meant here): a character with an upper / lower case pair, or one of a caseless
+// script (from Greek on), leaving out the blocks of punctuation, symbols and emoji
+const isLetter = (ch: string) => {
+  if (ch.toLowerCase() !== ch.toUpperCase()) return true
+  const c = ch.codePointAt(0)!
+  return c >= 0x370 && !(c >= 0x2000 && c <= 0x2BFF) && !(c >= 0x3000 && c <= 0x303F) && !(c >= 0xFE30 && c <= 0xFE4F) && !(c >= 0xFF00 && c <= 0xFF20) && !(c >= 0x1F000)
+}
+const hasLetter = (t: string) => [...t].some(isLetter)
+const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v => v): string | null => {
   const own = ownText.get(text)
   const [, before, inner, after] = text.match(/^(\s*)([\s\S]*?)(\s*)$/)!
@@ -85,14 +128,14 @@ const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v =
   }
   if (own) {
     return tr(own[0], own[1] && Object.fromEntries(Object.entries(own[1]).map(([k, v]) => [k, typeof v !== 'string' ? v
-      : ownText.has(v) ? sayIn(v, tr, words) ?? v : /\p{L}/u.test(v) ? words(v) : v])), own[2])
+      : ownText.has(v) ? sayIn(v, tr, words) ?? v : hasLetter(v) ? words(v) : v])), own[2])
   }
   for (let i = text.length - 1; i > 0; i--) { // one line joined from several ("Added 2 page(s)…" + " Only 2 fit.")
     if (!ownText.has(text.slice(0, i))) continue
     const rest = sayIn(text.slice(i), tr, words)
     if (rest !== null) return sayIn(text.slice(0, i), tr, words)! + rest
   }
-  return /\p{L}/u.test(text) ? null : text // spaces, digits and punctuation between them
+  return hasLetter(text) ? null : text // spaces, digits and punctuation between them
 }
 
 // the count a list of page numbers ("Pages 3, 5 were not changed") picks its plural form by: one page or several. Its
@@ -596,7 +639,7 @@ const generateNative = async (text: string, asWritten = false) => {
   // transition pages with retold lines (replay, 2026-11-21); the editor splits a long slide itself, under the same title
   const keep = asWritten ? '\n\nEvery "##" section is ONE content slide titled with its heading, holding every bullet of it as an item, in order, wording unchanged, however many. No transition slides.' : ''
   await readStream(await api.AIPPT({ content: `User request: ${text}${keep}\n\n${outline}`, language: requestLanguage(text), style: '通用', model: '' }), (chunk) => {
-    const lines = (pending + chunk).split(/\n+/)
+    const lines = (pending + chunk).split('\n')
     pending = lines.pop() || ''
     lines.forEach(flush)
   })
@@ -608,7 +651,7 @@ const generateNative = async (text: string, asWritten = false) => {
 
 // One line per page for the router: text in reading order (top to bottom), numbered images/charts so "image 2" and
 // "the chart" resolve. Text repeated on most pages (footer, deck name) is left out so pages are told apart by content.
-const elText = (e: any) => (e.content || e.text?.content || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+const elText = (e: any) => squash(stripTags(e.content || e.text?.content || ''))
 const readingOrder = (sl: Slide) => [...sl.elements].sort((x, y) => (x.top - y.top) || (x.left - y.left))
 const imgSpot = (e: any) => `${Math.round(e.left / 10)},${Math.round(e.top / 10)},${Math.round(e.width / 10)}`
 const logoSpots = () => { // an image at the same spot on most pages is a logo, never "the picture"
@@ -679,7 +722,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
   const numbered = pictures(sl) // same numbering change_image uses
   const backdrop = firstBackdrop(sl)
   const biggest = Math.max(0, ...numbered.filter(e => !logos.has(imgSpot(e))).map((e: any) => e.width * e.height))
-  return readingOrder(sl).map((e: any) => {
+  return squash(readingOrder(sl).map((e: any) => {
     if (e.type === 'image') { // size and place let the router tell a photo from an icon or a logo
       const { width: W, height: H } = slideSize()
       const area = (e.width * e.height) / (W * H)
@@ -712,7 +755,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
     if (isDigits(t, 2)) return sl.elements.filter(x => isDigits(elText(x), 2)).length > 1 ? `[number badge "${t}"]`
       : `[number badge "${t}", the page's only one: left from the layout's numbered list, it numbers nothing]`
     return common.has(t) ? '' : t
-  }).join(' ').replace(/\s+/g, ' ').trim()
+  }).join(' '))
 }
 const deckLines = () => {
   const count: Record<string, number> = {}
@@ -1148,7 +1191,7 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
     const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: src,
       instruction: 'This picture is one presentation slide. List every line of text painted in it, top to bottom, each with the box its letters fill, in percent of the picture (x = left edge, y = top edge, w = width, h = height, each 0-100), the colour of its letters, whether they are bold, and the kind of typeface (sans, serif, script or mono). JSON {"lines": [{"text": "...", "x": 0, "y": 0, "w": 0, "h": 0, "color": "#RRGGBB", "bold": false, "face": "sans"}]}' }) })
     const got = r.ok ? (await r.json().catch(() => ({})))?.lines : null
-    const lines = (Array.isArray(got) ? got : []).map((l: any) => ({ x: toNum(l?.x), y: toNum(l?.y), w: toNum(l?.w), h: toNum(l?.h), text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    const lines = (Array.isArray(got) ? got : []).map((l: any) => ({ x: toNum(l?.x), y: toNum(l?.y), w: toNum(l?.w), h: toNum(l?.h), text: squash(String(l?.text || '')).slice(0, 160),
         look: [tinycolor(String(l?.color || '')).isValid() ? `letters ${tinycolor(String(l.color)).toHexString()}` : '', l?.bold === true ? 'bold' : '', ['sans', 'serif', 'script', 'mono'].includes(l?.face) ? String(l.face) : ''].filter(Boolean).join(', ') }))
       .filter(l => l.text && [l.x, l.y, l.w, l.h].every(Number.isFinite) && l.w > 0 && l.h > 0).slice(0, 60)
     const grounds = lines.length ? await groundOf(src, lines) : []
@@ -1311,7 +1354,7 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
   // its order. "back" lands just above the slide's background layers (backdrop pictures, full-slide shapes).
   const { width: SW, height: SH } = slideSize()
   const fullSlide = (e: any) => (e.type === 'image' && isBackdrop(e)) || (e.type === 'shape' && !elText(e) && e.width >= SW * 0.95 && e.height >= SH * 0.95)
-  const isBox = (e: any) => e.type === 'shape' && !String(e.content ?? e.text?.content ?? '').replace(/<[^>]+>/g, '').trim() && e.width >= 20 && e.height >= 20
+  const isBox = (e: any) => e.type === 'shape' && !stripTags(String(e.content ?? e.text?.content ?? ''), '').trim() && e.width >= 20 && e.height >= 20
   // a NEW box without words goes behind the text by default ("a white rectangle behind the title" landed on top of it);
   // lines, arrows and icons (thinner than 20px) and anything already on the slide keep their place
   const liveIds = new Set(live.elements.map(e => e.id))
@@ -2942,7 +2985,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     // a translation that left lines as they were (the small header stayed English): one pass naming them
     if (args.translate_to) {
-      const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && /\p{L}{3}/u.test(t))
+      const left = slides.value[i].elements.map(elText).filter(t => t && before.includes(t) && [...t].filter(isLetter).length >= 3)
       if (left.length) await editSlide(i, `Translate these remaining lines into ${args.translate_to}, keeping their style: ${left.map(t => `"${t.slice(0, 160)}"`).join('; ')}`).catch(() => undefined)
       // every line still as it was: the page was in that language already ("it has to be in English" about an English
       // page was answered "translated page 7 into English", 2026-11-20)
@@ -3376,7 +3419,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             if (g === f) return false
             for (let k = page.indexOf(g); k >= 0; k = page.indexOf(g, k + 1)) {
               const end = k + g.length
-              if (end >= page.length || gap[end - 1] || !/\p{L}/u.test(page[end])) return true
+              if (end >= page.length || gap[end - 1] || !isLetter(page[end])) return true
             }
             return false
           }
@@ -3815,7 +3858,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return where + note + flatNote + (banded ? ' ' + t('Text that would not show on what is behind it got a see-through band, so it can be read.') : '') + (args.photo_query && pictureNote ? ` ${pictureNote}` : '')
   }
   if (action === 'write_notes') {
-    const hasNotes = (id: string) => !!(slides.value[pos(id)]?.remark || '').replace(/<[^>]+>/g, '').trim()
+    const hasNotes = (id: string) => !!stripTags(slides.value[pos(id)]?.remark || '', '').trim()
     const asked = args.pages?.length ? nums(args.pages) : args.said_all ? slides.value.map(x => x.id) : [slides.value[slideIndex.value].id]
     if (args.clear) {
       for (const id of asked) slidesStore.updateSlide({ remark: '' }, id)
@@ -4098,31 +4141,6 @@ const answeredHistory = () => {
 
 // What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
 let memo = ''
-// plain string checks for machine formats (no regular expressions in product code)
-const hasExt = (name: string, ...exts: string[]) => exts.some(x => String(name || '').toLowerCase().endsWith(`.${x}`))
-const isHex6 = (c: unknown) => typeof c === 'string' && c.length === 7 && c[0] === '#' && [...c.slice(1)].every(ch => '0123456789abcdefABCDEF'.includes(ch))
-const isDigits = (t: string, max: number) => t.length >= 1 && t.length <= max && [...t].every(ch => ch >= '0' && ch <= '9')
-const isDay = (d: unknown) => typeof d === 'string' && d.length === 10 && d[4] === '-' && d[7] === '-' && isDigits(d.slice(0, 4) + d.slice(5, 7) + d.slice(8), 8)
-const squash = (t: string) => t.split('').map(ch => (ch.trim() ? ch : ' ')).join('').split(' ').filter(Boolean).join(' ')
-// every "font-size: <n>px" in slide HTML, read by scanning (the same matches as the old /font-size:\s*([\d.]+)px/g)
-const fontSizesIn = (html: string): { at: number, end: number, px: number }[] => {
-  const found: { at: number, end: number, px: number }[] = []
-  for (let at = html.indexOf('font-size:'); at >= 0; at = html.indexOf('font-size:', at + 1)) {
-    let k = at + 'font-size:'.length
-    while (k < html.length && !html[k].trim()) k++
-    const from = k
-    while (k < html.length && ('0123456789.'.includes(html[k]))) k++
-    if (k > from && html.startsWith('px', k)) found.push({ at, end: k + 2, px: Number(html.slice(from, k)) })
-  }
-  return found
-}
-const pxSizes = (html: string) => fontSizesIn(html).map(f => f.px)
-const mapPx = (html: string, to: (px: number, i: number) => number) => {
-  let out = '', last = 0
-  fontSizesIn(html).forEach((f, i) => { out += `${html.slice(last, f.at)}font-size: ${to(f.px, i)}px`; last = f.end })
-  return out + html.slice(last)
-}
-const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
