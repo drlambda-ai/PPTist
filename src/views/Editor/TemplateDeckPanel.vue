@@ -1015,7 +1015,8 @@ const FLAT_NOTE = '\n(This page is ONE flat picture: its title, text, pictures a
 // picture, so "underline the last sentence", "a check icon before Application" and "an arrow" were answered "this page
 // has no elements" three times, and a drawn arrow landed on a heading (a paying user, 2026-11-14). A vision model reads
 // the picture once (a fraction of a cent; boxes within a few px on the user's page), and marks go by those boxes.
-type PaintedLine = { text: string, left: number, top: number, width: number, height: number, ground?: string, cover?: number[] }
+// look: the line's letters as a vision model read them (colour, bold, kind of typeface)
+type PaintedLine = { text: string, left: number, top: number, width: number, height: number, ground?: string, cover?: number[], look?: string }
 // The colour around a painted line, read from the picture's pixels in a ring just outside its box (x, y, w, h in percent
 // of the picture), when that ring is one even colour or one smooth left-to-right gradient. "移除講者名稱" on an imported cover was refused because the page
 // model could not see the colour behind the name, and a replay covered it with a guessed white box on a blue cover
@@ -1060,9 +1061,9 @@ const groundOf = (src: string, lines: { x: number, y: number, w: number, h: numb
         if (stat.some(t => t.sd > 10)) return undefined
         // flat bands of different colours are not a gradient: a smooth ground moves little from one third to the next
         if ([0, 1, 2].some(ch => Math.abs(stat[0].mean[ch] - stat[1].mean[ch]) > 40 || Math.abs(stat[1].mean[ch] - stat[2].mean[ch]) > 40)) return undefined
+        const cover = [x0 / c.width, y0 / c.height, (x1 - x0) / c.width, (y1 - y0) / c.height].map(v => v * 100)
         const hex = stat.map(t => tinycolor({ r: t.mean[0], g: t.mean[1], b: t.mean[2] }).toHexString())
         const spread = Math.max(...[0, 1, 2].map(ch => Math.max(...stat.map(t => t.mean[ch])) - Math.min(...stat.map(t => t.mean[ch]))))
-        const cover = [x0 / c.width, y0 / c.height, (x1 - x0) / c.width, (y1 - y0) / c.height].map(v => v * 100)
         return { cover, ground: spread <= 6 ? hex[1] : `"fill": "${hex[1]}", "gradient": {"type": "linear", "rotate": 0, "colors": [{"pos": 17, "color": "${hex[0]}"}, {"pos": 50, "color": "${hex[1]}"}, {"pos": 83, "color": "${hex[2]}"}]}` }
       }))
     }
@@ -1109,14 +1110,16 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
     const at = box ? { left: box.left, top: box.top, width: box.width, height: box.height }
       : { left: (W - size.w * k) / 2, top: (H - size.h * k) / 2, width: size.w * k, height: size.h * k }
     const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: src,
-      instruction: 'This picture is one presentation slide. List every line of text painted in it, top to bottom, each with the box its letters fill, in percent of the picture (x = left edge, y = top edge, w = width, h = height, each 0-100). JSON {"lines": [{"text": "...", "x": 0, "y": 0, "w": 0, "h": 0}]}' }) })
+      instruction: 'This picture is one presentation slide. List every line of text painted in it, top to bottom, each with the box its letters fill, in percent of the picture (x = left edge, y = top edge, w = width, h = height, each 0-100), the colour of its letters, whether they are bold, and the kind of typeface (sans, serif, script or mono). JSON {"lines": [{"text": "...", "x": 0, "y": 0, "w": 0, "h": 0, "color": "#RRGGBB", "bold": false, "face": "sans"}]}' }) })
     const got = r.ok ? (await r.json().catch(() => ({})))?.lines : null
-    const lines = (Array.isArray(got) ? got : []).map((l: any) => ({ x: toNum(l?.x), y: toNum(l?.y), w: toNum(l?.w), h: toNum(l?.h), text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160) }))
+    const lines = (Array.isArray(got) ? got : []).map((l: any) => ({ x: toNum(l?.x), y: toNum(l?.y), w: toNum(l?.w), h: toNum(l?.h), text: String(l?.text || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        look: [tinycolor(String(l?.color || '')).isValid() ? `letters ${tinycolor(String(l.color)).toHexString()}` : '', l?.bold === true ? 'bold' : '', ['sans', 'serif', 'script', 'mono'].includes(l?.face) ? String(l.face) : ''].filter(Boolean).join(', ') }))
       .filter(l => l.text && [l.x, l.y, l.w, l.h].every(Number.isFinite) && l.w > 0 && l.h > 0).slice(0, 60)
     const grounds = lines.length ? await groundOf(src, lines) : []
     return lines.map((l, i) => ({ text: l.text,
       left: Math.round(at.left + (l.x / 100) * at.width), top: Math.round(at.top + (l.y / 100) * at.height),
       width: Math.round((l.w / 100) * at.width), height: Math.round((l.h / 100) * at.height),
+      ...(l.look ? { look: l.look } : {}),
       ...(grounds[i] ? { ground: grounds[i]!.ground, cover: (([x, y, w, h]) => [at.left + x * at.width, at.top + y * at.height, w * at.width, h * at.height].map(Math.round))(grounds[i]!.cover.map(v => v / 100)) } : {}) }))
       .filter(l => l.width > 0 && l.height > 0)
   })().catch(() => [] as PaintedLine[])
@@ -1128,12 +1131,12 @@ const paintedNote = async (sl: Slide) => {
   const lines = await paintedLines(sl)
   if (!lines.length) return isFlat(sl) ? FLAT_NOTE : ''
   return '\n(The page itself is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized, moved or deleted. What CAN be done is to put NEW elements on top of it (any element listed above was put there this way and is edited as usual).'
-    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
+    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.look ? `, ${l.look}` : ''}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
     + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape, except to remove them as below.'
     + ' To remove or hide a painted line ("remove the speaker name", "delete the date") that lists a ground: a new plain rectangle shape filled with exactly that ground (a ground written as "fill" and "gradient" is copied into the shape as written), no outline, its box exactly the line\'s cover box (the area where that ground was read), so the words vanish into the page. A painted line with no ground (it sits on a photo or a pattern) cannot be removed: change nothing and say so in "reply".'
     // rewording a painted line = hide it and write over it: "revise the wording to sound more natural" on a page of
     // one flat picture was answered "its wording can't be edited" twice and the user left (prod 2026-11-26)
-    + ' When the request needs the painted text itself changed (its wording, colour, size or font): for each such line that lists a ground, hide it as above (the rectangle over its cover box) and add a new text box holding the new wording in that line\'s own box (its left, top, width and height, and it must stay inside them: never over another line\'s box; the letters as large as the painted ones were, which is about 70% of the height of ONE row of that text (a box holding 3 rows of text: its height / 3 x 0.7), the same size for lines that had the same size, and smaller rather than spilling; a text colour that reads well on that ground: dark on a light ground, white on a dark one; aligned as the line was). Keep each new line no longer than the one it replaces (count its characters), so it fits in the same rows. Add every cover rectangle first and every new text box after them, so no rectangle lies over new text (a rectangle hid half of the line written next to it, replay 2026-11-28). A line with no ground (on a photo or a pattern) cannot be changed: leave it as it is and say so in "reply".)'
+    + ' When the request needs the painted text itself changed (its wording, colour, size or font): for each such line that lists a ground, hide it as above (the rectangle over its cover box) and add a new text box holding the new wording in that line\'s own box (its left, top, width and height, and it must stay inside them: never over another line\'s box; the letters as large as the painted ones were, which is about 70% of the height of ONE row of that text (a box holding 3 rows of text: its height / 3 x 0.7), the same size for lines that had the same size, and smaller rather than spilling; in the look the line lists (the colour of its letters, bold when it says bold, and a typeface of that kind: the usual font of the page for sans, a serif font such as Georgia for serif); with no look listed, a text colour that reads well on that ground: dark on a light ground, white on a dark one; aligned as the line was). Keep each new line no longer than the one it replaces (count its characters), so it fits in the same rows; a short label, a code, a number or a name the request does not need reworded stays painted as it is. Add every cover rectangle first and every new text box after them, so no rectangle lies over new text (a rectangle hid half of the line written next to it, replay 2026-11-28). A line with no ground (on a photo or a pattern) cannot be changed: a patch of any colour shows as a grey band there (tried on a real deck, 2026-11-28). Leave it as it is and say so in "reply".)'
 }
 const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
