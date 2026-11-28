@@ -1,0 +1,2 @@
+Claude-Review: passed
+Reproduced through the localize handler (Codex): without keep the English title came back Ukrainian; with keep it is verbatim inside the Ukrainian reply. A missing hold marker falls back to the untranslated reply, as for line markers.
