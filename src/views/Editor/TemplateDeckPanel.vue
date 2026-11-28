@@ -117,6 +117,7 @@ const isLetter = (ch: string) => {
   return c >= 0x370 && !(c >= 0x2000 && c <= 0x2BFF) && !(c >= 0x3000 && c <= 0x303F) && !(c >= 0xFE30 && c <= 0xFE4F) && !(c >= 0xFF00 && c <= 0xFF20) && !(c >= 0x1F000)
 }
 const hasLetter = (t: string) => [...t].some(isLetter)
+const drop = (t: string, chars: string) => [...t].filter(ch => !chars.includes(ch)).join('')
 const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v => v): string | null => {
   const own = ownText.get(text)
@@ -149,7 +150,6 @@ const chatLeft = ref(-8)
 
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { host as chatslide, currentTurn, newTurn, OutOfCredits, takeSpend } from '@/embed'
-import { fitCheck } from './turnCheckPrompt'
 import { storeToRefs } from 'pinia'
 import { nanoid } from 'nanoid'
 import tinycolor from 'tinycolor2'
@@ -395,7 +395,7 @@ if (!(window as any).__deckFetchRetry) {
   // answer from the picture search ended a paying user's message with "Unexpected non-whitespace character after JSON
   // at position 4" and she typed the whole request again (2026-11-11). Only the unpaid ones: a paid page edit or AI
   // picture that answered 200 is charged, and asking again would charge the user twice
-  const jsonTool = (u: string) => /\/api\/tools\/(research|deck_chat|ask_json|img_search)(\?|$)/.test(u)
+  const jsonTool = (u: string) => ['research', 'deck_chat', 'ask_json', 'img_search'].some(n => u.endsWith(`/api/tools/${n}`) || u.includes(`/api/tools/${n}?`))
   const readable = async (r: Response) => !r.ok || await r.clone().json().then(() => true, () => false)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String((input as any).url || input)
@@ -691,7 +691,7 @@ const lookMain = (els: any[]) => els.reduce((a, e) => (elText(e).length > elText
 const textLook = (sl: Slide) => [true, false].map((title) => {
   const els = lookTexts(sl, title)
   if (!els.length) return null
-  const heavy = (x: Element | null): boolean => !!x && (/^(strong|b)$/i.test(x.tagName) || /bold|[6-9]00/.test((x as HTMLElement).style?.fontWeight || '') || heavy(x.parentElement))
+  const heavy = (x: Element | null): boolean => !!x && (['STRONG', 'B'].includes(x.tagName.toUpperCase()) || /bold|[6-9]00/.test((x as HTMLElement).style?.fontWeight || '') || heavy(x.parentElement))
   const bodies = els.map(e => new DOMParser().parseFromString(lookHtml(e), 'text/html').body)
   const bold = bodies.every((b) => {
     const w = b.ownerDocument.createTreeWalker(b, NodeFilter.SHOW_TEXT)
@@ -728,10 +728,10 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const area = (e.width * e.height) / (W * H)
       const n = numbered.indexOf(e) + 1
       // numbered as change_image "earlier" takes them; the picture it shows now is not one to put back
-      const earlier = (s.was?.[e.id] || []).map((p, k) => (p.src === e.src ? '' : `${k + 1}${k ? '' : ' (the first)'}${p.shows ? ` "${p.shows.replace(/["\]]/g, '').slice(0, 40)}"` : ''}`)).filter(Boolean)
+      const earlier = (s.was?.[e.id] || []).map((p, k) => (p.src === e.src ? '' : `${k + 1}${k ? '' : ' (the first)'}${p.shows ? ` "${p.shows.split('').filter(ch => !'"]'.includes(ch)).join('').slice(0, 40)}"` : ''}`)).filter(Boolean)
       const had = earlier.length ? `, earlier pictures here (change_image "earlier" puts one back): ${earlier.join('; ')}` : ''
       const attached = (s.images || []).find(m => m.url && m.url === e.src)
-      const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].replace(/["\]]/g, '').slice(0, 60)}"` : ''
+      const shows = !attached && s.pics?.[e.id] ? `, shows "${s.pics[e.id].split('').filter(ch => !'"]'.includes(ch)).join('').slice(0, 60)}"` : ''
       // the background picture says what it shows too: "keep the nurse, change the other image" names it by elimination
       if (!n) return e === backdrop ? `[image 0: background picture covering the whole slide${shows}${had}]` : '[a see-through design layer covering the whole slide, not a picture]'
       const img = n - 1
@@ -743,7 +743,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
       const where = `${e.top + e.height / 2 < H / 3 ? 'top' : e.top + e.height / 2 > (2 * H) / 3 ? 'bottom' : 'middle'}-${e.left + e.width / 2 < W / 3 ? 'left' : e.left + e.width / 2 > (2 * W) / 3 ? 'right' : 'centre'}`
       // a logo, or the user's own attached picture, keeps its size and place so "move my logo top-right, smaller" can act
       if (logos.has(imgSpot(e))) return `[image ${img + 1}: logo, ${Math.round(area * 100)}% of slide, ${where}]`
-      const own = attached ? `, the user's attached picture "${attached.name.replace(/["\]]/g, '')}"` : ''
+      const own = attached ? `, the user's attached picture "${attached.name.split('').filter(ch => !'"]'.includes(ch)).join('')}"` : ''
       return `[image ${img + 1}: ${kind}, ${Math.round(area * 100)}% of slide, ${where}${own}${shows}${had}]`
     }
     if (e.type === 'chart') return `[${e.chartType} chart: ${(e.data?.labels || []).slice(0, 8).join(', ')}]` // an existing chart, editable in place
@@ -1016,7 +1016,7 @@ const fitLabels = (pageId: string, ids: Set<string>) => withRenderer(async () =>
 // department one under another" was answered "updated" three times with the three still on one line (a paying user,
 // 2026-11-15; the same in 1 of 3 replays, 2026-11-20). Each part keeps the paragraph's and the runs' own styles
 const brToParagraphs = (html: string) => {
-  if (!/<br\b/i.test(html)) return html
+  if (!['<br>', '<br/>', '<br />', '<br '].some(k => html.toLowerCase().includes(k))) return html
   const doc = new DOMParser().parseFromString(html, 'text/html')
   for (let br = doc.body.querySelector('br'); br; br = doc.body.querySelector('br')) {
     const block = br.closest('p, li') as HTMLElement | null
@@ -1163,7 +1163,7 @@ const paintedPicture = (sl: Slide): { src: string, box?: { left: number, top: nu
 const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
   const { src, box } = paintedPicture(sl)
   // a link, or a picture small enough to send (a request body is capped at 4.5MB)
-  if (!src.startsWith('https://') && !(/^data:image\/(png|jpeg|webp);base64,/.test(src) && src.length < 3_000_000)) return Promise.resolve([])
+  if (!src.startsWith('https://') && !(['png', 'jpeg', 'webp'].some(k => src.startsWith(`data:image/${k};base64,`)) && src.length < 3_000_000)) return Promise.resolve([])
   const { width: W, height: H } = slideSize()
   // keyed by the whole picture (two JPEG data URLs of one length share their first characters, and then one slide
   // was given the other's lines)
@@ -1218,7 +1218,7 @@ const paintedNote = async (sl: Slide) => {
     return over ? { text: l.text, left: l.left, top: l.top, width: l.width, height: l.height, look: `under the text box ${over.id}: change that box, never this line` } : l
   })
   return '\n(The page itself is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized, moved or deleted. What CAN be done is to put NEW elements on top of it (any element listed above was put there this way and is edited as usual).'
-    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.look?.startsWith('under the text box') ? '' : `, letters ${Math.max(8, Math.round(l.height * 0.78))}px`}${l.look ? `, ${l.look}` : ''}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : l.patch ? `, on a photo or pattern: patch ${l.patch}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
+    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.split('"').join('\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.look?.startsWith('under the text box') ? '' : `, letters ${Math.max(8, Math.round(l.height * 0.78))}px`}${l.look ? `, ${l.look}` : ''}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : l.patch ? `, on a photo or pattern: patch ${l.patch}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
     + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape, except to remove them as below.'
     + ' To remove or hide a painted line ("remove the speaker name", "delete the date") that lists a ground: a new plain rectangle shape filled with exactly that ground (a ground written as "fill" and "gradient" is copied into the shape as written), no outline, its box exactly the line\'s cover box (the area where that ground was read), so the words vanish into the page. A painted line with no ground (it sits on a photo or a pattern) cannot be removed: change nothing and say so in "reply".'
     // rewording a painted line = hide it and write over it: "revise the wording to sound more natural" on a page of
@@ -1251,14 +1251,14 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
     // which drew a 2px underline as a black block over half the page (replay 2026-11-20). The string's size is kept,
     // anything else unreadable becomes the shape's own size
     if (e.type === 'shape') {
-      const vb = typeof e.viewBox === 'string' ? e.viewBox.trim().split(/[\s,]+/).map(Number).slice(-2) : e.viewBox
+      const vb = typeof e.viewBox === 'string' ? squash(e.viewBox.split(',').join(' ')).split(' ').map(Number).slice(-2) : e.viewBox
       e.viewBox = Array.isArray(vb) && vb.length === 2 && vb.every((v: any) => Number.isFinite(Number(v)) && Number(v) > 0) ? vb.map(Number) : [e.width || 1, e.height || 1]
       // a shape name for a path ("rect") draws nothing: a box covering a painted name stayed invisible (replay
       // 2026-11-22). It becomes the shape it names, an oval or else a rectangle. A shape with no path and no words is a
       // rectangle too: a "guide-panel" with only a fill drew nothing and broke every PPTX download (ticket 173, 2026-11-26)
-      if ((e.path !== undefined || e.content === undefined) && !/^\s*[Mm]/.test(String(e.path ?? ''))) {
+      if ((e.path !== undefined || e.content === undefined) && !String(e.path ?? '').trim().toLowerCase().startsWith('m')) {
         const [w, h] = e.viewBox
-        e.path = /circle|ellipse|oval/i.test(String(e.path)) ? `M 0 ${h / 2} A ${w / 2} ${h / 2} 0 1 0 ${w} ${h / 2} A ${w / 2} ${h / 2} 0 1 0 0 ${h / 2} Z` : `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
+        e.path = ['circle', 'ellipse', 'oval'].some(k => String(e.path).toLowerCase().includes(k)) ? `M 0 ${h / 2} A ${w / 2} ${h / 2} 0 1 0 ${w} ${h / 2} A ${w / 2} ${h / 2} 0 1 0 0 ${h / 2} Z` : `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`
       }
       // a drawing that paints nothing: "fill": "none" and no outline drew "an outline of a black cat sitting" as nothing
       // at all, and the reply said the page was updated (a paying user's page, replayed 2026-11-20). It gets a dark
@@ -1661,7 +1661,7 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
     || (e.top <= band && !(e.type === 'text' && e !== title) && (e.width || 0) * (e.height || 0) < W * H * 0.15))
     .map(e => ({ ...JSON.parse(JSON.stringify(e)), id: nanoid(10) }))
   const t = keep.find((e: any) => title && e.left === title.left && e.top === title.top && elText(e) === elText(title)) as any
-  const esc = (x: string) => String(x).replace(/</g, '&lt;')
+  const esc = (x: string) => String(x).split('<').join('&lt;')
   if (t) { // the deck's own title box and styling, new words
     const html = t.type === 'shape' ? t.text.content : t.content
     const styled = html.replace(/(<[^/][^>]*>)([^<]+)(<)/, (_m: string, open: string, _w: string, close: string) => `${open}${esc(heading)}${close}`)
@@ -1768,7 +1768,7 @@ Material: ${material().slice(0, 12000)}` }),
   const { width: W, height: H } = slideSize()
   const k = Math.min(d.points.length, 4)
   const cols = k === 4 ? 2 : k, rows = k === 4 ? 2 : 1
-  const esc = (x: string) => String(x).replace(/\*\*/g, '').replace(/</g, '&lt;') // markdown bold markers never show
+  const esc = (x: string) => String(x).split('**').join('').split('<').join('&lt;') // markdown bold markers never show
   const color = insertPage(index + 1, d.title, '', { type: '__cards' }) // the deck's accent colour
   const page = slides.value[index + 1]
   const body: any = page.elements.find((e: any) => e.type === '__cards')
@@ -2048,7 +2048,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
     })
     const notes = String((await r.json()).notes || '').trim()
     if (notes) {
-      slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.replace(/</g, '&lt;')}</p>`).join('') }, id)
+      slidesStore.updateSlide({ remark: String(notes).split('\n').filter(Boolean).map(l => `<p>${l.split('<').join('&lt;')}</p>`).join('') }, id)
       written.push(id)
     }
   }
@@ -2063,7 +2063,7 @@ const newTitles = (at: number, count: number) => Array.from({ length: count }, (
 const beforeClosing = (at: number) => {
   const last = slides.value[slides.value.length - 1]
   // a generated deck marks it (type 'end'); in an imported deck the closing page is a last page with almost no text
-  const words = last ? pageText(last).replace(/\[[^\]]*\]/g, '').trim() : ''
+  const words = last ? pageText(last).split('[').map((x, k) => (k ? x.slice(x.indexOf(']') + 1) : x)).join('').trim() : ''
   const closing = last && (last.type === 'end' || (slides.value.length > 2 && words.length > 0 && words.length < 30
     && !last.elements.some(e => e.type === 'chart' || e.type === 'table')))
   return closing && at >= slides.value.length ? slides.value.length - 1 : at
@@ -2111,7 +2111,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
         'A slide deck was made from the user\'s file, both below. First look through the WHOLE file, to its end, for its own list of the slides to make (a slide plan: "Slide 1 – ...", "Slide 2 – ..." in any language; often near the end). Then list EVERY part of the file meant for the audience, in its order: with a slide plan, exactly the slides of that plan; otherwise its sections, without headings that only group other parts. Never a part for the file\'s title block, notes to the presenter, a timing table or the slide plan itself. Give each the deck page that already covers its subject, in any wording (one page may cover several parts), or 0 when no page does. '
           + 'Return JSON {"slide_plan": <true when the file lists its own slides>, "parts": [{"part": "<its title and what it holds, in the file\'s language>", "page": <number or 0>}]}.'
-          + `\n<deck>\n${fence(lines)}\n</deck>\n${filled.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, cap))}\n</file>`).join('\n')}` }) }).catch(() => null)
+          + `\n<deck>\n${fence(lines)}\n</deck>\n${filled.map(d => `<file name="${d.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}">\n${fence(d.text.slice(0, cap))}\n</file>`).join('\n')}` }) }).catch(() => null)
       const parts = r?.ok ? (await r.json().catch(() => ({})))?.parts : null
       if (Array.isArray(parts) && parts.length) {
         const open = parts.filter((x: any) => !(Number(x?.page) >= 1 && Number(x.page) <= slides.value.length)).map((x: any) => String(x?.part || '').trim()).filter(Boolean)
@@ -2161,7 +2161,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // pages "from my file": the file read for this request is their material, as edit_all_pages gives it; told only
     // "use the document's remaining content", a page answered that no script was attached (replay, 2026-11-23)
     const read = args.from_users_file ? s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim()) : []
-    const fromFile = read.length ? `\nThe user's file this page comes from (take the part this page is about, in its own words):\n${read.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / read.length)))}\n</file>`).join('\n')}` : ''
+    const fromFile = read.length ? `\nThe user's file this page comes from (take the part this page is about, in its own words):\n${read.map(d => `<file name="${d.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}">\n${fence(d.text.slice(0, Math.floor(40000 / read.length)))}\n</file>`).join('\n')}` : ''
     const written: string[] = [] // titles of the pages written in this step
     let k = 0
     for (; k < count; k++) {
@@ -2473,7 +2473,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     try { await runCall(text, 'add_image', { index: pg, page_named: true, query: srcs[0], items: srcs.length > 1 ? srcs : [], source: 'direct', box: { x: 55, y: 20, w: 40, h: 60 }, replaces_existing: false }, ids) }
     finally { directAllowed = false }
     const added = pictures() - before
-    return t('Added {p0} picture(s) from {p1}.', { p0: added, p1: String(r.page).replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') }, added)
+    return t('Added {p0} picture(s) from {p1}.', { p0: added, p1: (u => (u.endsWith('/') ? u.slice(0, -1) : u))(String(r.page).replace('https://', '').replace('http://', '').replace('www.', '')) }, added)
   }
   if (action === 'add_image' && Array.isArray(args.items) && args.items.filter(Boolean).length > 1) {
     // the router names the specific thing each picture must show, so each one goes to Wikimedia on its own ("Einstein,
@@ -2770,7 +2770,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const j = await r.json().catch(() => ({}))
       const got = [j?.text, j?.shows].map(x => String(x || '').trim()).filter(Boolean).join('\n\n')
       if (!r.ok || !got) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: pic.name, p1: '' }))
-      memo = `<file-content name="${pic.name.replace(/["<>]/g, '')}">\n${fence(got.slice(0, 12000))}\n</file-content>`
+      memo = `<file-content name="${pic.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}">\n${fence(got.slice(0, 12000))}\n</file-content>`
       return t('Read {p0}{p1}.', { p0: pic.name, p1: '' })
     }
     if (!doc) {
@@ -2785,7 +2785,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       busy.value = t('Reading {p0}…', { p0: doc.name })
       const got = await hostSteps()!.askFiles!(about).catch(() => null)
       if (got) {
-        memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}" about="${about.replace(/["<>]/g, '').slice(0, 120)}">\n${fence(got.answer.slice(0, 12000))}${got.source ? `\n(from: ${got.source.slice(0, 200)})` : ''}\n</file-content>`
+        memo = `<file-content name="${doc.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}" about="${about.split('').filter(ch => !'"<>'.includes(ch)).join('').slice(0, 120)}">\n${fence(got.answer.slice(0, 12000))}${got.source ? `\n(from: ${got.source.slice(0, 200)})` : ''}\n</file-content>`
         return t('Read {p0}{p1}.', { p0: doc.name, p1: '' })
       }
     }
@@ -2814,7 +2814,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(p.n)).map(p => p.text).join('\n') : doc.text
     if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }, listed(want)) : '' }))
-    memo = `<file-content name="${doc.name.replace(/["<>]/g, '')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? (chunked && !want.length ? `\n[…cut: this is part 1 of ${total}; the rest of the file is not shown here. Before anything that needs the whole file, read_file with pages [2]${total > 2 ? `, then [3] and so on to [${total}]` : ''}]` : '\n[…cut; read fewer pages for the rest]') : ''}\n</file-content>`
+    memo = `<file-content name="${doc.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? (chunked && !want.length ? `\n[…cut: this is part 1 of ${total}; the rest of the file is not shown here. Before anything that needs the whole file, read_file with pages [2]${total > 2 ? `, then [3] and so on to [${total}]` : ''}]` : '\n[…cut; read fewer pages for the rest]') : ''}\n</file-content>`
     const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
     return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }, listed(got)) : '' })) + skipped
   }
@@ -2832,7 +2832,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     busy.value = t('Reading the link…')
     const r = await (await fetch('/api/tools/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'url', query: args.url }) })).json()
     if (r.error || !String(r.text || '').trim()) fail(t('I could not read that link ({p0}).', { p0: r.error || 'no content' }))
-    memo = `<file-content name="${String(r.title).replace(/["<>]/g, '').slice(0, 80)}">\n${fence(String(r.text).slice(0, 12000))}\n</file-content>`
+    memo = `<file-content name="${String(r.title).split('').filter(ch => !'"<>'.includes(ch)).join('').slice(0, 80)}">\n${fence(String(r.text).slice(0, 12000))}\n</file-content>`
     return t('Read the {p0}: {p1}.', { p0: r.kind, p1: String(r.title).slice(0, 60) })
   }
   if (action === 'web_search') {
@@ -3035,7 +3035,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const sample: any = args.same_as_page > 0 ? readingOrder(slides.value[args.same_as_page - 1]).find((e: any) => elText(e)) : null
     const sampleHtml = String(sample?.content || sample?.text?.content || '')
     // a name in quotes is written &quot;Helvetica Neue&quot; once the browser has re-written the style: it read as "quot"
-    const sampleFont = sampleHtml.match(/font-family:\s*((?:&quot;|[^;"])+)/)?.[1].replace(/&quot;/g, '') || sample?.defaultFontName || sample?.text?.defaultFontName
+    const sampleFont = sampleHtml.match(/font-family:\s*((?:&quot;|[^;"])+)/)?.[1].split('&quot;').join('') || sample?.defaultFontName || sample?.text?.defaultFontName
     const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
     if (!font) askBack(t('Which font?'))
     const setIn = (html: string) => html.replace(/font-family:\s*(?:&quot;|[^;"])*/g, `font-family: ${font}`)
@@ -3103,7 +3103,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(id)]
       for (const e of sl.elements as any[]) {
         if (restore ? !s.sizes?.[e.id] || !html(e) : !inScope(sl, e)) continue
-        if (!restore) was[e.id] = sizes(html(e)).length ? sizes(html(e)) : [...html(e).matchAll(/<p[\s>]/g)].map(() => 16)
+        if (!restore) was[e.id] = sizes(html(e)).length ? sizes(html(e)) : html(e).split('<p').slice(1).filter(x => x[0] === '>' || !x[0].trim()).map(() => 16)
         const next = restore ? back(html(e), s.sizes![e.id]) : resize(html(e))
         if (!restore && sizes(next).some((v, i) => v > (was[e.id][i] || 16))) grew[e.id] = was[e.id]
         if (restore) s.sizes = Object.fromEntries(Object.entries(s.sizes!).filter(([k]) => k !== e.id))
@@ -3440,7 +3440,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             // inside the box's first run too: a bare paragraph took the default 18px over 9px card text, and the fit,
             // which scales the sizes written in the text, could not make it smaller (replay 2026-11-23)
             const run = html.match(/<span[^>]*>/)?.[0]
-            const content = still.map((l: string) => { const w = l.replace(/&/g, '&amp;').replace(/</g, '&lt;'); return `${open}${run ? `${run}${w}</span>` : w}</p>` }).join('') + html
+            const content = still.map((l: string) => { const w = l.split('&').join('&amp;').split('<').join('&lt;'); return `${open}${run ? `${run}${w}</span>` : w}</p>` }).join('') + html
             slidesStore.updateElement({ id: box.id, props: box.type === 'text' ? { content } : { text: { ...box.text, content } }, slideId: sl.id })
             await fitText(sl.id, [box.id], { [box.id]: box.height })
           }
@@ -3526,7 +3526,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a file read for this request is its material on every page: the router's instruction said "as in the document"
     // and each page answered that no document was attached (a teacher asked twice, 2026-11-15)
     const read = files.length || looks ? [] : s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim())
-    const given = (docs: typeof s.docs) => docs.map(d => `<file name="${d.name.replace(/["<>]/g, '')}">\n${fence(d.text.slice(0, Math.floor(40000 / docs.length)))}\n</file>`).join('\n')
+    const given = (docs: typeof s.docs) => docs.map(d => `<file name="${d.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}">\n${fence(d.text.slice(0, Math.floor(40000 / docs.length)))}\n</file>`).join('\n')
     const instruction: string = files.length ? `${args.instruction}\n\nThe user's files. Cite on this page only the ones its content comes from (author, title, journal, year when the file gives them); a page none of them informed gets no reference:\n${given(files)}` : args.instruction
     // a long message is material too (a pasted outline "fill in exactly these infos"): the router's instruction only
     // describes it, and the pages wrote their own version of it (replayed conversation, 2026-11-16)
@@ -3538,16 +3538,14 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // the first content slide"): each page works alone, so pages 18 and 20 kept the repeated point and the first content
     // page lost its source (prod 2026-11-26, both undone and rerun by the result check). Each page is shown the others,
     // as they are before this step, and the earliest page that says a thing is the one that keeps it
-    // each page's own words in full, not its layout listing cut at 500 characters: cut there, the earlier page's mention
-    // was past the cut and page 14 kept the repeat (production run, 2026-11-28)
-    const others = args.across_pages ? slides.value.map((x, k) => `${k + 1}. ${readingOrder(x).map(elText).filter(Boolean).join(' | ').slice(0, 1500)}`) : []
+    const others = args.across_pages ? slides.value.map((x, k) => `${k + 1}. ${readingOrder(x).map(elText).filter(Boolean).join(' | ')}`) : []
     // an empty page (no text at all) answered "nothing for that" to "do not leave slides empty", and two blank pages
     // stayed blank (production run, 2026-11-28): it is told it is empty and what the other pages already cover
     const titles = slides.value.map((x, k) => `${k + 1}. ${(readingOrder(x).map(elText).filter(Boolean)[0] || '(empty)').slice(0, 90)}`).join('\n')
     const emptyNote = (id: string) => readingOrder(slides.value[pos(id)]).some(e => elText(e)) ? ''
       : `\n\nThis page is EMPTY (no text at all). When the request wants empty or nearly empty slides filled, give it a title and its content as new text boxes, on a part of the deck's subject that no other page covers yet, in the deck's language; the pages now:\n${fence(titles.slice(0, 6000))}`
     const forPage = (id: string) => instruction + emptyNote(id)
-      + (others.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. What every page says now (this step changes them all at the same time, each on its own):\n${fence(others.join('\n').slice(0, 30000))}\nA point the request wants said only once stays on the EARLIEST page that says it and goes from every later page: drop it here when an earlier page above has it, keep it here when this is the earliest. A thing the request keeps on one named page stays there and goes from the others. A page that does not itself say the point the request is about changes NOTHING (answer that it has nothing for that): 9 untouched pages were reworded in a production run.` : '')
+      + (others.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. What every page says now (this step changes them all at the same time, each on its own):\n${fence(others.join('\n'))}\nA point the request wants said only once stays on the EARLIEST page that says it and goes from every later page: drop it here when an earlier page above has it, keep it here when this is the earliest. A thing the request keeps on one named page stays there and goes from the others. A page that does not itself say the point the request is about changes NOTHING (answer that it has nothing for that): 9 untouched pages were reworded in a production run.` : '')
       + (looks ? '\n\nOnly the look of this page changes (fonts, colours, sizes, spacing, positions): every text keeps its words exactly as they are now, none added, removed, reworded or moved to another page.' : '')
       + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
       + ((said.length > 600 || args.users_text) && !files.length && !looks ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
@@ -3604,7 +3602,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (!changedNow && earlier.length && !untouched.length && !failed.length) return t('No further change: the earlier step already covered these pages.')
     const ok = changedNow + earlier.length
     const list = (xs: number[]) => xs.sort((a, b) => a - b).join(', ')
-    const what = String(args.instruction || '').replace(/^Write all slide text in [^\n]*\n/, '').slice(0, 60) // the user's words, not our language note
+    const what = (t0 => (t0.startsWith('Write all slide text in ') && t0.includes('\n') ? t0.slice(t0.indexOf('\n') + 1) : t0))(String(args.instruction || '')).slice(0, 60) // the user's words, not our language note
     const why = (failed.length ? (t(' Page(s) {p0} failed.', { p0: list(failed) }, listed(failed))) : '')
       + (untouched.length && ok ? (t(' Page(s) {p0} had nothing for that.', { p0: list(untouched) }, listed(untouched))) : '')
     void earlier
@@ -4173,12 +4171,10 @@ const spacing = (o: any) => {
 // the deck after the last step that finished: a crash in a later step keeps the finished steps (a user lost a whole
 // turn's slide edit to one failing picture step, 2026-11-11)
 let lastGoodSlides: any = null
-const deckTurn = async (text: string, again = '', reads: string[] = []): Promise<void> => {
-  // for a second attempt: the deck, its theme and page size, and the chat state
-  const startSlides = JSON.parse(JSON.stringify(slides.value)), startS = JSON.parse(JSON.stringify(s))
-  const startTheme = JSON.parse(JSON.stringify(slidesStore.theme)), startRatio = slidesStore.viewportRatio
+const deckTurn = async (text: string): Promise<void> => {
+  const startSlides = JSON.parse(JSON.stringify(slides.value))
   // a tap on a version-history button: that saved copy becomes the deck (one Undo step), no AI call
-  if (!again) newTurn() // a new message: charged on its own (a second attempt stays the same message)
+  newTurn()
   ownText.clear()
   replyTurn = currentTurn()
   const versionUrl = s.savedVersions?.[text.trim()]
@@ -4205,7 +4201,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   }
   // "No, keep them" ends the question. Sent on to the router, it offered the same pages again, and again after a
   // second No (production run, 2026-11-28)
-  if (!again && s.pending?.options?.length === 2 && s.pending.options[1].trim() === text.trim() && (s.deleteAsked?.length || s.pending.repeat?.every(c => c.args?.confirmed))) {
+  if (s.pending?.options?.length === 2 && s.pending.options[1].trim() === text.trim() && (s.deleteAsked?.length || s.pending.repeat?.every(c => c.args?.confirmed))) {
     s.pending = null
     s.deleteAsked = undefined
     const line = t('No page was changed. {p0}', { p0: '' }).trim()
@@ -4230,18 +4226,14 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   sitePaywalledPage = ''
   replacedThisTurn.clear()
   const pagesAtStart = slides.value.length
-  if (!again) takeSpend() // spend from an earlier, failed turn never lands in this footnote (a first attempt does)
+  takeSpend()
   // an offer counts only when this message is its button; otherwise it is dropped (a question holds for any reply)
   // the same request sent again in answer to "Remove 43 pictures? Nothing is removed yet." is a yes: asked again, the
   // user got the same question twice (prod 2026-11-27)
   const resent = !!s.pending?.repeat?.every(c => c.args?.confirmed) && s.pending.request?.trim() === text.trim()
   if (s.pending?.offer && !resent && !s.pending.options?.some(o => o.trim() === text.trim())) { s.pending = null; save() }
   const pendingAtStart = s.pending || null
-  // what the first attempt read stays read: a retry that dropped the attached picture's description drew a generic
-  // diagram instead of the one the user showed (replay 2026-11-23)
-  const done: string[] = again ? [`note: a first attempt at this message was undone because: ${again} Do the message right this time, on the same page(s) as before unless that reason says they were the wrong ones.`, ...reads] : []
-  // the same pages: a second attempt at "make the title italic" on page 4 restyled all 15 pages, and one at "remove the
-  // images that are not mine from this slide" offered 7 pictures on 4 pages (production runs, 2026-11-27/28)
+  const done: string[] = []
   const replies: string[] = []
   // what each find_papers / web_search of this message found, by its query: a page writing references is given the
   // results of ITS topic only, never those of another search of the same message
@@ -4271,7 +4263,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   // percent of the slide its picture boxes use ("in the space above the page number 02" had no place, 2026-11-13)
   const paintedAtSend = startSl && paintedPicture(startSl).src ? (await paintedLines(startSl)).map((l) => {
     const { width: W, height: H } = slideSize()
-    return `"${l.text.replace(/"/g, '\'').slice(0, 80)}" (${[l.left / W, l.top / H, l.width / W, l.height / H].map(v => Math.round(v * 100)).join(', ')})`
+    return `"${l.text.split('"').join('\'').slice(0, 80)}" (${[l.left / W, l.top / H, l.width / W, l.height / H].map(v => Math.round(v * 100)).join(', ')})`
   }).join('; ').slice(0, 2500) : ''
   let pendingInstead = '', nudged = false // what an undo said the user wants instead, until a change does it
   let offerOrder = '' // the page order when a whole-deck offer was made in this message
@@ -4284,7 +4276,6 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   // turns 2026-11-24: sent from 18, edited 17; sent from 24, edited 23)
   const prevPage = s.history.filter(h => h.role === 'user').slice(-2, -1)[0]?.page
   const movedFrom = prevPage && prevPage !== startPageId ? slides.value.findIndex(x => x.id === prevPage) + 1 : 0
-  const pagesAtSend = deckLines() // the deck as the router is shown it, for the check of the finished message
   createdThisMessage.clear()
   const idsAtStart = new Set(slides.value.map(x => x.id)) // pages created in this message are the others
   const created = () => slides.value.filter(x => !idsAtStart.has(x.id) && !helperPages.has(x.id)).length
@@ -4801,29 +4792,6 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   if (slides.value.length !== pagesAtStart) lines.push(t('The deck now has {p0} pages.', { p0: slides.value.length }))
   if (followUp) lines.push(followUp)
   const reply = [...new Set(lines.filter(Boolean))].join('\n') || (t('Done.')) // every step reports: merging repeats hid a doubled page
-  // a check of the result, once: the same build passed a replayed message in one run and missed it in the next (60-72
-  // of 100 real conversations, 2026-11-19). A miss is undone and the message runs again, told what was wrong. Not after
-  // a question, a step ChatSlide opened or confirms, or a new deck
-  const own = ['talk_to_human', 'download_deck', 'share_deck', 'open_refund', 'open_step', 'open_design', 'version_history', 'undo', 'redo', 'restore_original', 'delete_pages', 'create_deck']
-  // nor when putting an earlier picture back was all the message did: the check sees a page's texts and picture
-  // count, so "no change"
-  // nor a band put behind text that already had the colour asked for: the check sees no colours and no band, and
-  // undid it as "a band instead of whiter letters" (4 of 4 replays, 2026-11-20)
-  if (!again && !askedThisTurn && !unfinished && round < rounds && !ran.some(c => own.includes(c.action)) && !(ran.length && ran.every(c => c.args?.earlier > 0 || c.args?.backed))) {
-    // the question is passed only when the message is one of its own buttons: any other reply may be a new request
-    // ("never mind, make the background white"), and the check would hold it to the request it dropped
-    const problem = await checkTurn(text, startSlides, reply, pendingAtStart?.options?.some(o => o.trim() === text.trim()) ? pendingAtStart : null, pagesAtSend, done, followUp === offerLine)
-    if (problem) {
-      slidesStore.setSlides(startSlides)
-      slidesStore.setTheme(startTheme)
-      slidesStore.setViewportRatio(startRatio)
-      lastGoodSlides = null // a failed retry must not bring the rejected attempt back
-      for (const k of Object.keys(s)) if (!(k in startS)) delete (s as any)[k]
-      Object.assign(s, startS)
-      slidesStore.updateSlideIndex(Math.max(0, startSlides.findIndex((x: Slide) => x.id === startPageId)))
-      return deckTurn(text, problem, done.filter(d => d.startsWith('read_file ') && !d.includes(' -> failed, and the user was told: '))) // a failed read is tried again
-    }
-  }
   if (changed) {
     deckBeforeCreate = null // after another edit, Undo steps back normally
     beforeLastChange = JSON.stringify(startSlides)
@@ -4839,91 +4807,6 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
   const [said, feeSaid] = await finalize(text, reply, shown, s.pending !== pendingAtStart && s.pending?.localize ? s.pending : null, fee)
   say('assistant', said + feeSaid)
   recordTurn(text, said, done, true)
-}
-
-// What a turn did, read by a small model against the message: '' when it did what was asked (or the check could not
-// run), else what was wrong, in one sentence for the second attempt
-// It is given what the router had. Without the slide count asked for when the deck was made it called "25 slides were
-// asked, 15 are missing" an invented claim; without the pasted 21-slide plan that a question's answer continued it called
-// that plan's speaker notes unasked; and it could not see a background picture being hidden ("the orange patches are
-// not confirmed removed"). Each undid a right turn and ran it again: 9 of its 12 rejections in two replays of 11 real
-// turns (2026-11-20), one of them a 21-page build written twice
-// It rejected 25 of the 97 turns it read in one run of the 106 editor cases (2026-11-20), 20 of them right turns: a named
-// picture changed on the page that has it ("the user was viewing page 2"), "every slide" where the other pages had no
-// picture, a shape, a colour or a layout it is not shown, a page count off by a page that needed no change. So it also
-// gets the deck as the router saw it (what each picture shows, the logo, the pages with nothing to change) and the
-// steps with their results (the page each one worked on and why), and it fails a turn only for a ground it can show
-// from that record; its rules come first, so a long record is cut at its end, never at the question
-// The one-page offer ("Done on this page. Want the same on the other pages?") is the editor's own rule for a message that
-// names no page, and the check is told so: read as "only offered, not done", "Встав реальні фото Миколи Міхновського"
-// (a real Wikimedia photo put on page 1, the rest offered) was undone, and the second attempt put that same photo on
-// all ten pages, one router round each, until the 420 s case timeout (bt-2725242, 1 of 3 replays on each build, 2026-11-24)
-const checkTurn = async (text: string, was: Slide[], reply: string, pending: typeof s.pending, pagesWere: string[], steps: string[], offeredRest = false) => {
-  // a page's text is cut to the room there is, and the cut is marked: cut bare, at 700 characters a page and 7,000 in
-  // all, 21 new pages came back as "the content is truncated on slides 19 and 21" and were written again (2026-11-20)
-  const differ = slides.value.filter(x => JSON.stringify(was.find(o => o.id === x.id)) !== JSON.stringify(x)).length + was.filter(o => !slides.value.some(x => x.id === o.id)).length
-  const room0 = Math.max(120, Math.min(700, Math.floor(6000 / Math.max(1, differ))))
-  // every changed page keeps its line, whatever else the record holds (fitCheck): at 9,000 characters a ten-page update
-  // showed pages 1-9, and the check undid it as "the reply claims 10 pages, the change log shows 9" (replay of a real
-  // turn, 2026-11-20). Under 120 characters a side the mark is the short one, said in the rules
-  const cut = (t: string, n: number) => (t.length > n ? `${t.slice(0, n)}… ${n < 120 ? '(cut)' : '(cut here for length: the rest is there, not shown)'}` : t)
-  const texts = (sl: Slide, room: number) => cut(sl.elements.map(elText).filter(Boolean).join(' | '), room)
-  // shapes and lines with no words: a diagram drawn on the page read as "only text labels, no diagram was created" and
-  // the drawn diagram was undone (replay 2026-11-23)
-  const drawn = (sl: Slide) => sl.elements.filter(e => e.type === 'line' || (e.type === 'shape' && !elText(e))).length
-  const shown = (sl: Slide, room: number) => `${texts(sl, room)} [${sl.elements.filter(e => e.type === 'image').length} picture(s)${drawn(sl) ? `, ${drawn(sl)} drawn shape(s) and line(s)` : ''}${sl.elements.some(e => e.type === 'chart') ? ', a chart' : ''}${sl.elements.some(e => e.type === 'table') ? ', a table' : ''}]`
-  const old = new Map(was.map((x, k) => [x.id, { sl: x, n: k + 1 }]))
-  const now = new Set(slides.value.map(x => x.id))
-  const hidden = (sl: Slide) => sl.elements.filter((e: any) => e.type === 'image' && isBackdrop(e) && e.filters?.opacity === '0%').length
-  // a picture that became its own file while the turn ran (data: -> link, externalizeImages) is the same picture: read
-  // as a change, "page 20 had a background change that was not asked for" undid a correct turn and ran it again
-  // (3 of 36 reruns in real turns, 2026-11-24..27)
-  const hosted = (v: unknown) => JSON.stringify(v, (_, x) => typeof x === 'string' && uploaded.has(x) ? uploaded.get(x) : x)
-  const changes = (room: number) => {
-    const lines: string[] = []
-    slides.value.forEach((x, k) => {
-      const o = old.get(x.id)
-      if (!o) lines.push(`page ${k + 1} NEW: ${shown(x, room)}`)
-      else if (o.n !== k + 1 && hosted(o.sl) === hosted(x)) lines.push(`page ${k + 1} MOVED (was page ${o.n}): ${cut(texts(x, room), 120)}`)
-      else if (hosted(o.sl) !== hosted(x)) lines.push(`page ${k + 1} CHANGED${o.n !== k + 1 ? ` (was page ${o.n})` : ''}\n  before: ${shown(o.sl, room)}\n  after: ${shown(x, room)}${hosted(o.sl.background) !== hosted(x.background) ? '\n  (its background changed)' : ''}${texts(o.sl, 100000) === texts(x, 100000) ? '\n  (the same words: what changed is what you are not shown, such as positions, sizes, line spacing or colours)' : ''}${hidden(x) > hidden(o.sl) ? '\n  (its full-slide background picture, patterns and patches included, is hidden, so the background colour is what shows)' : ''}`)
-    })
-    was.forEach((x, k) => { if (!now.has(x.id)) lines.push(`page ${k + 1} DELETED: ${shown(x, room)}`) })
-    return lines
-  }
-  const earlier = (userMax: number) => s.history.slice(-5, -1).map(m => `${m.role}: ${m.text.slice(0, m.role === 'user' ? userMax : 300)}`).join('\n')
-  // only the count: given the request's text too, it held "there are no pictures" to the schematic drawings that text
-  // asked for, and the second attempt put AI pictures on all ten pages (replay 2026-11-20)
-  // and only while the deck is shorter than that, as the router is told it: a project recorded as 1 slide made the check
-  // call a ten-page update of a ten-page deck "instead of the one-slide deck asked for"; the update was undone and the
-  // second attempt added one page (replay of a real turn, 2026-11-20)
-  const made = Number(s.brief?.pages) > was.length ? `When the deck was made the user asked for ${s.brief!.pages} slides.\n` : ''
-  const answers = (max: number) => (pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(cut(String(pending.request || ''), max))}: that request is what was asked.\n` : '')
-  const flat = (t: string) => squash(t)
-  const ran = steps.filter(d => !d.startsWith('note: ') && !d.startsWith('not sent: ')).map((d) => {
-    const at = d.indexOf(' -> ')
-    return at < 0 ? cut(flat(d), 500) : `${cut(flat(d.slice(0, at)), 300)} -> ${cut(flat(d.slice(at + 4)), 500)}`
-  })
-  // a page that is one flat picture shows its painted lines when a step read them: without them the check took a
-  // continuation page written from them for "different topics" and undid it (replay of a real turn, 2026-11-23)
-  const painted = (sl: Slide) => (paintedKnown.get(paintedPicture(sl).src) || []).map(l => l.text).join(' | ')
-  const deckWas = (per: number) => was.map((sl, k) => `page ${k + 1}: ${cut([pagesWere[k] || '', painted(sl) && `painted in it: ${painted(sl)}`].filter(Boolean).join(' '), Math.max(60, Math.min(per, Math.floor(6000 / Math.max(1, was.length)))))}`)
-  // a picture asked for ON a page is right there: "new pictures for a page with no room go on a new page" read as a
-  // rule made the check undo a picture put on the page the user named, and the second attempt added a page (2026-11-20)
-  const head = 'You check an AI slide editor\'s work on one chat message, from the record below. Return JSON {"ok": true|false, "problem": "<what is wrong, one sentence, \\"\\" when ok>"}.\n'
-    + 'ok is false only when the record itself shows one of these:\n'
-    + '1. A part of the message was not done at all, or was only offered or promised, and no step result and no line of the reply says why (nothing of that kind on the page, no room, a paid plan, something it cannot do). Look at the deck as it was first: a page with nothing of the kind asked (no picture to replace or remove) is no missed part, and a thing drawn as a shape (an arrow, a box) where a picture of it was asked is done.\n'
-    + '2. Something was changed that the message did not ask for and the request does not need: the words already on a page put into another language though the message asks for no translation, a page added or removed and left there, pages rewritten that were not meant. What a step reports as part of its own work (the text colour that goes with a background, the font that goes with a file\'s look) is not this, and the language of the reply never is.\n'
-    + '3. The work went to a page other than the one the message means, and neither the deck as it was nor a step result explains it. The page the user was looking at is only where "this slide" and "here" point. The editor picks pages by its own rules with the whole deck in view, and these are right: a picture or thing the message names is changed on the page that has it (each picture\'s line in the deck as it was says what it shows); new pictures for a page with no room may go on a new page after it, and text for a named page may go on a continuation page right after it (expand_page), that page left as it was, and a picture put on the very page the message names is right however full that page was; the logo, a change for an audience and a change to "the presentation" or "the slides" go on every page; a request for every page skips the pages that have nothing of that kind.\n'
-    + '4. The reply says a change was made, of a kind you are shown, and the list of changes has nothing of it. The deck is what is checked: a reply that is clumsy, or wrong in a number or a side remark while the deck is right, is no reason.\n'
-    + 'Never a reason: anything you are not shown (you see each page\'s words and how many pictures, charts and tables it has; positions, sizes, colours, shapes, the layout, the theme and what a new picture shows are not shown, and for those the step result is the record: a picture found for the words asked is that picture); the wording, quality or taste of what was made; a page count in the reply that is off by a page that needed no change; something that only "may" be wrong; anything marked as cut, shortened or left out for length (it is there, only not shown).\n'
-    + 'Also fine: "there is no picture to remove" for a page whose only picture is its full-slide background (the template\'s backdrop is not one of the page\'s pictures, and it stays when the user keeps their own pictures), a page of its own for each page the message names ("a conclusion and a thank-you" are two pages), a needed question, a note that something needs a paid plan, an honest "cannot" for something it cannot do, an answer to a question that asked for no change, a text the user wanted as a Word, PDF or other document file (a speech, a defence, a script, a summary) written out in full in the reply (the editor attaches no files, so the text in the chat is that part done), and making what the user complains is missing or asks why it is missing (fewer slides than they asked for, their text not on the slides) rather than only offering it.\n'
-    + (offeredRest ? 'The reply ends with the editor\'s offer of the same change on the other pages, as a button: the editor makes a change the message gives no pages for on the page the user was looking at and offers the rest, so that offer is right and the other pages are no part left undone, unless the message itself asks for every page or the whole presentation.\n' : '')
-    + `${made}${s.docs.length ? `Files the user gave (their "document", "file", "text"): ${s.docs.map(d => d.name).join(', ').slice(0, 600)}\n` : ''}`
-    + `The user's message (they were looking at page ${was.findIndex(x => x.id === currentAtSend) + 1} of ${was.length}): ${JSON.stringify(text.slice(0, 3000))}\n`
-  const instruction = fitCheck({ head, reply, request: answers, earlier, deck: deckWas, steps: max => cut(ran.join('\n'), max), changes }, room0)
-  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction }) }).catch(() => null)
-  const v = r?.ok ? await r.json().catch(() => null) : null
-  return v?.ok === false && String(v.problem || '').trim() ? String(v.problem).trim().slice(0, 400) : ''
 }
 
 // ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
