@@ -878,7 +878,7 @@ async function handler(req: any, res: any) {
     const briefFile = body.brief && String(body.brief.text || '').trim() && !asked
       ? `\nAlso readable: "Original request", what the user asked for when the deck was made (${String(body.brief.text).length} characters): read_file it when they refer to it` : ''
     const briefText = asked ? `\n\nWhat the user asked for when this deck was made${Number(asked.pages) > 0 ? ` (${Number(asked.pages)} slides)` : ''}, in their words (their "plan", "my text", "what I sent" or "the topic" can mean this): ${String(asked.text).slice(0, 16000)}` : ''
-    const today = /^\d{4}-\d{2}-\d{2}$/.test(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
+    const today = (d => d.length === 10 && d[4] === '-' && d[7] === '-' && [...d.slice(0, 4), ...d.slice(5, 7), ...d.slice(8)].every(ch => ch >= '0' && ch <= '9'))(String(body.today || '')) ? body.today : new Date().toISOString().slice(0, 10)
     const added = (Array.isArray(body.added) ? body.added : []).map(Number).filter((n: number) => n >= 1 && n <= deckPages.length)
     const grown = added.length ? ` It had ${Number(body.before) || deckPages.length - added.length} when the user sent this message: page(s) ${added.join(', ')} were added by the steps already run for it, where the editor placed them, and they stay.` : ''
     const from = Number(body.moved_from)

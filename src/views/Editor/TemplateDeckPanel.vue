@@ -447,8 +447,8 @@ const uploadPicture = (file: File) => run(t('Uploading {p0}…', { p0: file.name
   const blob: Blob = await new Promise((ok, no) => c.toBlob(b => (b ? ok(b) : no(new Error('encode failed'))), 'image/png'))
   // a unique name: two attachments with the same file name stay separately addressable
   const taken = new Set((s.images || []).map(m => m.name))
-  let name = file.name.replace(/\.[^.]+$/, '') + '.png'
-  for (let n = 2; taken.has(name); n++) name = `${file.name.replace(/\.[^.]+$/, '')} (${n}).png`
+  let name = noExt(file.name) + '.png'
+  for (let n = 2; taken.has(name); n++) name = `${noExt(file.name)} (${n}).png`
   s.images = [...(s.images || []), { name, url: await uploadFile(new File([blob], name, { type: 'image/png' })) }]
   save()
 })
@@ -499,7 +499,7 @@ const fittingFigures = async (figs: { url: string, page?: number }[], count: num
 // The one presentation whose look can be read now: the only .pptx listed (by name: a re-attached file is listed twice),
 // a project file or one attached in this session. The router is told the same fact (files[].look).
 const lookFile = () => {
-  const names = [...new Set(s.docs.filter(d => /\.pptx$/i.test(d.name)).map(d => d.name))]
+  const names = [...new Set(s.docs.filter(d => hasExt(d.name, 'pptx')).map(d => d.name))]
   return names.length === 1 && (s.docs.some(d => d.name === names[0] && d.project) || docFiles.has(names[0])) ? names[0] : ''
 }
 const fileOf = async (name: string) => {
@@ -709,7 +709,7 @@ const pageText = (sl: Slide, common = new Set<string>(), logos = new Set<string>
     const t = elText(e)
     // a list's number badge is on most pages, so it read as a footer and was left out: asked "what is that 1 for?",
     // the router never saw the lone "1" on the page and said it was a credit used (2026-11-24)
-    if (/^\d{1,2}$/.test(t)) return sl.elements.filter(x => /^\d{1,2}$/.test(elText(x))).length > 1 ? `[number badge "${t}"]`
+    if (isDigits(t, 2)) return sl.elements.filter(x => isDigits(elText(x), 2)).length > 1 ? `[number badge "${t}"]`
       : `[number badge "${t}", the page's only one: left from the layout's numbered list, it numbers nothing]`
     return common.has(t) ? '' : t
   }).join(' ').replace(/\s+/g, ' ').trim()
@@ -748,7 +748,7 @@ const replacedThisTurn = new Set<string>() // "<page id>:<picture number>" repla
 // background: yes" for "replace these photos" and swapped the background (2026-11-10, again in the 2026-11-13 replay);
 // an older "make the background blue" must not license it. The router still decides what the words mean.
 const saidBackground = (text: string, words: unknown) => {
-  const norm = (x: string) => x.toLowerCase().replace(/\s+/g, ' ').trim()
+  const norm = (x: string) => squash(x.toLowerCase())
   const w = typeof words === 'string' ? norm(words) : ''
   if (!w) return false
   const users = s.history.filter(h => h.role === 'user').map(h => String(h.text || ''))
@@ -1120,7 +1120,7 @@ const paintedPicture = (sl: Slide): { src: string, box?: { left: number, top: nu
 const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
   const { src, box } = paintedPicture(sl)
   // a link, or a picture small enough to send (a request body is capped at 4.5MB)
-  if (!/^https:\/\//.test(src) && !(/^data:image\/(png|jpeg|webp);base64,/.test(src) && src.length < 3_000_000)) return Promise.resolve([])
+  if (!src.startsWith('https://') && !(/^data:image\/(png|jpeg|webp);base64,/.test(src) && src.length < 3_000_000)) return Promise.resolve([])
   const { width: W, height: H } = slideSize()
   // keyed by the whole picture (two JPEG data URLs of one length share their first characters, and then one slide
   // was given the other's lines)
@@ -1608,7 +1608,7 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   const spots: Record<string, number> = {}
   for (const sl of slides.value) for (const k of new Set(sl.elements.map(spot))) spots[k] = (spots[k] || 0) + 1
   const isFooter = (e: any) => (elText(e) && count[elText(e)] > slides.value.length / 2)
-    || (e.top > H * 0.85 && (spots[spot(e)] > slides.value.length / 2 || /^\d{1,3}$/.test(elText(e))))
+    || (e.top > H * 0.85 && (spots[spot(e)] > slides.value.length / 2 || isDigits(elText(e), 3)))
   const texts = base.elements.filter((e: any) => (e.type === 'text' || e.type === 'shape') && elText(e) && !isFooter(e))
   const title: any = texts.find((e: any) => e.textType === 'title') || [...texts].sort((x, y) => x.top - y.top)[0]
   // header band: anything that starts above the title's bottom edge (+4%), e.g. an icon box or the rule under the title,
@@ -2220,9 +2220,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   // the colours and the logo of the user's own .pptx (the file the deck was made from, or one attached here)
   if (action === 'use_file_look') {
-    const listed = s.docs.filter(d => /\.pptx$/i.test(d.name))
+    const listed = s.docs.filter(d => hasExt(d.name, 'pptx'))
     const file = await fileOf(listed.some(d => d.name === args.file) || listed.length !== 1 ? args.file : listed[0].name)
-    if (!file || !/\.pptx$/i.test(file.name)) fail(t('No PowerPoint file of yours is here yet: attach it with the 📎 icon.'))
+    if (!file || !hasExt(file.name, 'pptx')) fail(t('No PowerPoint file of yours is here yet: attach it with the 📎 icon.'))
     busy.value = t('Reading the look of {p0}…', { p0: file!.name })
     const look = await file!.arrayBuffer().then(normalizePptx).then(b => parse(b, { imageMode: 'base64', videoMode: 'blob', audioMode: 'blob' })).then(fileLook)
       .catch(() => fail(t('I could not read {p0} as a PowerPoint file.', { p0: file!.name })))
@@ -2717,7 +2717,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const doc = named ? undefined : s.docs.find(d => d.name === args.file) || (s.docs.length === 1 ? s.docs[0] : undefined)
     // an attached picture: its text, read by the vision model ("write what's in my picture into the slides" was
     // answered "I can't read the attached image", 2026-11-11)
-    const pic = named || (!doc && s.images?.length === 1 && !/\.(pdf|docx?|pptx?|xlsx?|csv|txt|md)$/i.test(String(args.file || '')) ? s.images[0] : undefined)
+    const pic = named || (!doc && s.images?.length === 1 && !hasExt(String(args.file || ''), 'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'txt', 'md') ? s.images[0] : undefined)
     if (pic) {
       busy.value = t('Reading {p0}…', { p0: pic.name })
       const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2750,7 +2750,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     let parts = filePages(doc.text)
     // a PDF the project already had comes from ChatSlide as one text with no page marks: asked for a page, its original
     // is read here once, page by page, like a file attached in the chat
-    if (want.length && !parts.length && doc.project && /\.pdf$/i.test(doc.name)) {
+    if (want.length && !parts.length && doc.project && hasExt(doc.name, 'pdf')) {
       busy.value = t('Reading {p0}…', { p0: doc.name })
       const file = await fileOf(doc.name).catch(() => undefined)
       const again = file ? await deckApi('read', { url: await uploadFile(file), name: file.name }).catch(() => null) : null
@@ -3110,7 +3110,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const isTitle = (sl: any, e: any) => marked(e) || (!sl.elements.some(marked) && e === readingOrder(sl).find((x: any) => elText(x)))
     const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
-    const color = /^#[0-9a-f]{6}$/i.test(String(args.color || '')) ? String(args.color) : ''
+    const color = isHex6(args.color) ? String(args.color) : ''
     const phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
     if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) askBack(t('Which colour or style?'))
@@ -3206,7 +3206,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const sl = slides.value[pos(targets[0])]
       // only the boxes the named words are in: the phrase is copied from the page's text, so a box belongs to it when
       // its text is part of the phrase or holds it; a white footer elsewhere is not the title the user named
-      const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+      const norm = (s: string) => squash(s).toLowerCase()
       const named = (e: any) => {
         const box = norm(elText(e)), asked = norm(phrase)
         return box.length >= 4 && (asked.includes(box) || box.includes(asked))
@@ -3755,7 +3755,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       usedBackgrounds.add(src)
       background = { type: 'image', image: { src, size: 'cover' } }
     }
-    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) askBack(t('Which background colour?'))
+    else if (!isHex6(args.color)) askBack(t('Which background colour?'))
     // each full-slide picture keeps what it and the rest of the page held, before any of it changes
     if (args.photo_query) for (const id of targets) for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) keepPic(e, slides.value[pos(id)])
     for (const id of targets) slidesStore.updateSlide({ background }, id)
@@ -3886,7 +3886,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return t('Opening the refund page.')
   }
   if (action === 'apply_theme') {
-    const hex = (c: any) => /^#[0-9a-fA-F]{6}$/.test(c || '')
+    const hex = (c: any) => isHex6(c)
     if (!hex(args.background) || !hex(args.font_color) || !(args.colors || []).every(hex) || !(args.colors || []).length) fail(t('That theme has invalid colours.'))
     // "only the first page, the rest as it was": the theme went on the whole deck twice, then a paywalled redesign (2026-11-14)
     const only = args.pages?.length ? nums(args.pages) : []
@@ -3984,7 +3984,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   // the editor had neither (2026-11-12).
   if (action === 'version_history') {
     askedThisTurn = true // an answer either way: the turn ends here and nothing changed
-    return listVersions(text, /^\d{4}-\d{2}-\d{2}$/.test(String(args.day || '')) ? args.day : '')
+    return listVersions(text, isDay(args.day) ? args.day : '')
   }
   if (action === 'restore_original') {
     // only a tap on the confirmation restores more than one page (the router's own flag is never enough)
@@ -4054,7 +4054,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
 // A bare 1-3 digit number near the bottom, at a spot shared by most pages, is that page's number.
 const renumber = () => {
   const H = slideSize().height
-  const isNum = (e: any) => e.top + (e.height || 0) / 2 >= H * 0.85 && /^\d{1,3}$/.test(elText(e))
+  const isNum = (e: any) => e.top + (e.height || 0) / 2 >= H * 0.85 && isDigits(elText(e), 3)
   const at = (e: any) => `${Math.round(e.left / 10)},${Math.round(e.top / 10)}`
   const spots: Record<string, number> = {}
   for (const sl of slides.value) for (const k of new Set(sl.elements.filter(isNum).map(at))) spots[k] = (spots[k] || 0) + 1
@@ -4098,6 +4098,13 @@ const answeredHistory = () => {
 
 // What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
 let memo = ''
+// plain string checks for machine formats (no regular expressions in product code)
+const hasExt = (name: string, ...exts: string[]) => exts.some(x => String(name || '').toLowerCase().endsWith(`.${x}`))
+const isHex6 = (c: unknown) => typeof c === 'string' && c.length === 7 && c[0] === '#' && [...c.slice(1)].every(ch => '0123456789abcdefABCDEF'.includes(ch))
+const isDigits = (t: string, max: number) => t.length >= 1 && t.length <= max && [...t].every(ch => ch >= '0' && ch <= '9')
+const isDay = (d: unknown) => typeof d === 'string' && d.length === 10 && d[4] === '-' && d[7] === '-' && isDigits(d.slice(0, 4) + d.slice(5, 7) + d.slice(8), 8)
+const squash = (t: string) => t.split('').map(ch => (ch.trim() ? ch : ' ')).join('').split(' ').filter(Boolean).join(' ')
+const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
@@ -4346,7 +4353,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     // full instruction ("here is my paper" read the file and stopped, 2026-11-12)
     // nor is the note a second attempt starts with, or a create_deck skipped in an earlier round: with either in done the
     // deck the router asked for again was dropped, nothing ran, and a pasted 6,000-character text got "Готово." (2026-11-19)
-    const onlyRead = done.every(d => /^(read_file|web_search|read_link|find_papers) /.test(d) || d.startsWith('not sent: ') || d.startsWith('note: ') || d.startsWith('create_deck -> skipped')) // the sent-back answer is no step
+    const onlyRead = done.every(d => ['read_file ', 'web_search ', 'read_link ', 'find_papers '].some(k => d.startsWith(k)) || d.startsWith('not sent: ') || d.startsWith('note: ') || d.startsWith('create_deck -> skipped')) // the sent-back answer is no step
     if (newDeck?.args?.from_users_file && !s.docs.length && !(s.images || []).length) { // no file to build it from: ask for it
       const ask = await runCall(text, 'create_deck', newDeck.args, slides.value.map(x => x.id))
       replies.push(ask)
@@ -4493,7 +4500,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
       // after an Undo in a correction, redoing the very change just undone ("not the background" -> background again)
       || work.find((c: any) => done.some(d => d.startsWith('undo ')) && lastTurnCalls.includes(stepKey(c.action, c.args)))
       // Undo reverts what EARLIER messages did; within a message the router once undid its own correct change
-      || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d))))
+      || work.find((c: any) => (c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => (d.startsWith('undo ') || d.startsWith('redo ')))))
       // nor removes the animations it just added: "one point per space bar press" ended "Animated 10 pages. Animations removed."
       || work.find((c: any) => c.action === 'animate_pages' && c.args?.effect === 'none' && animatedThisTurn(c.args?.pages))
       // nor recolours text again after its colour turned out to be there already and it got a band instead
@@ -4571,7 +4578,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     if (again && done.some(d => passed(d, again.action) && (['set_background', 'delete_pages', 'duplicate_pages'].includes(again.action) ? samePages(d) : d.startsWith(`${again.action} ${JSON.stringify(again.args || {})} ->`)))) break
     if (again) {
       // names what is left, and Continue picks it up (Quanlai: a user with 10 requests should get all of them done)
-      const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.replace(/_/g, ' ')).slice(0, 160) })
+      const line = t('Not done yet: {p0}.', { p0: String(again.args?.instruction || again.action.split('_').join(' ')).slice(0, 160) })
       unfinished = true
       replies.push(line)
       terse.push(line)
@@ -4579,7 +4586,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
     }
     for (const c of work) {
       // planned in the same batch as the change it would revert, or a second undo/redo ("Undone. Redone." for "undo")
-      if ((c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => /^(undo|redo) /.test(d)))) {
+      if ((c.action === 'undo' || c.action === 'redo') && (changed || done.some(d => (d.startsWith('undo ') || d.startsWith('redo '))))) {
         done.push(`${c.action} -> skipped: undo only reverts changes from earlier messages, not this one: the steps already run for this message are what the user asked for and they stay, so never redo one of them on another page or picture. Finish, unless a DIFFERENT part of the message is still to do`)
         continue
       }
@@ -4855,7 +4862,7 @@ const checkTurn = async (text: string, was: Slide[], reply: string, pending: typ
   // second attempt added one page (replay of a real turn, 2026-11-20)
   const made = Number(s.brief?.pages) > was.length ? `When the deck was made the user asked for ${s.brief!.pages} slides.\n` : ''
   const answers = (max: number) => (pending?.question ? `The message answers the editor's question ${JSON.stringify(pending.question.slice(0, 400))} about the user's request ${JSON.stringify(cut(String(pending.request || ''), max))}: that request is what was asked.\n` : '')
-  const flat = (t: string) => t.replace(/\s+/g, ' ').trim()
+  const flat = (t: string) => squash(t)
   const ran = steps.filter(d => !d.startsWith('note: ') && !d.startsWith('not sent: ')).map((d) => {
     const at = d.indexOf(' -> ')
     return at < 0 ? cut(flat(d), 500) : `${cut(flat(d.slice(0, at)), 300)} -> ${cut(flat(d.slice(at + 4)), 500)}`
@@ -4977,8 +4984,8 @@ const send = () => {
 const attach = (files?: FileList | File[] | null) => {
   if (busy.value || !files) return
   for (const f of Array.from(files)) {
-    if (/^image\//.test(f.type)) uploadPicture(f)
-    else if (/\.pptx$/i.test(f.name) && !s.template && !s.mode && !s.edited) uploadTemplate(f)
+    if (f.type.startsWith('image/')) uploadPicture(f)
+    else if (hasExt(f.name, 'pptx') && !s.template && !s.mode && !s.edited) uploadTemplate(f)
     else uploadContent(f)
   }
 }
