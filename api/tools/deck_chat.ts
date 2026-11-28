@@ -678,6 +678,16 @@ const hasHan = (text: string) => [...text].some((ch) => { const c = ch.codePoint
 // against a list before, "chin|中文|japan|…": a name in any other language, "tiếng Trung", fell through.)
 const keepLanguage = async (calls: any[], userText: string) => {
   if (hasHan(userText)) return
+  // picture search words are English by the tools' rule, and the reply quotes them: written in Chinese, a Ukrainian user
+  // read «外周和中枢免疫系统器官、淋巴结、脾脏» as the subject of their picture (Codex run, 2026-11-28)
+  for (const c of calls) {
+    if (!['add_image', 'change_image'].includes(c.action) || !hasHan(String(c.args?.query || ''))) continue
+    try {
+      const out = JSON.parse(await chat([{ role: 'user', content: `Translate these picture search words into English, keeping their meaning (a proper name stays a name). Return JSON {"query": "..."} only.\n${JSON.stringify(String(c.args.query))}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 300 }))
+      if (typeof out.query === 'string' && out.query.trim() && !hasHan(out.query)) c.args.query = out.query.trim()
+    }
+    catch { /* the search still runs with the words as they are */ }
+  }
   for (const c of calls) {
     const lang = String(c.args?.language || '')
     if (!lang) continue
