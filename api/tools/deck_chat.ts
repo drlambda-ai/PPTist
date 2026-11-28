@@ -253,8 +253,9 @@ const TOOLS = [
     file_pages: { type: 'array', items: { type: 'integer' }, description: 'Pages of the FILE whose pictures to use; empty = any' },
     index: page,
     page_named: { type: 'boolean', description: 'true ONLY if the user named the page; false for "this slide"/"here"/nothing' },
-    count: { type: 'integer', description: 'How many pictures, 1-6 (default 1)' },
-  }, ['file', 'file_pages', 'index', 'count', 'page_named']),
+    count: { type: 'integer', description: 'How many pictures, 1-6 (default 1); the editor picks the ones that fit the page' },
+    replace: { type: 'boolean', description: 'true when the picture from the file is to take the place of the page\'s picture ("replace the picture with a figure from my paper", "swap this photo for one from my document"); false to add it' },
+  }, ['file', 'file_pages', 'index', 'count', 'page_named', 'replace']),
   fn('find_papers', 'Find real academic papers (peer-reviewed sources, with authors, year, journal and DOI) for academic, medical or scientific citations, references, evidence or a literature slide. Returns them under "Done so far"; then cite only those.', {
     query: { type: 'string', description: 'The research topic in English, specific' },
   }, ['query']),

@@ -454,6 +454,46 @@ const uploadPicture = (file: File) => run(t('Uploading {p0}…', { p0: file.name
 
 const docFiles = new Map<string, File>() // this session's attached documents, for pulling their figures out
 const figuresOf = new Map<string, { url: string, page?: number }[]>() // extracted once per file
+// The pictures of the user's file that fit a page. Extraction keeps every embedded picture in file order, and the
+// first one was placed whatever the page was about: a photo-grid tile or a logo for "use an image from my paper"
+// (production run, 2026-11-28). Now: tiny pictures, strips and pictures already in the deck are left out, the
+// largest twelve go on one numbered sheet, and a vision model picks for what the user asked and the page says.
+// Pictures that cannot be loaded here keep the file's order, as before
+const fittingFigures = async (figs: { url: string, page?: number }[], count: number, asked: string, about: string, used: Set<string>) => {
+  const loaded = await Promise.all(figs.slice(0, 60).map(async (m) => {
+    try {
+      const bmp = await createImageBitmap(await (await fetch(m.url)).blob())
+      return { m, bmp, w: bmp.width, h: bmp.height }
+    }
+    catch {
+      return null
+    }
+  }))
+  const sized = loaded.filter((x): x is NonNullable<typeof x> => !!x && Math.max(x.w, x.h) >= 200 && x.w * x.h >= 40000 && Math.max(x.w, x.h) <= 6 * Math.min(x.w, x.h) && !used.has(x.m.url))
+    .sort((a, b) => b.w * b.h - a.w * a.h).slice(0, 12)
+  if (!sized.length) return figs.filter(m => !used.has(m.url)).slice(0, count)
+  if (sized.length <= count) return sized.map(x => x.m)
+  const cell = 256, cols = 4
+  const canvas = document.createElement('canvas')
+  canvas.width = cols * cell
+  canvas.height = Math.ceil(sized.length / cols) * cell
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.font = 'bold 18px sans-serif'
+  sized.forEach((x, i) => {
+    const k = Math.min((cell - 8) / x.w, (cell - 30) / x.h), left = (i % cols) * cell, top = Math.floor(i / cols) * cell
+    ctx.drawImage(x.bmp, left + (cell - x.w * k) / 2, top + 26 + (cell - 30 - x.h * k) / 2, x.w * k, x.h * k)
+    ctx.fillStyle = '#000000'
+    ctx.fillText(String(i + 1), left + 6, top + 20)
+  })
+  const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: canvas.toDataURL('image/jpeg', 0.8),
+    instruction: `These numbered pictures come from the user's own document. Pick the ${count} that fit${count === 1 ? 's' : ''} this slide best, for what the user asked and what the slide says. A real figure, chart, diagram or table of the subject comes before a decorative photo.\n`
+      + `The user asked: ${JSON.stringify(asked.slice(0, 500))}\nThe slide says: ${JSON.stringify(about.slice(0, 1500))}\nReturn JSON {"pick": [<the numbers, best first>]}.` }) }).catch(() => null)
+  const pick = r?.ok ? (await r.json().catch(() => ({})))?.pick : null
+  const order = [...new Set([...(Array.isArray(pick) ? pick : []).map(Number).filter(n => n >= 1 && n <= sized.length), ...sized.map((_, i) => i + 1)])]
+  return order.slice(0, count).map(n => sized[n - 1].m)
+}
 // A listed file as the user uploaded it: attached in this session, or one the project already had (asked from ChatSlide)
 // The one presentation whose look can be read now: the only .pptx listed (by name: a re-attached file is listed twice),
 // a project file or one attached in this session. The router is told the same fact (files[].look).
@@ -2225,7 +2265,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       figuresOf.set(file.name, figs)
     }
     const want: number[] = args.file_pages || []
-    const chosen = (want.length ? figs.filter(m => m.page && want.includes(m.page)) : figs).slice(0, Math.min(Math.max(args.count || 1, 1), 6))
+    const onPages = want.length ? figs.filter(m => m.page && want.includes(m.page)) : figs
+    const target = slides.value[pos(idOf(args.index))]
+    const chosen = onPages.length ? await fittingFigures(onPages, Math.min(Math.max(args.count || 1, 1), 6), text, target ? readingOrder(target).map(elText).filter(Boolean).join(' | ') : '',
+      new Set(slides.value.flatMap(sl => sl.elements.filter((e: any) => e.type === 'image').map((e: any) => e.src)))) : []
     if (!chosen.length) {
       fail(figs.length
         ? (t('There are no pictures on page(s) {p0} of {p1} (it has {p2}, on pages {p3}).', { p0: want.join(', '), p1: file.name, p2: figs.length, p3: [...new Set(figs.map(m => m.page))].filter(Boolean).join(', ') }, listed(want)))
@@ -2234,6 +2277,18 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const id = idOf(args.index)
     const { width: W, height: H } = slideSize()
     let placed = 0
+    // "replace the picture with a figure from my paper": the figure takes the old picture's frame, whole (a chart is
+    // never cropped), centred in it; added beside it, the page had both (production run, 2026-11-28)
+    const old: any = args.replace === true ? pictures(slides.value[pos(id)]).find(e => !isBackdrop(e)) : null
+    if (old && chosen.length) {
+      const ratio = await imageRatio(chosen[0].url)
+      const w = ratio ? Math.min(old.width, old.height * ratio) : old.width, h = ratio ? w / ratio : old.height
+      keepPic(old, slides.value[pos(id)])
+      slidesStore.updateElement({ id: old.id, props: { src: chosen[0].url, clip: undefined, width: w, height: h, left: old.left + (old.width - w) / 2, top: old.top + (old.height - h) / 2, own: true } as any, slideId: id })
+      touched([id])
+      slidesStore.updateSlideIndex(pos(id))
+      return t('Placed {p0} picture(s) from {p1} on page {p2}.', { p0: 1, p1: file.name, p2: pos(id) + 1 }, 1)
+    }
     for (const m of chosen) {
       const box = freeBox(slides.value[pos(id)], { left: W * 0.55, top: H * 0.2, width: W * 0.4, height: H * 0.6 })
       if (!box) break
