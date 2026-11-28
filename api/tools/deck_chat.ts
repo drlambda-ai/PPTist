@@ -37,7 +37,7 @@ const TOOLS = [
     count: { type: 'integer', description: 'How many new pages, usually 1' },
     after: { ...page, description: 'The page the new one goes after. A closing, thank-you, conclusion, questions or references slide goes after the LAST page (or before an existing closing slide), whatever page the user is on ("thêm phần chào kết thúc" went in at page 7 of 9, 2026-11-25)' },
     layout_from: { ...page, description: 'Existing page whose layout fits the new content best' },
-    after_named: { type: 'boolean', description: 'true ONLY if the user named where (a page number, "at the end", "after the agenda", a title); false for "after this one", "here", "next" or nothing' },
+    after_named: { type: 'boolean', description: 'true if the user named where (a page number, "at the end", "after the agenda", a title), and for a closing, thank-you, conclusion, questions or references slide, whose place is the end; false for "after this one", "here", "next" or nothing' },
     topics: { type: 'array', items: { type: 'string' }, description: 'One topic per new page, in order (["TikTok", "Reddit"] for "one about TikTok and one about Reddit"); [] when the pages share one topic' },
     message_new_pages: { type: 'integer', description: 'How many new pages the user\'s message asks for IN TOTAL (all steps together; "a page" = 1, "two pages" = 2; "add 2-3 pages, an introduction, a conclusion and a bibliography" = 3 + 3 = 6: each page the message names besides the number counts, unless the deck already has it)' },
     hard: { type: 'boolean', description: 'true when the new page is a diagram: flowchart, family tree, timeline, Gantt chart' },
