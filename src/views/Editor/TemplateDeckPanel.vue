@@ -149,6 +149,7 @@ interface Session {
   mode: '' | 'template' | 'native'
   template: { name: string, templateUrl: string, analysis: any, profile: any, chrome: any[] } | null
   docs: { name: string, text: string, project?: boolean }[] // project: a file the user gave the project in ChatSlide
+  originsTried?: boolean // the pictures of a deck opened before 2026-11-27 were compared with the project's first slides once
   projectFiles?: boolean | 2 // the project's files were added once (a removed one stays removed); 2 = the originals
   brief?: { text: string, pages?: number } // what the user asked for when the project was made (ChatSlide), read on each open
   images?: { name: string, url: string }[] // pictures the user attached, placed on slides by add_image source "attached"
@@ -5111,6 +5112,84 @@ const syncToChatSlide = () => syncing ||= (async () => {
   }
 })()
 
+// A deck opened before pictures carried their origin (PPTImageElement.own, 2026-11-27): "remove the pictures that are
+// not from my files" could not tell them apart. Each of its pictures IS one of the pictures of the project's first
+// slides, drawn into its slot (filled and cropped at the centre, or fitted whole), so it is found by drawing each of
+// those the same two ways and comparing the pixels, small. A picture is marked only when one candidate is clearly it
+// and the runner-up of the other origin is clearly not; anything else stays unmarked and is never removed by origin.
+const backfillOrigins = async () => {
+  if (!chatslide?.firstPictures || s.originsTried) return
+  const pics = slides.value.flatMap(sl => sl.elements.filter((e: any) => e.type === 'image' && !(e.width * e.height < 1)).map((e: any) => ({ e, slideId: sl.id })))
+  if (!pics.length || pics.some(x => typeof x.e.own === 'boolean')) return
+  const firsts = await chatslide.firstPictures()
+  if (!firsts.length) return
+  const N = 16
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = N
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+  ctx.imageSmoothingQuality = 'high' // a big picture drawn this small must be averaged, not sampled: sampled, the same picture at two sizes read as different
+  const load = async (url: string) => {
+    for (let k = 0; k < 3; k++) { // again: of 65 pictures a few failed the first time, different ones each run
+      try {
+        return await createImageBitmap(await (await fetch(url)).blob())
+      }
+      catch {
+        await new Promise(ok => setTimeout(ok, 1500))
+      }
+    }
+    return null
+  }
+  // a part of a picture (sx..sh) on white, N x N
+  const small = (bmp: ImageBitmap, sx = 0, sy = 0, sw = bmp.width, sh = bmp.height, dx = 0, dy = 0, dw = N, dh = N) => {
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, N, N)
+    ctx.drawImage(bmp, sx, sy, sw, sh, dx, dy, dw, dh)
+    return ctx.getImageData(0, 0, N, N).data
+  }
+  const apart = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+    let sum = 0
+    for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2])
+    return sum / (a.length / 4 * 3)
+  }
+  // four at a time: all at once, a third of them failed
+  const loadedFirsts: { own: boolean, bmp: ImageBitmap | null }[] = []
+  const queue = firsts.slice(0, 120)
+  await Promise.all([0, 1, 2, 3].map(async () => {
+    for (let f = queue.shift(); f; f = queue.shift()) loadedFirsts.push({ own: f.own, bmp: await load(f.url) })
+  }))
+  const sources = loadedFirsts.filter(f => f.bmp) as { own: boolean, bmp: ImageBitmap }[]
+  if (!sources.length) return
+  const bySrc = new Map<string, boolean | null>()
+  for (const src of new Set(pics.map(x => x.e.src as string))) {
+    const bmp = await load(src)
+    if (!bmp) continue
+    const mine = small(bmp)
+    const shape = bmp.width / bmp.height
+    const scored = sources.map((f) => {
+      const c = f.bmp.width / f.bmp.height
+      // filling this picture's shape, cut at the centre
+      const cw = c > shape ? f.bmp.height * shape : f.bmp.width, ch = c > shape ? f.bmp.height : f.bmp.width / shape
+      const cover = apart(mine, small(f.bmp, (f.bmp.width - cw) / 2, (f.bmp.height - ch) / 2, cw, ch))
+      // fitted whole inside it
+      const fw = c > shape ? N : N * c / shape, fh = c > shape ? N * shape / c : N
+      const contain = apart(mine, small(f.bmp, 0, 0, f.bmp.width, f.bmp.height, (N - fw) / 2, (N - fh) / 2, fw, fh))
+      return { own: f.own, d: Math.min(cover, contain) }
+    }).sort((x, y) => x.d - y.d)
+    const best = scored[0], other = scored.find(x => x.own !== best.own)
+    // clearly this one and clearly not one of the other origin. Measured on a real deck of 32 pictures in this
+    // browser: the right first picture is 0 to 10 away (of 255, per colour, on average; a small drawing of a large
+    // photo is never exact), the nearest other one 43 or more
+    bySrc.set(src, best.d <= 14 && (!other || other.d >= Math.max(25, best.d * 3)) ? best.own : null)
+  }
+  for (const { e, slideId } of pics) {
+    const own = bySrc.get(e.src)
+    const live: any = slides.value.find(x => x.id === slideId)?.elements.find(x => x.id === e.id)
+    if (typeof own === 'boolean' && live && live.src === e.src && typeof live.own !== 'boolean') slidesStore.updateElement({ id: e.id, props: { own } as any, slideId })
+  }
+  s.originsTried = true
+  save()
+}
+
 // Bring the deck back after a page reload.
 onMounted(() => {
   if (chatslide) { // ChatSlide project: its saved editor state, or on first open its deck converted from ChatSlide
@@ -5171,6 +5250,7 @@ onMounted(() => {
       }
       // each page as it was when the deck was opened: "back to how it was at first" restores from this
       rememberOriginal()
+      backfillOrigins().catch(() => undefined) // not awaited: the deck is open
       // the loaded deck is where Undo stops (not the blank page shown while it loaded)
       await db.snapshots.clear()
       await snapshotStore.initSnapshotDatabase()

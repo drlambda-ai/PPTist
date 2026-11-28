@@ -29,6 +29,9 @@ export interface ChatSlideHost {
   uploadImage?: (image: Blob) => Promise<string> // a picture as its own file (the deck stores the link, not the bytes)
   classic?: () => void // back to ChatSlide's classic editor
   // the figures inside a PDF/PPTX/DOCX (ChatSlide backend extract-images), with the page each came from
+  // the pictures of the project's slides as ChatSlide first made them, each with whose it is (the user's own file,
+  // or added: stock, AI), for decks opened before pictures carried that mark
+  firstPictures?: () => Promise<{ url: string, own: boolean }[]>
   extractImages?: (file: File) => Promise<{ images?: { url: string, page?: number, name?: string }[], error?: string }>
   // the files the user gave this project in ChatSlide (the text read from them), so the chat uses them without a re-attach
   files?: () => Promise<{ name: string, text: string }[]>
