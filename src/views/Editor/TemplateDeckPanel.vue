@@ -121,7 +121,7 @@ const drop = (t: string, chars: string) => [...t].filter(ch => !chars.includes(c
 const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const sayIn = (text: string, tr: typeof tApp, words: (v: string) => string = v => v): string | null => {
   const own = ownText.get(text)
-  const [, before, inner, after] = text.match(/^(\s*)([\s\S]*?)(\s*)$/)!
+  const inner = text.trim(), before = inner ? text.slice(0, text.length - text.trimStart().length) : text, after = inner ? text.slice(text.trimEnd().length) : ''
   // a line joined with a space ("Made the text bigger…" + " 10 text box(es) had no room…", replay 2026-11-23)
   if (!own && (before || after)) {
     const said = sayIn(inner, tr, words)
@@ -169,6 +169,7 @@ import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useSlideTheme from '@/hooks/useSlideTheme'
 import { parse } from 'pptxtojson'
 import { normalizePptx } from '@/utils/normalizePptx'
+import { cssColorOf, setCssColor, titleColorOf, fontFamilyOf, setFontFamily, numbersIn, firstTag, sizeParagraphs, replaceFirstText, replaceFirstNumber, quotesToSingle, dropComments, pageMark, dropPageMark, wordsAt, hasUnspacedScript, sentencesOf, dropEndPunct, escapeFenceTags } from '@/utils/plainText'
 import { fileLook } from '@/utils/fileLook'
 import api from '@/services'
 import type { Slide, PPTImageElement, PPTElement } from '@/types/slides'
@@ -424,13 +425,13 @@ const run = async (label: string, fn: () => Promise<void>) => {
     const kept = !!(e as any)?.keptSteps
     const keptLine = kept ? ` ${t('The changes made before it are kept.')}` : ''
     if (e instanceof OutOfCredits) say('assistant', t("You're out of credits (this needs {p0}, you have {p1}). Upgrade your plan to keep going.", { p0: e.required, p1: e.credits }) + keptLine)
-    else if (/\b(Anthropic|OpenAI) \d{3}\b/.test(String((e as Error).message))) {
+    else if ((m => ['Anthropic ', 'OpenAI '].some(v => { const k = m.indexOf(v); return k >= 0 && numbersIn(m.slice(k + v.length, k + v.length + 4)).some(n => n >= 100 && n <= 999) }))(String((e as Error).message))) {
       say('assistant', kept ? t('The AI service is unavailable right now. Please try again in a moment.') + keptLine : t('The AI service is unavailable right now; nothing was changed. Please try again in a moment.'))
     }
     // a bug of ours, or a storage / network failure (prod 2026-11-12: "Vercel Blob: Failed to retrieve the client token"),
     // never shown raw to the user (it is in the turn record with its stack)
     else if (e instanceof SyntaxError || e instanceof TypeError || e instanceof ReferenceError || e instanceof RangeError
-      || /^Vercel Blob:|Failed to fetch|NetworkError|Load failed/.test(String((e as Error)?.message))) {
+      || (m => m.startsWith('Vercel Blob:') || ['Failed to fetch', 'NetworkError', 'Load failed'].some(v => m.includes(v)))(String((e as Error)?.message))) {
       say('assistant', (e as any).keptSteps
         ? t('Something went wrong on our side partway through; the changes made before it are kept. Please ask for the rest again.')
         : t('Something went wrong on our side; nothing was changed. Please try again.'))
@@ -556,12 +557,11 @@ const fileOf = async (name: string) => {
 // "[slide N] ..." (a .pptx read here), "Slide N:" on a line of its own (a .pptx the project already had, read by
 // ChatSlide). "Take the definition from slide 2 of my example" read the whole file, or the deck's own slide 2
 // (a paying user, four messages, 2026-11-11): only "[page N]" was known, so a presentation file had no pages at all
-const PAGE_MARK = /^(?:\[page (\d+)\]$|\[slide (\d+)\](?= |$)|Slide (\d+):$)/
 const filePages = (text: string): { n: number, text: string }[] => {
   const out: { n: number, text: string }[] = []
   for (const line of text.split('\n')) {
-    const m = line.match(PAGE_MARK)
-    if (m) out.push({ n: Number(m[1] || m[2] || m[3]), text: line })
+    const n = pageMark(line)
+    if (n) out.push({ n, text: line })
     else if (out.length) out[out.length - 1].text += `\n${line}`
   }
   // markers a reader wrote count up from 1; anything else is the document's own words ("Slide 3:" inside a text)
@@ -623,7 +623,7 @@ const generateNative = async (text: string, asWritten = false) => {
   await readStream(await api.AIPPT_Outline({ content: brief, language: requestLanguage(text), model: '', asWritten }), t => {
     outline += t 
   })
-  outline = getMdContent(outline).replace(/<!--[\s\S]*?-->/g, '')
+  outline = dropComments(getMdContent(outline))
   const template = await api.getMockData('template_1')
   resetSlides()
   let pending = ''
@@ -691,7 +691,7 @@ const lookMain = (els: any[]) => els.reduce((a, e) => (elText(e).length > elText
 const textLook = (sl: Slide) => [true, false].map((title) => {
   const els = lookTexts(sl, title)
   if (!els.length) return null
-  const heavy = (x: Element | null): boolean => !!x && (['STRONG', 'B'].includes(x.tagName.toUpperCase()) || /bold|[6-9]00/.test((x as HTMLElement).style?.fontWeight || '') || heavy(x.parentElement))
+  const heavy = (x: Element | null): boolean => !!x && (['STRONG', 'B'].includes(x.tagName.toUpperCase()) || (w => w.includes('bold') || ['600', '700', '800', '900'].some(v => w.includes(v)))((x as HTMLElement).style?.fontWeight || '') || heavy(x.parentElement))
   const bodies = els.map(e => new DOMParser().parseFromString(lookHtml(e), 'text/html').body)
   const bold = bodies.every((b) => {
     const w = b.ownerDocument.createTreeWalker(b, NodeFilter.SHOW_TEXT)
@@ -798,7 +798,7 @@ const saidBackground = (text: string, words: unknown) => {
   const prev = users[users.length - 1] === text ? users[users.length - 2] : users[users.length - 1]
   return [text, ...(lastChangedBackground() && prev ? [prev] : [])].some(x => norm(x).includes(w))
 }
-const lastChangedBackground = () => lastTurnCalls.some(k => k.startsWith('set_background ') || (k.startsWith('change_image ') && /"image":0[,}]/.test(k)))
+const lastChangedBackground = () => lastTurnCalls.some(k => k.startsWith('set_background ') || (k.startsWith('change_image ') && (k.includes('"image":0,') || k.includes('"image":0}'))))
 let currentAtSend = '' // id of the page the user was on when they sent the message
 const createdThisMessage = new Set<string>() // pages added since the message was sent
 let lastTurnCalls: string[] = [] // the previous message's steps, as stepKey: what an Undo just reverted
@@ -810,7 +810,7 @@ const stepKey = (action: string, args: any) => `${action} ${JSON.stringify(Objec
 // A shape with words and no fill of its own is a plain text box too: every text box of an imported ChatSlide or
 // PowerPoint deck is one, so a heading the paid redesign added on top of the body text went unseen, and "the heading
 // overlaps the body text" was answered "Updated page 26" with the page looking the same (2026-11-18)
-const bareText = (e: any) => !!elText(e) && (e.type === 'text' || (e.type === 'shape' && !e.gradient && !e.pattern && (!e.fill || e.fill === 'transparent' || /^#[0-9a-f]{6}00$/i.test(e.fill))))
+const bareText = (e: any) => !!elText(e) && (e.type === 'text' || (e.type === 'shape' && !e.gradient && !e.pattern && (!e.fill || e.fill === 'transparent' || (String(e.fill).length === 9 && String(e.fill).endsWith('00') && isHex6(String(e.fill).slice(0, 7))))))
 // the colours a box's letters are drawn in: each run's own, else the box's
 const letters = (e: any) => {
   const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html'), w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT), out = new Set<string>()
@@ -989,8 +989,8 @@ const fitLabels = (pageId: string, ids: Set<string>) => withRenderer(async () =>
         const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
         let broken = false
         for (let t = walk.nextNode(); t && !broken; t = walk.nextNode()) {
-          for (const m of (t.textContent || '').matchAll(/[^\s/\-–—]+/g)) {
-            if (m[0].length > 24 || /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u.test(m[0])) continue // scripts written without spaces wrap anywhere (Codex review)
+          for (const m of wordsAt(t.textContent || '').map(w => Object.assign([w.word], { index: w.at }))) {
+            if (m[0].length > 24 || hasUnspacedScript(m[0])) continue // scripts written without spaces wrap anywhere (Codex review)
             const r = document.createRange()
             r.setStart(t, m.index!)
             r.setEnd(t, m.index! + m[0].length)
@@ -1477,8 +1477,7 @@ const fitOne = async (slideId: string, ids: string[], before: Record<string, num
         const node = document.querySelector(`#editable-element-${e.id} .ProseMirror, #editable-element-${e.id} .text`)
         const px = node ? parseFloat(getComputedStyle(node).fontSize) : 0
         if (!px) continue
-        content = content.replace(/<p(\s[^>]*)?>/g, (_m: string, attrs = '') => (/style="/.test(attrs)
-          ? `<p${attrs.replace(/style="/, `style="font-size: ${scale(px)}px; `)}>` : `<p${attrs} style="font-size: ${scale(px)}px;">`))
+        content = sizeParagraphs(content, scale(px))
         if (content === e.content) continue
       }
       slidesStore.updateElement({ id: e.id, props: { content }, slideId })
@@ -1664,7 +1663,7 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   const esc = (x: string) => String(x).split('<').join('&lt;')
   if (t) { // the deck's own title box and styling, new words
     const html = t.type === 'shape' ? t.text.content : t.content
-    const styled = html.replace(/(<[^/][^>]*>)([^<]+)(<)/, (_m: string, open: string, _w: string, close: string) => `${open}${esc(heading)}${close}`)
+    const styled = replaceFirstText(html, esc(heading))
     if (t.type === 'shape') t.text.content = styled
     else t.content = styled
   }
@@ -1674,11 +1673,11 @@ const insertPage = (at: number, heading: string, note: string, main: any) => {
   if (body.type === 'table') body.height = Math.min(body.height, body.data.length * 40)
   // the colour the title actually shows: its inline CSS colour (a fixed grammar: #hex or rgb()), else its default colour
   const titleHtml = t ? (t.type === 'shape' ? t.text.content : t.content) : ''
-  const accent = titleHtml.match(/color:\s*(#[0-9a-fA-F]{6}|rgba?\([^)]*\))/)?.[1] || (t?.defaultColor || t?.text?.defaultColor || '')
+  const accent = titleColorOf(titleHtml) || (t?.defaultColor || t?.text?.defaultColor || '')
   // a grey or black title is no brand colour: then the deck theme's first colour leads
   const isGrey = (c: string) => { // #rrggbb or rgb(r, g, b): channels within 24 of each other
     const v = c.startsWith('#') ? (c.length === 4 ? [1, 2, 3].map(k => parseInt(c[k] + c[k], 16)) : [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16)))
-      : (c.match(/\d+/g) || []).slice(0, 3).map(Number)
+      : numbersIn(c).slice(0, 3)
     return v.length === 3 && Math.max(...v) - Math.min(...v) < 24
   }
   const lead = accent && !isGrey(accent) ? accent : (theme.value.themeColors.find(c => !isGrey(c)) || theme.value.themeColors[0])
@@ -2044,7 +2043,7 @@ const writeNotes = async (ids: string[], instruction: string) => {
     const painted = paintedPicture(sl).src ? (await paintedLines(sl)).map(l => l.text).join('\n') : ''
     const r = await fetch('/api/tools/ask_json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}${painted ? `\nThe text painted in the slide's picture, top to bottom:\n${painted}` : ''}\nCurrent notes: ${(sl.remark || '').replace(/<[^>]+>/g, ' ').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
+      body: JSON.stringify({ strong: true, instruction: `Speaker notes for THIS one slide only (never mention page numbers or other slides): what the presenter says aloud, adding context the slide only implies, in the slide's language. Every number must be exactly as on the slide. Default length 3-5 short sentences. Request: ${instruction || 'write them'}\nSlide: ${pageText(sl)}${painted ? `\nThe text painted in the slide's picture, top to bottom:\n${painted}` : ''}\nCurrent notes: ${stripTags(sl.remark || '').trim() || '(none)'}\nReturn JSON {"notes": "..."} (paragraphs separated by \\n).` }),
     })
     const notes = String((await r.json()).notes || '').trim()
     if (notes) {
@@ -2813,7 +2812,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     if (want.length && total && missing.length === want.length) fail(t('{p0} has only {p1} pages.', { p0: doc.name, p1: total }))
     const got = want.filter(n => !missing.includes(n))
     const picked = want.length && total ? parts.filter(p => got.includes(p.n)).map(p => p.text).join('\n') : doc.text
-    if (!picked.replace(/^(\[page \d+\]|\[slide \d+\]|Slide \d+:)/gm, '').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }, listed(want)) : '' }))
+    if (!picked.split('\n').map(dropPageMark).join('\n').trim()) fail(t('No text could be read from {p0}{p1} (it may be a scanned image).', { p0: doc.name, p1: want.length ? t(' page(s) {p0}', { p0: want.join(', ') }, listed(want)) : '' }))
     memo = `<file-content name="${doc.name.split('').filter(ch => !'"<>'.includes(ch)).join('')}"${want.length ? ` pages="${want.join(',')}"` : ''}>\n${fence(picked.slice(0, 12000))}${picked.length > 12000 ? (chunked && !want.length ? `\n[…cut: this is part 1 of ${total}; the rest of the file is not shown here. Before anything that needs the whole file, read_file with pages [2]${total > 2 ? `, then [3] and so on to [${total}]` : ''}]` : '\n[…cut; read fewer pages for the rest]') : ''}\n</file-content>`
     const skipped = missing.length && total ? (t(' (no page {p0}; it has {p1})', { p0: missing.join(', '), p1: total })) : ''
     return (t('Read {p0}{p1}.', { p0: doc.name, p1: want.length ? t(', page(s) {p0}', { p0: got.join(', ') }, listed(got)) : '' })) + skipped
@@ -3035,10 +3034,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const sample: any = args.same_as_page > 0 ? readingOrder(slides.value[args.same_as_page - 1]).find((e: any) => elText(e)) : null
     const sampleHtml = String(sample?.content || sample?.text?.content || '')
     // a name in quotes is written &quot;Helvetica Neue&quot; once the browser has re-written the style: it read as "quot"
-    const sampleFont = sampleHtml.match(/font-family:\s*((?:&quot;|[^;"])+)/)?.[1].split('&quot;').join('') || sample?.defaultFontName || sample?.text?.defaultFontName
-    const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
+    const sampleFont = fontFamilyOf(sampleHtml).split('&quot;').join('') || sample?.defaultFontName || sample?.text?.defaultFontName
+    const font = [...String(sampleFont || args.font || '')].filter(ch => isLetter(ch) || (ch >= '0' && ch <= '9') || ' ,_-'.includes(ch)).join('').trim().slice(0, 60) // a font name, nothing CSS can parse further
     if (!font) askBack(t('Which font?'))
-    const setIn = (html: string) => html.replace(/font-family:\s*(?:&quot;|[^;"])*/g, `font-family: ${font}`)
+    const setIn = (html: string) => setFontFamily(html, font)
     let n = 0
     for (const id of targets) {
       const sl = slides.value[pos(id)]
@@ -3191,7 +3190,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a style the browser re-wrote quotes its font names as &quot;: single quotes keep "font-family: &quot" out of
     // what reads the style as text (the title's font became "&quot" after "chữ nên đậm", 2026-11-20)
     // (an apostrophe in the name, "Rock'n'Roll One", is escaped so the quoted name stays one name)
-    const written = (doc: Document) => doc.body.innerHTML.replace(/&quot;([^&]*?)&quot;/g, (_, n: string) => `'${n.replace(/'/g, "\\'")}'`)
+    const written = (doc: Document) => quotesToSingle(doc.body.innerHTML)
     const restyle = (h: string) => {
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!phrase) {
@@ -3402,9 +3401,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           // later sentences passed a start-only check (Codex review)
           // compared without any spaces (inline tags add some), sentence by sentence (a middle sentence was lost while
           // both ends of its line stayed; Codex verify)
-          const flat = (v: string) => (new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '').replace(/\s+/g, '').toLowerCase()
+          const flat = (v: string) => [...(new DOMParser().parseFromString(v, 'text/html').documentElement.textContent || '')].filter(ch => ch.trim()).join('').toLowerCase()
           // every sentence, short ones and a one-word heading included; what is missing is the sentence, never its whole line
-          const sentences = String(x.text).split('\n').flatMap((l: string) => l.split(/(?<=[.!?…。！？])\s+/)).map((l: string) => l.trim()).filter((l: string) => flat(l).length >= 2)
+          const sentences = String(x.text).split('\n').flatMap((l: string) => sentencesOf(l)).map((l: string) => l.trim()).filter((l: string) => flat(l).length >= 2)
           // without its closing full stop: a step set as a heading drops it ("1. Визначення потреб учасників."), and the
           // six headings, read as missing, were added again on top of themselves (replay 2026-11-23)
           // (never a word's prefix: "Art." is not in "Artificial"; Codex review)
@@ -3413,8 +3412,8 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           const has = (raw: string, l: string) => {
             const drawn = new DOMParser().parseFromString(raw, 'text/html').documentElement.textContent || ''
             const chars: string[] = [], gap: boolean[] = []
-            for (const c of drawn) { if (/\s/.test(c)) { if (gap.length) gap[gap.length - 1] = true } else { chars.push(c.toLowerCase()); gap.push(false) } }
-            const page = chars.join(''), f = flat(l), g = f.replace(/[.!?…。！？]+$/u, '')
+            for (const c of drawn) { if (!c.trim()) { if (gap.length) gap[gap.length - 1] = true } else { chars.push(c.toLowerCase()); gap.push(false) } }
+            const page = chars.join(''), f = flat(l), g = dropEndPunct(f)
             if (page.includes(f)) return true
             if (g === f) return false
             for (let k = page.indexOf(g); k >= 0; k = page.indexOf(g, k + 1)) {
@@ -3436,10 +3435,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
             .sort((a, b) => b.width * b.height - a.width * a.height)[0]
           if (still.length && box) {
             const html = String(box.type === 'text' ? box.content : box.text.content)
-            const open = html.match(/<p[^>]*>/)?.[0] || '<p>'
+            const open = firstTag(html, 'p') || '<p>'
             // inside the box's first run too: a bare paragraph took the default 18px over 9px card text, and the fit,
             // which scales the sizes written in the text, could not make it smaller (replay 2026-11-23)
-            const run = html.match(/<span[^>]*>/)?.[0]
+            const run = firstTag(html, 'span') || undefined
             const content = still.map((l: string) => { const w = l.split('&').join('&amp;').split('<').join('&lt;'); return `${open}${run ? `${run}${w}</span>` : w}</p>` }).join('') + html
             slidesStore.updateElement({ id: box.id, props: box.type === 'text' ? { content } : { text: { ...box.text, content } }, slideId: sl.id })
             await fitText(sl.id, [box.id], { [box.id]: box.height })
@@ -3960,10 +3959,10 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     }
     const html = (e: any) => String(e?.content ?? e?.text?.content ?? '')
     const first: any = readingOrder(src).find((e: any) => elText(e))
-    const color = html(first).match(/(?<![-\w])color:\s*([^;"]+)/)?.[1] || first?.defaultColor || first?.text?.defaultColor
+    const color = cssColorOf(html(first)) || first?.defaultColor || first?.text?.defaultColor
     const backdrop: any = src.elements.find((e: any) => e.type === 'image' && isBackdrop(e))
     const targets = (args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)).filter((id: string) => id !== src.id)
-    const setIn = (h: string) => h.replace(/(?<![-\w])color:\s*[^;"]+/g, `color: ${color}`)
+    const setIn = (h: string) => setCssColor(h, color)
     for (const id of targets) {
       const sl = slides.value[pos(id)]
       const elements = sl.elements.filter((e: any) => !(e.type === 'image' && isBackdrop(e))).map((e: any) => {
@@ -4102,7 +4101,7 @@ const renumber = () => {
   slides.value.forEach((sl, i) => {
     for (const e of sl.elements as any[]) { // the page-number box sits at the same spot on most pages
       if (!isNum(e) || spots[at(e)] <= slides.value.length / 2 || elText(e) === String(i + 1)) continue
-      const swap = (html: string) => html.replace(/>\s*\d{1,3}\s*</, `>${i + 1}<`)
+      const swap = (html: string) => replaceFirstNumber(html, i + 1)
       if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content: swap(e.content) }, slideId: sl.id })
       else if (e.type === 'shape' && e.text) slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content: swap(e.text.content) } }, slideId: sl.id })
     }
@@ -4139,7 +4138,7 @@ const answeredHistory = () => {
 
 // What a read_file / web_search step found: the router reads it in "Done so far", the user never sees it raw.
 let memo = ''
-const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
+const fence = (text: string) => escapeFenceTags(text) // no closing tag inside the fence
 
 // Agent loop: route, apply one step, report back what was done, until the router calls finish (or 8 rounds).
 let deleteConfirmable: string[] = [] // pages the previous message asked about: this message may delete them
@@ -4481,7 +4480,7 @@ const deckTurn = async (text: string): Promise<void> => {
     const ids = slides.value.map(x => x.id) // page numbers in this round's calls refer to this deck
     if (work.every((c: any) => done.some(d => d.startsWith(`${c.action} ${JSON.stringify(c.args || {})} ->`)))) break // repeating itself
     // the same page edited twice already this turn: a third pass is the router looping (seen: 7 edits of page 2)
-    if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && new RegExp(`"index":${Number(c.args?.index)}[,}]`).test(d)).length >= 2)) break
+    if (work.some((c: any) => c.action === 'edit_page' && done.filter(d => d.startsWith('edit_page ') && (d.includes(`"index":${Number(c.args?.index)},`) || d.includes(`"index":${Number(c.args?.index)}}`))).length >= 2)) break
     // one new picture per page per message: a second one on the same page was an unasked extra (seen: a turkey).
     // Compared on the page it would really land on; skipped (and told to the router), never ending the turn.
     const landsOn = (c: any) => ids[Number(c.args?.index) - 1]

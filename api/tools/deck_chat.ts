@@ -662,6 +662,16 @@ const parseArgs = (raw: any) => {
 // and the new pages came out in Chinese. A call that names its slide language but carries Chinese script while that
 // language is not Chinese/Japanese is translated into it here, before the editor writes anything.
 // Han characters, by their code points: the script of the model's own output, not the meaning of anything
+// "⟦12⟧" markers: where they are, and the text with them removed (no regular expressions in product code)
+const markers = (t: string) => {
+  const found: { at: number, end: number }[] = []
+  for (let at = t.indexOf('⟦'); at >= 0; at = t.indexOf('⟦', at + 1)) {
+    const end = t.indexOf('⟧', at + 1)
+    if (end > at + 1 && [...t.slice(at + 1, end)].every(ch => ch >= '0' && ch <= '9')) found.push({ at, end: end + 1 })
+  }
+  return found
+}
+const dropMarkers = (t: string) => { let out = '', last = 0; for (const m of markers(t)) { out += t.slice(last, m.at); last = m.end } return out + t.slice(last) }
 const hasHan = (text: string) => [...text].some((ch) => { const c = ch.codePointAt(0) || 0; return c >= 0x3400 && c <= 0x9fff })
 // A user who writes in that script gets it by right, so nothing is checked then. (The language's NAME was matched
 // against a list before, "chin|中文|japan|…": a name in any other language, "tiếng Trung", fell through.)
@@ -701,16 +711,18 @@ const viaOpenAI = async (model: string, context: string, history: any[], user: s
 // One "Done so far" line ("<action> <args json> -> <result>") as the tool call it was. Lines that are not a call
 // (a nudge, a skipped create_deck) stay notes.
 const asCall = (d: string): { name: string, args: string, result: string } | null => {
-  const m = d.match(/^(\w+) (?=\{)/)
-  if (!m || !TOOLS.some((t: any) => t.function.name === m[1])) return null
-  const rest = d.slice(m[0].length)
+  // "<tool name> {": the name is the text before the first " {" (no regular expressions in product code)
+  const cut = d.indexOf(' {')
+  const name = cut > 0 ? d.slice(0, cut) : ''
+  if (!name || !TOOLS.some((t: any) => t.function.name === name)) return null
+  const rest = d.slice(cut + 1)
   let depth = 0, str = false, esc = false
   for (let i = 0; i < rest.length; i++) {
     const ch = rest[i]
     if (str) { if (esc) esc = false; else if (ch === '\\') esc = true; else if (ch === '"') str = false; continue }
     if (ch === '"') str = true
     else if (ch === '{') depth++
-    else if (ch === '}' && --depth === 0) return { name: m[1], args: rest.slice(0, i + 1), result: rest.slice(i + 1).replace(/^ -> /, '') || 'done' }
+    else if (ch === '}' && --depth === 0) return { name, args: rest.slice(0, i + 1), result: (r => (r.startsWith(' -> ') ? r.slice(4) : r))(rest.slice(i + 1)) || 'done' }
   }
   return null
 }
@@ -745,7 +757,7 @@ const viaResponses = async (model: string, context: string, history: any[], user
   // after a step, plain text and no tool call = the model is done (the end of a tool loop). "DONE" says nothing is
   // left; any other text is for the user (an answer from the file it read, what it could not do)
   const said = (data.output || []).filter((o: any) => o.type === 'message').flatMap((o: any) => o.content || []).map((x: any) => x.text || '').join('\n').trim()
-  return [{ action: 'finish', args: { not_done: /^(done[\s.!]*)+$/i.test(said) ? '' : said } }]
+  return [{ action: 'finish', args: { not_done: said.toLowerCase().split('done').every(x => ![...x].some(ch => ch.trim() && ch !== '.' && ch !== '!')) && said.toLowerCase().startsWith('done') ? '' : said } }]
 }
 
 // Anthropic Messages API: same tools and rules; the system prompt and tools are marked cacheable
@@ -835,7 +847,7 @@ async function handler(req: any, res: any) {
       const code = String(j?.code || '').toLowerCase()
       const has = (k: string) => !!j && k in j
       const labels: string[] = (whole || has('lines')) && Array.isArray(j?.buttons) && j.buttons.length === buttons.length ? j.buttons.map((v: unknown) => String(v || '').trim().slice(0, 120)) : []
-      const lines: string[] = (whole || has('reply')) && Array.isArray(j?.lines) && j.lines.length === free.length ? j.lines.map((v: unknown) => String(v || '').replace(/⟦\d+⟧/g, '').trim()) : []
+      const lines: string[] = (whole || has('reply')) && Array.isArray(j?.lines) && j.lines.length === free.length ? j.lines.map((v: unknown) => dropMarkers(String(v || '')).trim()) : []
       const line = (i: number) => lines[i] || free[i]
       // the translated reply with each marker back as its line; unusable when cut off or a marker went missing
       let reply = whole ? String(j?.reply || '') : ''
@@ -847,7 +859,7 @@ async function handler(req: any, res: any) {
       else reply = ''
       // a marker with no line of its own is no reply: "Updated page 2.", with no router line, came back as "⟦1⟧" and the
       // user would have read just that (replay of a real Vietnamese turn, 2026-11-21)
-      if (/⟦\d+⟧/.test(reply)) reply = ''
+      if (markers(reply).length) reply = ''
       const options = buttons.length ? (labels.length && labels.every(Boolean) ? labels : buttons) : undefined
       // the user writes in the editor's own language: the reply is already in it, kept as written. Asked to
       // "copy it unchanged", the model still turned a Vietnamese reply into English about 1 time in 30 (2026-11-11)
