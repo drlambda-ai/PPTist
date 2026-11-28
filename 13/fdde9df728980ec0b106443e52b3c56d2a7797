@@ -1,0 +1,4 @@
+Verification: passed
+Removed the obsolete checker prompt and tests. TemplateDeckPanel.vue's checker-driven rollback/recursive retry and context truncation were removed by this task and recorded in fb581fb2 during concurrent editor work.
+Validated frontend types and the actual edit_all_pages handoff on the existing seven-page saved-user deck, three model-free runs. This is not a live-model quality benchmark.
+Repository-wide Codex review was not run, per the standing PPTist exclusion.
