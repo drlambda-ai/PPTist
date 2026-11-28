@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean; both failure modes run in the built editor (Playwright). A data-loss fix: worth a Codex look if the policy for PPTist changes.
