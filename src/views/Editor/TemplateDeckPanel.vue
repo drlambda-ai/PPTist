@@ -2106,7 +2106,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // text the user pasted for the pages (in this message or the request this message answers) goes to each page as
     // written: the router's instruction for 21 pasted slides said only "add them after the presentation" (2026-11-15)
     const said = [s.pending?.request, text].filter((x, k, all) => x && all.indexOf(x) === k).join('\n')
-    const own = said.length > 600 ? `\nThe user's own text (where it gives this page's content, use that word for word):\n${fence(said.slice(0, 12000))}` : ''
+    // from 200 characters: "додай слайд з назвою X і текст Y" (350-450 characters) held the page's text, and the page came
+    // out paraphrased, then reordered (prod 2026-11-27, production run 2026-11-28)
+    const own = said.length > 200 ? `\nThe user's own text (where it gives this page's content, use that word for word and in its order, every sentence of it, nothing added):\n${fence(said.slice(0, 12000))}` : ''
     // pages "from my file": the file read for this request is their material, as edit_all_pages gives it; told only
     // "use the document's remaining content", a page answered that no script was attached (replay, 2026-11-23)
     const read = args.from_users_file ? s.docs.filter(d => readThisTurn.has(d.name) && d.text.trim()) : []
