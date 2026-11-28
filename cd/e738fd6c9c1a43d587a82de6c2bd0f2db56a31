@@ -1,0 +1,2 @@
+Claude-Review: passed
+Checked: routerInput reset at turn start, set by the first routed fetch only, cleared after recordTurn; body shape unchanged for deck_chat; record body capped server side at 100k chars; exports are additive.
