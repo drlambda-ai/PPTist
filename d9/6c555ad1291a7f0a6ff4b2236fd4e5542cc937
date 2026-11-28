@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. Three tool-description sentences (add_page.instruction, change_image, change_image.every_page); type-check clean. Checked on production after deploy with the first case's words.
