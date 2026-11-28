@@ -819,7 +819,9 @@ const textOnText = (els: any[]) => {
   }).map((b: any) => [a.id, b.id].sort().join('|'))))
 }
 const textOnPictures = (els: any[]) => {
-  const pics = els.filter((e: any) => (e.type === 'image' && !isBackdrop(e)))
+  // not a painted-out spot of a flat page (paintedOutPicture): the new words belong on it, and the layout repair
+  // squeezed those patches to 4px strips to "free" the text (replay, 2026-11-28)
+  const pics = els.filter((e: any) => (e.type === 'image' && !isBackdrop(e) && !e.paintedOut))
   return new Set([...textOnText(els), ...els.filter((e: any) => e.type !== 'image' && elText(e)).flatMap((a: any) => pics.filter((b: any) => {
     const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
     const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
@@ -1015,15 +1017,21 @@ const FLAT_NOTE = '\n(This page is ONE flat picture: its title, text, pictures a
 // picture, so "underline the last sentence", "a check icon before Application" and "an arrow" were answered "this page
 // has no elements" three times, and a drawn arrow landed on a heading (a paying user, 2026-11-14). A vision model reads
 // the picture once (a fraction of a cent; boxes within a few px on the user's page), and marks go by those boxes.
-// look: the line's letters as a vision model read them (colour, bold, kind of typeface)
-type PaintedLine = { text: string, left: number, top: number, width: number, height: number, ground?: string, cover?: number[], look?: string }
+// look: the line's letters as a vision model read them (colour, bold, kind of typeface); patch: for a line on a photo or
+// pattern, the id of a small picture of that spot with the words painted out (photoPatches)
+type PaintedLine = { text: string, left: number, top: number, width: number, height: number, ground?: string, patch?: string, cover?: number[], look?: string }
+// A line of text on a photo has no colour that hides it: a flat box shows as a band (tried on a real deck, 2026-11-28).
+// The spot is painted out instead: each column runs from the pixel just above the line to the pixel just below it, so
+// the photo's own shading carries across where the letters were. Kept by id; the page model asks for one with a shape
+// whose fill is "patch:<id>", and the merge puts the picture there
+const photoPatches = new Map<string, string>()
 // The colour around a painted line, read from the picture's pixels in a ring just outside its box (x, y, w, h in percent
 // of the picture), when that ring is one even colour or one smooth left-to-right gradient. "移除講者名稱" on an imported cover was refused because the page
 // model could not see the colour behind the name, and a replay covered it with a guessed white box on a blue cover
 // (a paying user, 2026-11-21). Only an even ground can hide words: on a photo or a pattern there is none.
 // With it, the box (in percent of the picture) where that ground was read: the cover goes exactly there, since a box
 // the model grew by itself ran past the sampled ground and showed (replay 2026-11-22).
-const groundOf = (src: string, lines: { x: number, y: number, w: number, h: number }[]) => new Promise<({ ground: string, cover: number[] } | undefined)[]>((ok) => {
+const groundOf = (src: string, lines: { x: number, y: number, w: number, h: number }[]) => new Promise<({ ground?: string, patch?: string, cover: number[] } | undefined)[]>((ok) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.onload = () => {
@@ -1058,9 +1066,37 @@ const groundOf = (src: string, lines: { x: number, y: number, w: number, h: numb
           const mean = [1, 2, 3].map(ch => t.reduce((s, p) => s + p[ch], 0) / t.length)
           return { mean, sd: Math.max(...[1, 2, 3].map((ch, i) => Math.sqrt(t.reduce((s, p) => s + (p[ch] - mean[i]) ** 2, 0) / t.length))) }
         })
-        if (stat.some(t => t.sd > 10)) return undefined
+        const paintedOut = () => {
+          const pad2 = Math.max(2, H * 0.12)
+          const X0 = Math.max(0, Math.floor(l - pad2)), X1 = Math.min(c.width, Math.ceil(l + W + pad2)), Y0 = Math.max(1, Math.floor(t - pad2)), Y1 = Math.min(c.height - 2, Math.ceil(t + H + pad2))
+          if (X1 - X0 < 4 || Y1 - Y0 < 4) return undefined
+          const out = document.createElement('canvas')
+          out.width = X1 - X0
+          out.height = Y1 - Y0
+          const o = out.getContext('2d')!, img2 = o.createImageData(out.width, out.height)
+          // the colour just above and just below a column: the middle value of the pixels around it (13 wide, 3 rows), so
+          // a letter of the line above or below is not dragged through the patch as a dark streak (replay, 2026-11-28)
+          const edge = (x: number, rows: number[]) => [0, 1, 2].map((ch) => {
+            const v: number[] = []
+            for (const y of rows) for (let dx = -6; dx <= 6; dx++) v.push(px[(Math.min(c.height - 1, Math.max(0, y)) * c.width + Math.min(c.width - 1, Math.max(0, x + dx))) * 4 + ch])
+            return v.sort((p0, p1) => p0 - p1)[v.length >> 1]
+          })
+          for (let x = X0; x < X1; x++) {
+            const a = edge(x, [Y0 - 3, Y0 - 2, Y0 - 1]), b = edge(x, [Y1 + 1, Y1 + 2, Y1 + 3])
+            for (let y = Y0; y < Y1; y++) {
+              const k = (y - Y0 + 0.5) / (Y1 - Y0), at2 = ((y - Y0) * out.width + (x - X0)) * 4
+              for (let ch = 0; ch < 3; ch++) img2.data[at2 + ch] = a[ch] * (1 - k) + b[ch] * k
+              img2.data[at2 + 3] = 255
+            }
+          }
+          o.putImageData(img2, 0, 0)
+          const id = `P${photoPatches.size + 1}`
+          photoPatches.set(id, out.toDataURL('image/png'))
+          return { patch: id, cover: [X0 / c.width, Y0 / c.height, (X1 - X0) / c.width, (Y1 - Y0) / c.height].map(v => v * 100) }
+        }
+        if (stat.some(t => t.sd > 10)) return paintedOut()
         // flat bands of different colours are not a gradient: a smooth ground moves little from one third to the next
-        if ([0, 1, 2].some(ch => Math.abs(stat[0].mean[ch] - stat[1].mean[ch]) > 40 || Math.abs(stat[1].mean[ch] - stat[2].mean[ch]) > 40)) return undefined
+        if ([0, 1, 2].some(ch => Math.abs(stat[0].mean[ch] - stat[1].mean[ch]) > 40 || Math.abs(stat[1].mean[ch] - stat[2].mean[ch]) > 40)) return paintedOut()
         const cover = [x0 / c.width, y0 / c.height, (x1 - x0) / c.width, (y1 - y0) / c.height].map(v => v * 100)
         const hex = stat.map(t => tinycolor({ r: t.mean[0], g: t.mean[1], b: t.mean[2] }).toHexString())
         const spread = Math.max(...[0, 1, 2].map(ch => Math.max(...stat.map(t => t.mean[ch])) - Math.min(...stat.map(t => t.mean[ch]))))
@@ -1120,7 +1156,7 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
       left: Math.round(at.left + (l.x / 100) * at.width), top: Math.round(at.top + (l.y / 100) * at.height),
       width: Math.round((l.w / 100) * at.width), height: Math.round((l.h / 100) * at.height),
       ...(l.look ? { look: l.look } : {}),
-      ...(grounds[i] ? { ground: grounds[i]!.ground, cover: (([x, y, w, h]) => [at.left + x * at.width, at.top + y * at.height, w * at.width, h * at.height].map(Math.round))(grounds[i]!.cover.map(v => v / 100)) } : {}) }))
+      ...(grounds[i] ? { ground: grounds[i]!.ground, patch: grounds[i]!.patch, cover: (([x, y, w, h]) => [at.left + x * at.width, at.top + y * at.height, w * at.width, h * at.height].map(Math.round))(grounds[i]!.cover.map(v => v / 100)) } : {}) }))
       .filter(l => l.width > 0 && l.height > 0)
   })().catch(() => [] as PaintedLine[])
   paintedRead.set(key, read)
@@ -1128,15 +1164,31 @@ const paintedLines = (sl: Slide): Promise<PaintedLine[]> => {
   return read
 }
 const paintedNote = async (sl: Slide) => {
-  const lines = await paintedLines(sl)
-  if (!lines.length) return isFlat(sl) ? FLAT_NOTE : ''
+  const read = await paintedLines(sl)
+  if (!read.length) return isFlat(sl) ? FLAT_NOTE : ''
+  // a painted line that lies under a text box put on the page later is not what the user reads there: rewritten, the
+  // new words landed under and across that box (replay on a real deck, 2026-11-28). It is listed without a way to
+  // hide it, with the box to change instead
+  const boxes = sl.elements.filter((e: any) => elText(e) && e.width && e.height) as any[]
+  const lines = read.map((l) => {
+    const over = boxes.find(e => Math.max(0, Math.min(l.left + l.width, e.left + e.width) - Math.max(l.left, e.left)) * Math.max(0, Math.min(l.top + l.height, e.top + e.height) - Math.max(l.top, e.top)) > 0.3 * l.width * l.height)
+    return over ? { text: l.text, left: l.left, top: l.top, width: l.width, height: l.height, look: `under the text box ${over.id}: change that box, never this line` } : l
+  })
   return '\n(The page itself is ONE flat picture: its title, text, pictures and colours are all painted inside that single image, so none of them can be edited, restyled, resized, moved or deleted. What CAN be done is to put NEW elements on top of it (any element listed above was put there this way and is edited as usual).'
-    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.look ? `, ${l.look}` : ''}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
+    + ` The lines of text painted in the picture, each with the box its letters fill on this canvas, in px, and the even colour around it when it sits on one ("ground"):\n${lines.map(l => `- "${l.text.replace(/"/g, '\'')}": left ${l.left}, top ${l.top}, width ${l.width}, height ${l.height}${l.look?.startsWith('under the text box') ? '' : `, letters ${Math.max(8, Math.round(l.height * 0.78))}px`}${l.look ? `, ${l.look}` : ''}${l.ground ? `, ground ${l.ground}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : l.patch ? `, on a photo or pattern: patch ${l.patch}, cover box left ${l.cover![0]}, top ${l.cover![1]}, width ${l.cover![2]}, height ${l.cover![3]}` : ''}`).join('\n')}\n`
     + 'Place new elements by these boxes. An underline is a new thin shape (a plain rectangle 2-3px high, in the colour of that text or a dark one) right under the line\'s box, as wide as the words to underline. A check mark, tick, bullet or icon "before" a line is a small new shape just left of that line\'s box, vertically centred on it and about as tall as its letters. A highlight is a new see-through box over the words. An arrow, a label or a new text box goes where no painted line is, unless the user names the place; never cover painted words with a solid shape, except to remove them as below.'
     + ' To remove or hide a painted line ("remove the speaker name", "delete the date") that lists a ground: a new plain rectangle shape filled with exactly that ground (a ground written as "fill" and "gradient" is copied into the shape as written), no outline, its box exactly the line\'s cover box (the area where that ground was read), so the words vanish into the page. A painted line with no ground (it sits on a photo or a pattern) cannot be removed: change nothing and say so in "reply".'
     // rewording a painted line = hide it and write over it: "revise the wording to sound more natural" on a page of
     // one flat picture was answered "its wording can't be edited" twice and the user left (prod 2026-11-26)
-    + ' When the request needs the painted text itself changed (its wording, colour, size or font): for each such line that lists a ground, hide it as above (the rectangle over its cover box) and add a new text box holding the new wording in that line\'s own box (its left, top, width and height, and it must stay inside them: never over another line\'s box; the letters as large as the painted ones were, which is about 70% of the height of ONE row of that text (a box holding 3 rows of text: its height / 3 x 0.7), the same size for lines that had the same size, and smaller rather than spilling; in the look the line lists (the colour of its letters, bold when it says bold, and a typeface of that kind: the usual font of the page for sans, a serif font such as Georgia for serif); with no look listed, a text colour that reads well on that ground: dark on a light ground, white on a dark one; aligned as the line was). Keep each new line no longer than the one it replaces (count its characters), so it fits in the same rows; a short label, a code, a number or a name the request does not need reworded stays painted as it is. Add every cover rectangle first and every new text box after them, so no rectangle lies over new text (a rectangle hid half of the line written next to it, replay 2026-11-28). A line with no ground (on a photo or a pattern) cannot be changed: a patch of any colour shows as a grey band there (tried on a real deck, 2026-11-28). Leave it as it is and say so in "reply".)'
+    + ' When the request needs the painted text itself changed (its wording, colour, size or font): for each such line that lists a ground, hide it as above (the rectangle over its cover box) and add a new text box holding the new wording in that line\'s own box (its left, top, width and height, and it must stay inside them: never over another line\'s box; the letters at the size the line lists ("letters 17px": the painted ones measured), the same size for lines that list the same size, and smaller only when the new words would spill; in the look the line lists (the colour of its letters, bold when it says bold, and a typeface of that kind: the usual font of the page for sans, a serif font such as Georgia for serif); with no look listed, a text colour that reads well on that ground: dark on a light ground, white on a dark one; aligned as the line was). Keep each new line no longer than the one it replaces (count its characters), so it fits in the same rows; a short label, a code, a number or a name the request does not need reworded stays painted as it is. Add every cover rectangle first and every new text box after them, so no rectangle lies over new text (a rectangle hid half of the line written next to it, replay 2026-11-28). A line that lists a patch sits on a photo or a pattern: to change THAT line, add a plain rectangle shape whose "fill" is exactly "patch:<its patch id>" (for example "patch:P3"), no outline, its box exactly the line\'s cover box (the editor paints the photo back there without the words), and write the new wording on it as above. Never for a line the request does not need changed. A line that lists neither a ground nor a patch cannot be changed: say so in "reply".)'
+}
+// a shape the page model filled with "patch:<id>": the picture of that spot with its words painted out (photoPatches);
+// an id that does not exist is dropped, never drawn as a box
+const paintedOutPicture = (e: any) => {
+  const fill = String(e?.fill || '')
+  if (e?.type !== 'shape' || !fill.startsWith('patch:')) return e
+  const src = photoPatches.get(fill.slice('patch:'.length).trim())
+  return src ? { type: 'image', id: e.id, src, left: e.left, top: e.top, width: e.width, height: e.height, fixedRatio: false, rotate: 0, paintedOut: true } : null
 }
 const editSlideWith = async (index: number, instruction: string, advanced: boolean) => {
   const slide = slides.value[index]
@@ -1252,7 +1304,7 @@ const editSlideWith = async (index: number, instruction: string, advanced: boole
       return { ...e, ...rest, ...(path && !String(path).startsWith('path:') ? { path } : {}) }
     }),
     // an added element without a real position and size is dropped rather than drawn at 0,0
-    ...(ret.patch.added || []).filter((e: any) => e?.id && GEOMETRY.slice(0, 4).every(k => Number.isFinite(toNum(e[k]))) && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat),
+    ...(ret.patch.added || []).filter((e: any) => e?.id && GEOMETRY.slice(0, 4).every(k => Number.isFinite(toNum(e[k]))) && e.type !== 'image' && !live.elements.some(x => x.id === e.id) && !seen.has(e.id) && seen.add(e.id)).map(unflat).map(paintedOutPicture).filter(Boolean),
   ]
   // stacking order: "layer" front/back moves that element (a user asked six times to put the title on top of a white
   // box; the merge kept the old order every time, 2026-11-11). Only the layered elements move; everything else keeps
