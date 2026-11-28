@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. One tool-description sentence. api/ is NOT covered by npm run type-check: an apostrophe in this sentence broke the file and only the local server showed it; checked with esbuild on the file before this commit.
