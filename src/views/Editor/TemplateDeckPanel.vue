@@ -3493,9 +3493,11 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // the first content slide"): each page works alone, so pages 18 and 20 kept the repeated point and the first content
     // page lost its source (prod 2026-11-26, both undone and rerun by the result check). Each page is shown the others,
     // as they are before this step, and the earliest page that says a thing is the one that keeps it
-    const others = args.across_pages ? deckLines().map((x, k) => `${k + 1}. ${x.slice(0, 500)}`) : []
+    // each page's own words in full, not its layout listing cut at 500 characters: cut there, the earlier page's mention
+    // was past the cut and page 14 kept the repeat (production run, 2026-11-28)
+    const others = args.across_pages ? slides.value.map((x, k) => `${k + 1}. ${readingOrder(x).map(elText).filter(Boolean).join(' | ').slice(0, 1500)}`) : []
     const forPage = (id: string) => instruction
-      + (others.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. What every page says now (this step changes them all at the same time, each on its own):\n${fence(others.join('\n').slice(0, 14000))}\nA point the request wants said only once stays on the EARLIEST page that says it and goes from every later page: drop it here when an earlier page above has it, keep it here when this is the earliest. A thing the request keeps on one named page stays there and goes from the others.` : '')
+      + (others.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. What every page says now (this step changes them all at the same time, each on its own):\n${fence(others.join('\n').slice(0, 30000))}\nA point the request wants said only once stays on the EARLIEST page that says it and goes from every later page: drop it here when an earlier page above has it, keep it here when this is the earliest. A thing the request keeps on one named page stays there and goes from the others.` : '')
       + (looks ? '\n\nOnly the look of this page changes (fonts, colours, sizes, spacing, positions): every text keeps its words exactly as they are now, none added, removed, reworded or moved to another page.' : '')
       + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
       + ((said.length > 600 || args.users_text) && !files.length && !looks ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's own message, in full: where it gives text for this page, use that part word for word:\n${fence(said.slice(0, 12000))}` : '')
