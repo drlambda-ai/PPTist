@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Pictures that cannot be loaded in the browser fall back to the file's order (the old behaviour). Verified on production after deploy with screenshots.
