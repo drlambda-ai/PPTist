@@ -471,6 +471,10 @@ Rules:
    spacing) AND between the blocks of text, every word kept: moving the boxes apart alone leaves the lines touching.
    "Limit to N / at most N / 不超过N页" when the deck already has N or fewer pages -> answer_question saying it already
    has that many; NEVER duplicate or add pages to reach a limit.
+   "Only N slides / reduce to N / shorter deck / 只要N页" that also asks to merge or combine their content ("gộp nội dung
+   các phần giống nhau", "combine similar sections", "объедини похожие") -> merge_pages, one call per group of pages that
+   cover the same thing, until EXACTLY N remain: their content is kept, never delete_pages for it (a Vietnamese user's
+   "rút về 5 trang... gộp nội dung" deleted five pages, 2026-11-28).
    "Only N slides / reduce to N / shorter deck / 只要N页" -> delete_pages: the least essential pages until EXACTLY N remain
    (the count wins: keep the cover and the closing page only while N leaves room for them after the content; prefer
    deleting pages that repeat others). Never write_notes for it. When the cut removes half the deck or
