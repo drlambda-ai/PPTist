@@ -1541,6 +1541,12 @@ class NoChange extends StepFailed {} // the page already is what was asked (or t
 function fail(msg: string): never {
   throw new StepFailed(msg)
 }
+// a step that ends with a question to the user: the turn stops there. Told apart by its kind, not by a question mark at
+// the end of its words (the same line in Arabic, Greek or Chinese ends differently)
+class AskBack extends StepFailed {}
+function askBack(msg: string): never {
+  throw new AskBack(msg)
+}
 
 // A new content page from the same outline + JSONL generator as a prompt-built deck (layout matches item count).
 const generatePage = async (text: string, instruction: string, at: number, count = 1) => {
@@ -1868,7 +1874,7 @@ const findPicture = async (query: string, source: string, landscape: boolean, av
     if (!r.src) { // no match: a stock photo, said plainly; a question here stopped a turn with three more pictures to add
       const sp = await stockPhotos(query, landscape, avoid).catch(() => ({ data: [] } as Awaited<ReturnType<typeof stockPhotos>>))
       const found = (sp.data || []).map((x: any) => x.src), alt = found.find((u: string) => u && !avoid.includes(u))
-      if (!alt) fail(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
+      if (!alt) askBack(t('Wikimedia Commons has no picture of "{p0}". Should I use a stock photo or generate one instead?', { p0: query }))
       pictureSource = 'photo'
       pictureNote = t('Wikimedia Commons had no picture of "{p0}", so this is a stock photo.', { p0: query.slice(0, 60) })
         + (sp.fits !== undefined && found.indexOf(alt) >= sp.fits ? ` ${nearestNote()}` : '')
@@ -2793,7 +2799,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
   }
   if (action === 'merge_pages') {
     const ids = nums(args.pages)
-    if (ids.length < 2) fail(t('Which pages should be combined?'))
+    if (ids.length < 2) askBack(t('Which pages should be combined?'))
     const [keep, ...rest] = ids
     // the router sees each page in one short line; the merge gets every word of the pages being folded in
     const extra = rest.map(id => readingOrder(slides.value[pos(id)]).map(elText).filter(Boolean).join('\n')).join('\n\n')
@@ -2986,7 +2992,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // a name in quotes is written &quot;Helvetica Neue&quot; once the browser has re-written the style: it read as "quot"
     const sampleFont = sampleHtml.match(/font-family:\s*((?:&quot;|[^;"])+)/)?.[1].replace(/&quot;/g, '') || sample?.defaultFontName || sample?.text?.defaultFontName
     const font = String(sampleFont || args.font || '').replace(/[^\p{L}\p{N} ,_-]/gu, '').trim().slice(0, 60) // a font name, nothing CSS can parse further
-    if (!font) fail(t('Which font?'))
+    if (!font) askBack(t('Which font?'))
     const setIn = (html: string) => html.replace(/font-family:\s*(?:&quot;|[^;"])*/g, `font-family: ${font}`)
     let n = 0
     for (const id of targets) {
@@ -3105,7 +3111,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const color = /^#[0-9a-f]{6}$/i.test(String(args.color || '')) ? String(args.color) : ''
     const phrase = String(args.phrase || '').trim()
     const want = { bold: args.bold, italic: args.italic, underline: args.underline }
-    if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) fail(t('Which colour or style?'))
+    if (!color && !Object.values(want).some(v => v === 'on' || v === 'off')) askBack(t('Which colour or style?'))
     // a page that is one flat picture has no text to style: its painted words are underlined or marked on top by the
     // page edit, which is given where they are ("underline the last sentence" was answered "no such text", 2026-11-14)
     const flatOne = targets.length === 1 ? slides.value[pos(targets[0])] : undefined
@@ -3331,7 +3337,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       const chosen = new Set(items.map((it: { page: number }) => it.page))
       if (full.length > items.length && [...chosen].every(n => full.some(f => f.page === n))) items = full
     }
-    if (!items.length) fail(t('Which text goes on which page?'))
+    if (!items.length) askBack(t('Which text goes on which page?'))
     const ids0 = slides.value.map(x => x.id)
     const onPages = items.filter((x: { page: number }) => x.page <= ids0.length)
     const past = items.filter((x: { page: number }) => x.page > ids0.length)
@@ -3734,7 +3740,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       usedBackgrounds.add(src)
       background = { type: 'image', image: { src, size: 'cover' } }
     }
-    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) fail(t('Which background colour?'))
+    else if (!/^#[0-9a-fA-F]{6}$/.test(args.color || '')) askBack(t('Which background colour?'))
     // each full-slide picture keeps what it and the rest of the page held, before any of it changes
     if (args.photo_query) for (const id of targets) for (const e of slides.value[pos(id)].elements.filter((x: any) => x.type === 'image' && isBackdrop(x))) keepPic(e, slides.value[pos(id)])
     for (const id of targets) slidesStore.updateSlide({ background }, id)
@@ -3881,7 +3887,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     return [args.message, saved ? (t('I have recorded this as a feature request.')) : ''].filter(Boolean).join(' ')
   }
   if (action === 'set_page_size') {
-    if (!(args.width > 0) || !(args.height > 0)) fail(t('Which page size?'))
+    if (!(args.width > 0) || !(args.height > 0)) askBack(t('Which page size?'))
     slidesStore.setViewportRatio(args.height / args.width)
     touched(slides.value.map(x => x.id))
     return t('Slide shape set to {p0}:{p1}.', { p0: args.width, p1: args.height })
@@ -4644,7 +4650,7 @@ const deckTurn = async (text: string, again = '', reads: string[] = []): Promise
         // changed", so the cause could not be read from it (2026-11-14)
         done.push(goOn ? `${c.action} ${JSON.stringify(c.args || {})} -> no change: ${e.message} (Do not retry this page. Go on with any other part of the request, or finish if none is left.)`
           : `${c.action} ${JSON.stringify(c.args || {})} -> failed, and the user was told: ${e.message} (Do not retry it. Go on with any other part of the request.)`)
-        if (repeating || (e instanceof NoChange && !goOn) || /[?？؟]\s*$/.test(e.message) || failed >= 2) { round = 99; break }
+        if (repeating || (e instanceof NoChange && !goOn) || e instanceof AskBack || failed >= 2) { round = 99; break }
         turnExact.push(`${c.action} ${JSON.stringify(c.args || {})}`)
         continue
       }

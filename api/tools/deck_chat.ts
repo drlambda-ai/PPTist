@@ -660,17 +660,20 @@ const parseArgs = (raw: any) => {
 // 5 of 12 calls for "add a slide about coffee in Brazil" on an English deck, whatever the prompt says (2026-11-12),
 // and the new pages came out in Chinese. A call that names its slide language but carries Chinese script while that
 // language is not Chinese/Japanese is translated into it here, before the editor writes anything.
-const CJK = /[\u3400-\u9fff]/ // the script of the model's own output, not the meaning of anything the user wrote
-const CJK_LANGS = /chin|中文|汉|漢|japan|日本|cantonese|粤|^zh|^ja/i
-const keepLanguage = async (calls: any[]) => {
+// Han characters, by their code points: the script of the model's own output, not the meaning of anything
+const hasHan = (text: string) => [...text].some((ch) => { const c = ch.codePointAt(0) || 0; return c >= 0x3400 && c <= 0x9fff })
+// A user who writes in that script gets it by right, so nothing is checked then. (The language's NAME was matched
+// against a list before, "chin|中文|japan|…": a name in any other language, "tiếng Trung", fell through.)
+const keepLanguage = async (calls: any[], userText: string) => {
+  if (hasHan(userText)) return
   for (const c of calls) {
     const lang = String(c.args?.language || '')
-    if (!lang || CJK_LANGS.test(lang)) continue
+    if (!lang) continue
     const fields: Record<string, unknown> = {}
-    for (const k of ['instruction', 'topics', 'whole_deck_option']) if (CJK.test(JSON.stringify(c.args[k] ?? ''))) fields[k] = c.args[k]
+    for (const k of ['instruction', 'topics', 'whole_deck_option']) if (hasHan(JSON.stringify(c.args[k] ?? ''))) fields[k] = c.args[k]
     if (!Object.keys(fields).length) continue
     try {
-      const out = JSON.parse(await chat([{ role: 'user', content: `Translate every string value of this JSON into ${lang}, keeping its keys, structure, numbers and meaning. Return the JSON only.\n${JSON.stringify(fields)}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 4000 }))
+      const out = JSON.parse(await chat([{ role: 'user', content: `Translate every string value of this JSON into ${lang} (a value already in that language stays as it is), keeping its keys, structure, numbers and meaning. Return the JSON only.\n${JSON.stringify(fields)}` }], { model: 'gpt-6-luna', jsonMode: true, maxTokens: 4000 }))
       for (const k of ['instruction', 'whole_deck_option']) if (typeof out[k] === 'string' && k in fields) c.args[k] = out[k]
       const was = fields.topics as unknown[]
       if (Array.isArray(was) && Array.isArray(out.topics) && out.topics.length === was.length && out.topics.every((x: unknown) => typeof x === 'string')) c.args.topics = out.topics
@@ -904,7 +907,7 @@ async function handler(req: any, res: any) {
       console.error('[deck_chat] Anthropic unavailable, falling back:', String(e.message).slice(0, 160))
       return route(process.env.ROUTER_FALLBACK_MODEL || FALLBACK_MODEL)
     })
-    await keepLanguage(calls)
+    await keepLanguage(calls, String(body.instruction || ''))
     res.status(200).json({ calls: calls.length ? calls : [{ action: 'answer_question', args: {} }] })
   }
   catch (e: any) {
