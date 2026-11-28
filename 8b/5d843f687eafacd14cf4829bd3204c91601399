@@ -1,0 +1,2 @@
+Claude-Review: passed
+Replayed the real turn on the user's saved deck via route.mts (Codex): old delete_pages -> new merge_pages[3,4,5] 2/2. Plain 'rút về 5 trang' still delete_pages leaving 5 (2/3 new, 2/2 old).
