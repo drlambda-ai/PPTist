@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "آن مرحله به‌دلیل خطایی در سمت ما انجام نشد. لطفاً دوباره درخواست کنید.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "آن تغییر متن را هم‌رنگ چیزی می‌کرد که پشتش است و دیگر خوانده نمی‌شد. چه رنگی باشد؟",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "پشت متنی که روی زمینه‌اش دیده نمی‌شد یک نوار نیمه‌شفاف قرار گرفت تا خوانا باشد.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "ارائهٔ شما باز نشد (اتصال قطع شد). صفحه را دوباره بارگیری کنید؛ ارائهٔ شما تغییری نکرده است."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "ارائهٔ شما باز نشد (اتصال قطع شد). صفحه را دوباره بارگیری کنید؛ ارائهٔ شما تغییری نکرده است.",
+  "What you named is on page {p0}, not page {p1}.": "آنچه نام بردید در صفحهٔ {p0} است، نه صفحهٔ {p1}."
 }

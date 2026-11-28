@@ -2972,12 +2972,30 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       if (e instanceof NoChange && text.length > 300 && !args.from_asks && !editedThisTurn.has(slides.value[i].id)) {
         return editSlide(i, `${args.instruction}\n\nThe user's message gives text for this page. It is NOT on the page yet: put it there now, in their words. Never answer that it is already there.`)
       }
+      // the user counted one page off: "on slide 13, in the CLIP part, add ..." with CLIP on slide 14, and the page model
+      // answered there was no CLIP part (the router kept the number whatever its rule said; Codex runs, 2026-11-28). One
+      // question, with the neighbours' text, says which page holds what the message names; the edit goes there
+      if (e instanceof NoChange && args.page_named === true && !editedThisTurn.has(slides.value[i].id)) {
+        const near = [i - 1, i, i + 1].filter(k => k >= 0 && k < slides.value.length)
+        const r = await fetch('/api/tools/ask_json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ instruction:
+          `A user of a slide editor wrote: ${JSON.stringify(text.slice(0, 1500))}\nThey named page ${i + 1}, but its editor found nothing of what they name there. The text of that page and of its neighbours:\n`
+          + near.map(k => `Page ${k + 1}: ${fence(readingOrder(slides.value[k]).map(elText).filter(Boolean).join(' | ').slice(0, 1200))}`).join('\n')
+          + `\nDoes the message name a part, section or item by its words (not only a page number)? If so, which of these pages holds it? Return JSON {"page": <that page number, or 0 when the message names no part or none of them holds it>}.` }) }).catch(() => null)
+        const to = r?.ok ? Number((await r.json().catch(() => ({})))?.page) : 0
+        if (to && to !== i + 1 && near.includes(to - 1)) return { movedTo: to } // done below, as that page's own step
+      }
       if (!(e instanceof NoChange) || editedThisTurn.has(slides.value[i].id)) throw e
       if (lastEditAdvanced || !(e as any).tooHard) throw e // the advanced model already had its try, or nothing was needed
       if (canAdvanced) return editSlide(i, args.instruction, true)
       const line = offer()
       throw line ? new NoChange(`${e.message} ${line}`) : e
     })
+    // what the message names is on a neighbouring page: that page's edit, as its own step, and the user told so
+    if (reply && typeof reply === 'object' && 'movedTo' in (reply as any)) {
+      const to = Number((reply as any).movedTo)
+      const done = await runCall(text, 'edit_page', { ...args, index: to, page_named: true }, slides.value.map(x => x.id))
+      return `${done} ${t('What you named is on page {p0}, not page {p1}.', { p0: to, p1: i + 1 })}`
+    }
     if (args.hard && !canAdvanced) upgradeLine = offer()
     keepUnaskedSizes(i, was)
     if (JSON.stringify(slides.value[i].elements) === JSON.stringify(was)) throw new NoChange(t('Page {p0} was not changed.', { p0: i + 1 }))
@@ -3038,7 +3056,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       s.pending = { request: args.instruction, question: '', options: [args.whole_deck_option.trim()], offer: true, localize: true,
         repeat: [{ action: 'edit_page', args: { ...args, whole_deck_option: '' } }], pages: others, from: i + 1 }
     }
-    return upgradeLine ? `${reply} ${upgradeLine}` : reply
+    return upgradeLine ? `${reply} ${upgradeLine}` : String(reply)
   }
   if (action === 'set_font') { // direct: element default + every inline font-family, no model, no layout change
     const targets = args.pages?.length ? nums(args.pages) : slides.value.map(x => x.id)
@@ -3943,6 +3961,19 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const only = args.pages?.length ? nums(args.pages) : []
     const ids = only.length && only.length < slides.value.length ? only : slides.value.map(x => x.id)
     for (const id of ids) fadeBackdrop(id) // a full-slide picture would hide it
+    // "a different theme on every slide", in one step: one call per page stopped at the 16-step limit on a 24-page deck
+    // (Codex run, 2026-11-28). Each page gets the given look turned round the colour wheel by its share of a turn,
+    // light or dark as given, its text colour kept readable on it
+    if (args.each_page_different === true && ids.length > 1) {
+      ids.forEach((id, k) => {
+        const turn = (c: string) => tinycolor(c).spin((360 * k) / ids.length).toHexString()
+        const bg = turn(args.background)
+        const font = tinycolor.mostReadable(bg, [args.font_color, '#ffffff', '#1f2933']).toHexString()
+        applyPresetTheme({ background: bg, fontColor: font, fontname: args.font || '', colors: args.colors.map(turn) }, true, [id])
+      })
+      touched(ids)
+      return t('Applied a new theme to {p0} page(s).', { p0: ids.length }, ids.length)
+    }
     applyPresetTheme({ background: args.background, fontColor: args.font_color, fontname: args.font || '', colors: args.colors }, true, ids.length < slides.value.length ? ids : undefined)
     touched(ids)
     return ids.length < slides.value.length ? (ids.length === 1 ? t('Applied a new theme to page {p0}.', { p0: pos(ids[0]) + 1 }) : t('Applied a new theme to {p0} page(s).', { p0: ids.length }, ids.length)) : t('Applied a new theme to the whole deck.')

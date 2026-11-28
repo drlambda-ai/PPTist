@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "這一步因我們這邊出錯而未完成。請再提一次。",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "這樣修改會讓文字與其後方的顏色相同，無法閱讀。應該用什麼顏色？",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "在背景上看不清楚的文字後面加了一條半透明底帶，方便閱讀。",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "無法開啟你的簡報（連線中斷）。請重新整理頁面；你的簡報沒有被更改。"
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "無法開啟你的簡報（連線中斷）。請重新整理頁面；你的簡報沒有被更改。",
+  "What you named is on page {p0}, not page {p1}.": "你說的內容在第 {p0} 頁，不在第 {p1} 頁。"
 }

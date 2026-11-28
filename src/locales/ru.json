@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "Этот шаг не выполнен из-за сбоя на нашей стороне. Пожалуйста, попросите ещё раз.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "После такого изменения текст стал бы того же цвета, что и фон за ним, и его нельзя было бы прочитать. Какой цвет нужен?",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "За текстом, который не был бы виден на фоне позади него, появилась полупрозрачная подложка, чтобы его можно было прочитать.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Не удалось открыть вашу презентацию (оборвалось соединение). Перезагрузите страницу; презентация не изменена."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Не удалось открыть вашу презентацию (оборвалось соединение). Перезагрузите страницу; презентация не изменена.",
+  "What you named is on page {p0}, not page {p1}.": "То, что вы назвали, находится на странице {p0}, а не {p1}."
 }

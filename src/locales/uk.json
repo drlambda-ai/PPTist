@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "Цей крок не виконано через збій на нашому боці. Будь ласка, попросіть ще раз.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Після такої зміни текст став би того самого кольору, що й тло за ним, і його не можна було б прочитати. Який колір потрібен?",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "За текстом, який не було б видно на тлі позаду нього, з’явилася напівпрозора підкладка, щоб його можна було прочитати.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Не вдалося відкрити вашу презентацію (обірвалося з’єднання). Перезавантажте сторінку; презентацію не змінено."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Не вдалося відкрити вашу презентацію (обірвалося з’єднання). Перезавантажте сторінку; презентацію не змінено.",
+  "What you named is on page {p0}, not page {p1}.": "Те, що ви назвали, є на сторінці {p0}, а не {p1}."
 }

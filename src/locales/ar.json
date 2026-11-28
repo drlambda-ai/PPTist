@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "فشلت تلك الخطوة من جانبنا ولم تُنفَّذ. يُرجى طلبها مرة أخرى.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "كان ذلك التغيير سيجعل النص بلون ما خلفه نفسه فلا يمكن قراءته. ما اللون المطلوب؟",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "النص الذي لن يظهر على ما خلفه حصل على شريط شبه شفاف، لتسهل قراءته.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "تعذّر فتح عرضك التقديمي (انقطع الاتصال). أعد تحميل الصفحة؛ لم يتم تغيير عرضك التقديمي."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "تعذّر فتح عرضك التقديمي (انقطع الاتصال). أعد تحميل الصفحة؛ لم يتم تغيير عرضك التقديمي.",
+  "What you named is on page {p0}, not page {p1}.": "ما ذكرته موجود في الصفحة {p0}، لا في الصفحة {p1}."
 }

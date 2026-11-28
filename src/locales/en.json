@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "That step failed on our side and was not done. Please ask for it again.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "Text that would not show on what is behind it got a see-through band, so it can be read.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.",
+  "What you named is on page {p0}, not page {p1}.": "What you named is on page {p0}, not page {p1}."
 }

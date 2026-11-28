@@ -1293,5 +1293,6 @@
   "That step failed on our side and was not done. Please ask for it again.": "Ese paso falló por nuestra parte y no se hizo. Pídelo de nuevo, por favor.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Ese cambio habría dejado el texto del mismo color que lo que tiene detrás, y no se podría leer. ¿De qué color debe ser?",
   "Text that would not show on what is behind it got a see-through band, so it can be read.": "El texto que no se vería sobre lo que tiene detrás tiene ahora una franja semitransparente, para que se pueda leer.",
-  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "No se pudo abrir tu presentación (se cortó la conexión). Recarga la página; tu presentación no se modificó."
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "No se pudo abrir tu presentación (se cortó la conexión). Recarga la página; tu presentación no se modificó.",
+  "What you named is on page {p0}, not page {p1}.": "Lo que mencionaste está en la página {p0}, no en la {p1}."
 }
