@@ -638,7 +638,7 @@ const pictures = (sl: Slide) => {
 // from a page the user shaped over several messages (match_look); text under 9px (a watermark) is no part of it
 const lookHtml = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
 // text with no size of its own is drawn at the editor's default, 16px
-const lookSize = (e: any) => Math.max(...(lookHtml(e).includes('font-size') ? [...lookHtml(e).matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1]) : [16]), 0)
+const lookSize = (e: any) => Math.max(...(lookHtml(e).includes('font-size') ? pxSizes(lookHtml(e)) : [16]), 0)
 const lookTexts = (sl: Slide, title: boolean) => {
   const marked = (e: any) => e.textType === 'title' || e.text?.type === 'title'
   const first = sl.elements.some(marked) ? null : readingOrder(sl).find((e: any) => elText(e))
@@ -846,7 +846,7 @@ const shrinkOntoText = async (id: string) => {
   for (let step = 0; step < 3; step++) {
     let any = false
     for (const e of uppers(els)) {
-      const content = String(e.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(10, Math.round(+v) - 2)}px`)
+      const content = mapPx(String(e.content), v => Math.max(10, Math.round(v) - 2))
       if (content === e.content) continue
       slidesStore.updateElement({ id: e.id, props: { content }, slideId: id })
       any = true
@@ -955,7 +955,7 @@ const fitLabels = (pageId: string, ids: Set<string>) => withRenderer(async () =>
           }
         }
         if (!tall && !broken) continue
-        const content = String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(10, Math.round(Number(v) * 8.8) / 10)}px`)
+        const content = mapPx(String(html), v => Math.max(10, Math.round(v * 8.8) / 10))
         if (content === html) continue
         slidesStore.updateElement({ id: e.id, props: e.type === 'text' ? { content } : { text: { ...e.text, content } }, slideId: sl.id })
         shrunk = true
@@ -1429,7 +1429,7 @@ const fitOne = async (slideId: string, ids: string[], before: Record<string, num
       if (!ids.includes(e.id) || e.type !== 'text' || e.height <= before[e.id] * 1.06 + 4) continue
       const k = Math.max(0.6, before[e.id] / e.height)
       const scale = (v: number) => Math.max(9, Math.round(v * k * 10) / 10)
-      let content = String(e.content).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${scale(Number(v))}px`)
+      let content = mapPx(String(e.content), v => scale(v))
       if (content === e.content) { // no inline sizes: scale the size the editor actually renders, set on each paragraph
         const node = document.querySelector(`#editable-element-${e.id} .ProseMirror, #editable-element-${e.id} .text`)
         const px = node ? parseFloat(getComputedStyle(node).fontSize) : 0
@@ -2960,7 +2960,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const gap = (e: any) => { const x = e.type === 'text' ? e : e.text || {}; return [x.lineHeight ?? 1.5, x.paragraphSpace ?? 5] }
     const spaced = slides.value[i].elements.filter((e: any) => { const o = was.find(w => w.id === e.id); return o && elText(e) && gap(e).some((v, k) => v > gap(o)[k]) }).map(e => e.id)
     // where it still has no room its letters go smaller, never under 14px (body text the user reads)
-    const floor14 = Object.fromEntries(spaced.map((id) => { const e: any = slides.value[i].elements.find(x => x.id === id); return [id, [...String(e?.content ?? e?.text?.content ?? '').matchAll(/font-size:\s*([\d.]+)px/g)].map(m => Math.min(14, Number(m[1])))] }))
+    const floor14 = Object.fromEntries(spaced.map((id) => { const e: any = slides.value[i].elements.find(x => x.id === id); return [id, pxSizes(String(e?.content ?? e?.text?.content ?? '')).map(v => Math.min(14, v))] }))
     const spacedFrom = Object.fromEntries(spaced.map(id => [id, gap(was.find(w => w.id === id))]))
     if (spaced.length) await fitOverflow([pageId], floor14, new Set(spaced), spacedFrom).catch(() => undefined)
     const drawnNow = new Set(slides.value[i].elements.filter(e => !was.some(w => w.id === e.id)).map(e => e.id))
@@ -3021,7 +3021,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     const inScope = (sl: any, e: any) => (e.type === 'text' || (e.type === 'shape' && e.text)) && elText(e)
       && (args.scope === 'titles' ? isTitle(sl, e) : args.scope === 'body' ? !isTitle(sl, e) : true)
     const html = (e: any) => String(e.type === 'text' ? e.content : e.text?.content || '')
-    const sizes = (h: string) => [...h.matchAll(/font-size:\s*([\d.]+)px/g)].map(m => +m[1])
+    const sizes = (h: string) => pxSizes(h)
     // "titles 28pt": the size PowerPoint shows after download (the export's own px-to-pt ratio); the scale factor gave 27px
     let to = Number(args.points) > 0 ? Math.round(Math.min(200, Number(args.points)) * 96 / 72 * slidesStore.viewportSize / 960) : 0
     // "same size as page N": that page's largest size in the same scope
@@ -3038,7 +3038,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       // a step the eye can see: 1.1 of a 14px body is 15px, and "bigger", "more", "even bigger!" went on for five
       // messages (prod 2026-11-10/11, b1c, 415, e13). At least 4px up or 2px down per step
       const step = (n: number) => to || (k > 1 ? Math.max(n * k, n + 4) : k < 1 ? Math.min(n * k, n - 2) : n)
-      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, n) => `font-size: ${Math.max(8, Math.round(step(+n)))}px`)
+      return mapPx(doc.body.innerHTML, n => Math.max(8, Math.round(step(n))))
     }
     // "back as it was": each box's sizes from before the chat resized it, wherever the chat did (the pages the router
     // lists are the last message's, not every page that was resized)
@@ -3046,7 +3046,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
       let i = 0
       const doc = new DOMParser().parseFromString(h, 'text/html')
       if (!h.includes('font-size')) doc.querySelectorAll('p').forEach(p => { (p as HTMLElement).style.fontSize = '16px' })
-      return doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, () => `font-size: ${was[Math.min(i++, was.length - 1)] ?? 16}px`)
+      return mapPx(doc.body.innerHTML, () => was[Math.min(i++, was.length - 1)] ?? 16)
     }
     // sizes kept and all put back already: asked again, nothing is left to restore (never one more step down)
     if (args.back === true && s.sizes && !Object.keys(s.sizes).length) fail(t('I have not resized any text here, so there is no earlier size to go back to.'))
@@ -3304,7 +3304,7 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
           const doc = new DOMParser().parseFromString(lookHtml(e), 'text/html')
           if (!lookHtml(e).includes('font-size')) doc.querySelectorAll('p').forEach((p) => { (p as HTMLElement).style.fontSize = '16px' }) // as set_font_size does
           if (look.align) doc.body.querySelectorAll<HTMLElement>('p, li').forEach((p) => { p.style.textAlign = look.align })
-          const content = doc.body.innerHTML.replace(/font-size:\s*([\d.]+)px/g, (_, v) => `font-size: ${Math.max(9, Math.round(+v * f))}px`)
+          const content = mapPx(doc.body.innerHTML, v => Math.max(9, Math.round(v * f)))
           if (content === lookHtml(e)) continue
           if (e.type === 'text') slidesStore.updateElement({ id: e.id, props: { content }, slideId: id })
           else slidesStore.updateElement({ id: e.id, props: { text: { ...e.text, content } }, slideId: id })
@@ -4104,6 +4104,24 @@ const isHex6 = (c: unknown) => typeof c === 'string' && c.length === 7 && c[0] =
 const isDigits = (t: string, max: number) => t.length >= 1 && t.length <= max && [...t].every(ch => ch >= '0' && ch <= '9')
 const isDay = (d: unknown) => typeof d === 'string' && d.length === 10 && d[4] === '-' && d[7] === '-' && isDigits(d.slice(0, 4) + d.slice(5, 7) + d.slice(8), 8)
 const squash = (t: string) => t.split('').map(ch => (ch.trim() ? ch : ' ')).join('').split(' ').filter(Boolean).join(' ')
+// every "font-size: <n>px" in slide HTML, read by scanning (the same matches as the old /font-size:\s*([\d.]+)px/g)
+const fontSizesIn = (html: string): { at: number, end: number, px: number }[] => {
+  const found: { at: number, end: number, px: number }[] = []
+  for (let at = html.indexOf('font-size:'); at >= 0; at = html.indexOf('font-size:', at + 1)) {
+    let k = at + 'font-size:'.length
+    while (k < html.length && !html[k].trim()) k++
+    const from = k
+    while (k < html.length && ('0123456789.'.includes(html[k]))) k++
+    if (k > from && html.startsWith('px', k)) found.push({ at, end: k + 2, px: Number(html.slice(from, k)) })
+  }
+  return found
+}
+const pxSizes = (html: string) => fontSizesIn(html).map(f => f.px)
+const mapPx = (html: string, to: (px: number, i: number) => number) => {
+  let out = '', last = 0
+  fontSizesIn(html).forEach((f, i) => { out += `${html.slice(last, f.at)}font-size: ${to(f.px, i)}px`; last = f.end })
+  return out + html.slice(last)
+}
 const noExt = (name: string) => (name.lastIndexOf('.') > 0 ? name.slice(0, name.lastIndexOf('.')) : name)
 const fence = (text: string) => text.replace(/<\/?(file-content|web-results)\b/gi, '&lt;$1') // no closing tag inside the fence
 
@@ -5094,7 +5112,7 @@ const fitOverflow = (ids?: string[], floor: Record<string, number[]> = {}, only?
           const props: any = { height: Math.max(e.height, Math.min(need, room)) }
           if (need > room) {
             const k = Math.max(0.6, Math.sqrt(room / need)) // smaller type also wraps less: height falls with its square
-            const shrink = (min: number[]) => { let i = 0; return String(html).replace(/font-size:\s*([\d.]+)px/g, (_m: string, v: string) => `font-size: ${Math.max(9, min[i++] || 0, Math.round(Number(v) * k * 10) / 10)}px`) }
+            const shrink = (min: number[]) => { let i = 0; return mapPx(String(html), v => Math.max(9, min[i++] || 0, Math.round(v * k * 10) / 10)) }
             let content = shrink(released.has(e.id) ? [] : floor[e.id] || [])
             if (was && content === html && !released.has(e.id)) { released.add(e.id); content = shrink([]) } // at the floor and still over: smaller still, never over the next element
             if (was && content === html) continue // 9px: nothing smaller to do
