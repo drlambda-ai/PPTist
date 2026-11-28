@@ -2381,7 +2381,9 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // English page came with the language Spanish, and the whole page was translated unasked; the user saw it and wrote
     // "it has to be in English" (2026-11-20). A translation names its language in translate_to, and says so
     args = { ...args, instruction: action !== 'add_page' && !args.translate_to
-      ? `Write all slide text in ${slideLang}, whatever language the instruction below is in. This is for the text you write: text already on the page stays in the language it is in unless the instruction below asks to translate it.\n${args.instruction}`
+      ? `Write all slide text in ${slideLang}, whatever language the instruction below is in, on a page with no text yet. On a page that already has text, every text you write or rewrite is in the language that text is in (a Ukrainian page of an English deck stays Ukrainian), unless the instruction below asks to translate it.\n${args.instruction}`
+      // a deck that mixes languages: "fill the nearly empty slides" with language English rewrote its Ukrainian pages in
+      // English and the result check undid the turn twice (production run, 2026-11-28)
       : `Write all slide text in ${slideLang}, whatever language the instruction below is in.\n${args.instruction}` }
   }
   // a medical picture is a real one (Wikimedia, which falls back to a labelled stock photo): asked in prose, the router
