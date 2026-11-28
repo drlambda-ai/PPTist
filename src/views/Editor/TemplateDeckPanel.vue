@@ -3496,7 +3496,12 @@ const runCall = async (text: string, action: string, args: any, ids: string[]): 
     // each page's own words in full, not its layout listing cut at 500 characters: cut there, the earlier page's mention
     // was past the cut and page 14 kept the repeat (production run, 2026-11-28)
     const others = args.across_pages ? slides.value.map((x, k) => `${k + 1}. ${readingOrder(x).map(elText).filter(Boolean).join(' | ').slice(0, 1500)}`) : []
-    const forPage = (id: string) => instruction
+    // an empty page (no text at all) answered "nothing for that" to "do not leave slides empty", and two blank pages
+    // stayed blank (production run, 2026-11-28): it is told it is empty and what the other pages already cover
+    const titles = slides.value.map((x, k) => `${k + 1}. ${(readingOrder(x).map(elText).filter(Boolean)[0] || '(empty)').slice(0, 90)}`).join('\n')
+    const emptyNote = (id: string) => readingOrder(slides.value[pos(id)]).some(e => elText(e)) ? ''
+      : `\n\nThis page is EMPTY (no text at all). When the request wants empty or nearly empty slides filled, give it a title and its content as new text boxes, on a part of the deck's subject that no other page covers yet, in the deck's language; the pages now:\n${fence(titles.slice(0, 6000))}`
+    const forPage = (id: string) => instruction + emptyNote(id)
       + (others.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. What every page says now (this step changes them all at the same time, each on its own):\n${fence(others.join('\n').slice(0, 30000))}\nA point the request wants said only once stays on the EARLIEST page that says it and goes from every later page: drop it here when an earlier page above has it, keep it here when this is the earliest. A thing the request keeps on one named page stays there and goes from the others. A page that does not itself say the point the request is about changes NOTHING (answer that it has nothing for that): 9 untouched pages were reworded in a production run.` : '')
       + (looks ? '\n\nOnly the look of this page changes (fonts, colours, sizes, spacing, positions): every text keeps its words exactly as they are now, none added, removed, reworded or moved to another page.' : '')
       + (read.length ? `\n\nThis is page ${pos(id) + 1} of ${all.length}. The user's file, read for this request: take from it what belongs on THIS page (its own slide or section when the file is laid out by slide), as the request says; "no changes" means its words exactly:\n${given(read)}` : '')
