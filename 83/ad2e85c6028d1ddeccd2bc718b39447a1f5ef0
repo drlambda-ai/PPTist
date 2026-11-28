@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean and the router file checked with esbuild. The German user's decks are no longer saved; checked on production on the test deck with a repeated point.
