@@ -261,7 +261,12 @@ let saving: Promise<void> = Promise.resolve() // the save that left its timer (i
 let syncTimer = 0
 let saveFailed = false
 let loadingPage = '' // while a project's deck is being converted: never saved, or the blank page replaces the deck
+// a ChatSlide project's deck that never opened is never saved: a dropped connection while opening left the editor's
+// empty page on screen, the error line saved it, and a 22-page deck was replaced by one empty page (production test
+// deck, 2026-11-28). Set once the project's deck is on screen
+let opened = false
 const save = () => {
+  if (chatslide && !opened) return
   if (chatslide && loadingPage && slides.value.map(x => x.id).join() === loadingPage) return
   if (chatslide) { // per project, debounced; also after manual edits (watch below)
     clearTimeout(saveTimer)
@@ -5203,8 +5208,24 @@ onMounted(() => {
     if (chatslide.title) slidesStore.setTitle(chatslide.title)
     chatslide.flush = () => syncToChatSlide() // before Scripts: the latest pages first
     run(t('Opening your deck…'), async () => {
-      const saved = await chatslide!.load()
+      // a dropped connection is tried again before the open fails (it failed on the first try here, 2026-11-28)
+      let saved: any = null
+      for (let k = 0; ; k++) {
+        try {
+          saved = await chatslide!.load()
+          break
+        }
+        catch (e) {
+          if (k < 2) {
+            await new Promise(ok => setTimeout(ok, 1500 * (k + 1)))
+            continue
+          }
+          say('assistant', t('Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.'))
+          return
+        }
+      }
       if (saved?.slides?.length) {
+        opened = true
         Object.assign(s, blank(), saved.session || {})
         // a restore confirmation left from another session would restore to this session's baseline, not the one it named
         if (s.pending?.repeat?.some((c: any) => c.action === 'restore_original')) s.pending = null
@@ -5232,6 +5253,7 @@ onMounted(() => {
         URL.revokeObjectURL(link)
         // saved at once: the saved deck is what makes the project open in this editor next time. Never a failed
         // conversion: a saved blank page would be opened instead of the project's slides from then on
+        opened = true // (the loadingPage check still keeps a failed conversion's blank page out)
         save()
       }
       // the files the user already gave this project: "use my file" reads them, no re-attach (12 replies asked for

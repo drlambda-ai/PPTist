@@ -1292,5 +1292,6 @@
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Я выделил текст «{p0}» и открыл его настройки справа: шрифт, размер, цвет, начертание и интервалы. Нажмите на другой текст, чтобы изменить его.",
   "That step failed on our side and was not done. Please ask for it again.": "Этот шаг не выполнен из-за сбоя на нашей стороне. Пожалуйста, попросите ещё раз.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "После такого изменения текст стал бы того же цвета, что и фон за ним, и его нельзя было бы прочитать. Какой цвет нужен?",
-  "Text that would not show on what is behind it got a see-through band, so it can be read.": "За текстом, который не был бы виден на фоне позади него, появилась полупрозрачная подложка, чтобы его можно было прочитать."
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "За текстом, который не был бы виден на фоне позади него, появилась полупрозрачная подложка, чтобы его можно было прочитать.",
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Не удалось открыть вашу презентацию (оборвалось соединение). Перезагрузите страницу; презентация не изменена."
 }

@@ -1292,5 +1292,6 @@
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "Tôi đã chọn đoạn chữ “{p0}” và mở cài đặt của nó ở bên phải: phông chữ, cỡ chữ, màu, in đậm và giãn cách. Bấm vào đoạn chữ khác để chỉnh đoạn đó.",
   "That step failed on our side and was not done. Please ask for it again.": "Bước đó bị lỗi ở phía chúng tôi nên chưa được thực hiện. Vui lòng yêu cầu lại.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Thay đổi đó sẽ khiến chữ có cùng màu với phần nằm sau nó nên không đọc được. Bạn muốn màu nào?",
-  "Text that would not show on what is behind it got a see-through band, so it can be read.": "Chữ không hiện rõ trên phần phía sau đã có một dải nền bán trong suốt để dễ đọc."
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "Chữ không hiện rõ trên phần phía sau đã có một dải nền bán trong suốt để dễ đọc.",
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Không mở được bài trình chiếu của bạn (mất kết nối). Hãy tải lại trang; bài của bạn không bị thay đổi."
 }

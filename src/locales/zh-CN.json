@@ -1292,5 +1292,6 @@
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "我已选中文字“{p0}”，并在右侧打开了它的设置：字体、字号、颜色、加粗和间距。点击其他文字即可修改那段文字。",
   "That step failed on our side and was not done. Please ask for it again.": "这一步因我们这边出错而未完成。请再提一次。",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "这样修改会让文字与其后面的颜色相同，无法阅读。应该用什么颜色？",
-  "Text that would not show on what is behind it got a see-through band, so it can be read.": "在背景上看不清的文字后面加了一条半透明底带，便于阅读。"
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "在背景上看不清的文字后面加了一条半透明底带，便于阅读。",
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "无法打开你的演示文稿（连接中断）。请刷新页面；你的演示文稿没有被更改。"
 }

@@ -1292,5 +1292,6 @@
   "I selected the text \"{p0}\" and opened its settings on the right: font, size, colour, bold and spacing. Click another text to change that one.": "J’ai sélectionné le texte « {p0} » et ouvert ses réglages à droite : police, taille, couleur, gras et espacement. Cliquez sur un autre texte pour modifier celui-ci.",
   "That step failed on our side and was not done. Please ask for it again.": "Cette étape a échoué de notre côté et n’a pas été faite. Veuillez la redemander.",
   "That change would have left text in the same colour as what is behind it, so it could not be read. Which colour should it be?": "Ce changement aurait laissé le texte de la même couleur que ce qui se trouve derrière lui, donc illisible. Quelle couleur faut-il ?",
-  "Text that would not show on what is behind it got a see-through band, so it can be read.": "Le texte qui ne se verrait pas sur ce qu'il y a derrière a maintenant une bande semi-transparente, pour qu'il soit lisible."
+  "Text that would not show on what is behind it got a see-through band, so it can be read.": "Le texte qui ne se verrait pas sur ce qu'il y a derrière a maintenant une bande semi-transparente, pour qu'il soit lisible.",
+  "Your deck could not be opened (the connection dropped). Reload the page; your deck was not changed.": "Impossible d’ouvrir votre présentation (la connexion a été coupée). Rechargez la page ; votre présentation n’a pas été modifiée."
 }
