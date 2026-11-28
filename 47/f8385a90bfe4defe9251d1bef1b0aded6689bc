@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. esbuild clean; one extra small model call only when a picture query holds Han script and the user's message does not.
