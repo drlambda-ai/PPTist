@@ -660,11 +660,15 @@ export default () => {
             pptxSlide.addImage(options)
           }
           else {
+            // decks saved before cd96ce0d hold chat-drawn shapes with no path (a "guide-panel" with only a fill), and
+            // every PPTX download of them threw "this.commands is not iterable" (5 tries by one user, 2026-11-26): such a
+            // shape is exported as the rectangle the editor now makes of it
+            const [vw, vh] = Array.isArray(el.viewBox) && el.viewBox[0] > 0 && el.viewBox[1] > 0 ? el.viewBox : [el.width || 1, el.height || 1]
             const scale = {
-              x: el.width / el.viewBox[0],
-              y: el.height / el.viewBox[1],
+              x: el.width / vw,
+              y: el.height / vh,
             }
-            const points = formatPoints(toPoints(el.path), scale)
+            const points = formatPoints(toPoints(typeof el.path === 'string' && el.path.trim() ? el.path : `M 0 0 L ${vw} 0 L ${vw} ${vh} L 0 ${vh} Z`), scale)
   
             let fillColor = formatColor(el.fill)
             if (el.gradient) {
