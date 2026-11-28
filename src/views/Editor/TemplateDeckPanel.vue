@@ -4390,12 +4390,13 @@ const deckTurn = async (text: string): Promise<void> => {
       if (items.length) pre.push({ action: 'place_texts', args: { items } })
     }
   }
+  routerInput = null
   let round = 0 // 16 after the loop: it ran out of steps with the message unfinished
   const rounds = 16 + repeat.length + pre.length // fixed before the queue drains (re-read each round it ended a long repeat early)
   for (; round < rounds; round++) {
     const { calls, error } = pre.length ? { calls: [pre.shift()], error: '' } : repeat.length ? { calls: [repeat.shift()], error: '' } : await (await fetch('/api/tools/deck_chat', {
       method: 'POST',
-      body: JSON.stringify({
+      body: routerAsked({
         // "this page" stays the page the user was on when they sent the message: steps that show a new page moved it,
         // and "add a page after this one" then re-ran after each new page (30 -> 36)
         instruction: text, pages: deckLines(), current: (slides.value.findIndex(x => x.id === startPageId) + 1) || slideIndex.value + 1, template: !!s.template, done,
@@ -4411,7 +4412,7 @@ const deckTurn = async (text: string): Promise<void> => {
         pictures: (s.images || []).map(m => m.name),
         brief: s.brief || undefined,
         history: answeredHistory().map(h => ({ role: h.role, content: h.text })),
-      }),
+      } as Record<string, unknown>),
       headers: { 'Content-Type': 'application/json' },
     })).json()
     if (error) throw new Error(error)
@@ -4854,14 +4855,23 @@ const deckTurn = async (text: string): Promise<void> => {
   recordTurn(text, said, done, true)
 }
 
+// the router's input for the turn's first routed call, kept in the turn record so a new router version can be replayed
+// on exactly what production read, without a browser (scripts/deck-eval/route_eval.py)
+let routerInput: Record<string, unknown> | null = null
+const routerAsked = (body: Record<string, unknown>) => {
+  if (!routerInput) routerInput = body
+  return JSON.stringify(body)
+}
+
 // ChatSlide keeps a record of every chat turn for review: the message, the reply, and what each step did (step,
 // arguments, result), so a complaint like "I don't see a change" can be traced to the edit before it. Never charged.
 const recordTurn = (message: string, reply: string, steps: string[], ok: boolean) => {
   if (!chatslide) return
   fetch('/api/record_turn', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, start: slides.value.findIndex(x => x.id === currentAtSend) + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30) }),
+    body: JSON.stringify({ message, reply, ok, page: slideIndex.value + 1, start: slides.value.findIndex(x => x.id === currentAtSend) + 1, pages: slides.value.length, steps: steps.map(d => d.split('\n')[0].slice(0, 400)).slice(0, 30), router: routerInput }),
   }).catch(() => undefined)
+  routerInput = null
 }
 
 // "Apply to the whole deck" repeats an edit_page instruction the router wrote for one page, and its topic went onto

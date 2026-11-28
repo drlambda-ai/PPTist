@@ -942,3 +942,6 @@ async function handler(req: any, res: any) {
 }
 
 export default metered(handler)
+
+// read by scripts/deck-eval/route_eval.py (app.chatslide.ai), which judges real turns against these tools
+export { TOOLS, SYSTEM }
