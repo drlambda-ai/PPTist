@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Two prompt sentences (the retry note, the check's allowances). Verified on production after deploy.
