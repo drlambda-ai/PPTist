@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. npm run type-check clean. Removes three regular expressions. Risk: an edit whose model-written message asks a question no longer stops the turn by itself (two failed steps still do). Checked on production after deploy with a font ask that asks back and a page add on the English deck.
