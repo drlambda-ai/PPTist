@@ -1,0 +1,1 @@
+Claude self-review (PPTist is not reviewed by Codex): passed. Tool-description sentences only; esbuild and type-check clean. Checked on production after deploy, case by case on the test deck.
